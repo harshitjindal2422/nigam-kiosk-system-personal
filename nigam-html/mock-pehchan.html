@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>Pehchan Portal - Certificate Download</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Rajdhani', sans-serif; background: #f0f4f8; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #333; }
+    .header { position: absolute; top: 0; left: 0; right: 0; background: #1a365d; color: white; padding: 20px; text-align: center; border-bottom: 5px solid #f39c12; }
+    .header h1 { margin: 0; font-family: 'Tiro Devanagari Hindi', serif; font-size: 2rem; }
+    .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+    .btn { background: #27ae60; color: white; border: none; padding: 15px 30px; font-size: 1.5rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; font-family: inherit; margin-top: 20px; }
+    .btn:hover { background: #1e8449; }
+    .btn:active { transform: scale(0.95); }
+    .btn-return { background: #cbd5e0; color: #2d3748; margin-top: 15px; font-size: 1.2rem; }
+    .btn-return:hover { background: #a0aec0; }
+    #loader { display: none; margin-top: 20px; font-size: 1.2rem; color: #2980b9; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>पहचान पोर्टल (Pehchan Portal)</h1>
+  </div>
+
+  <div class="container">
+    <h2 style="font-family: 'Tiro Devanagari Hindi', serif; color: #1a365d;">अपना प्रमाण-पत्र डाउनलोड करें</h2>
+    <p style="font-size:1.1rem; color:#4a5568;">कियोस्क लोकल स्टोरेज में अपना प्रमाण-पत्र सुरक्षित रूप से डाउनलोड करने के लिए कृपया नीचे दिए गए बटन पर क्लिक करें।</p>
+    
+    <button class="btn" onclick="startDownload()">प्रमाण-पत्र डाउनलोड करें (Download)</button>
+    <br>
+    <button class="btn btn-return" onclick="window.location.href='index.html'">रद्द करें और वापस जाएं (Cancel & Return)</button>
+
+    <div id="loader">कियोस्क में सुरक्षित रूप से डाउनलोड हो रहा है... कृपया प्रतीक्षा करें...</div>
+  </div>
+
+  <script>
+    function startDownload() {
+      document.querySelector('.btn').style.display = 'none';
+      document.querySelector('.btn-return').style.display = 'none';
+      document.getElementById('loader').style.display = 'block';
+
+      // Simulate a network delay for the download
+      setTimeout(() => {
+        alert("प्रमाण-पत्र सफलतापूर्वक कियोस्क लोकल स्टोरेज में डाउनलोड हो गया है! (Certificate successfully downloaded!)");
+        // Redirect back to Kiosk index with payment flag
+        window.location.href = 'index.html?payment=true';
+      }, 2000);
+    }
+  </script>
+
+</body>
+</html>

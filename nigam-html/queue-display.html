@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Queue Display</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; padding: 0; background: #f4f7f6; color: #1a365d; font-family: 'Rajdhani', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+    .left-panel { flex: 2; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-right: 8px solid #f39c12; }
+    .right-panel { flex: 1; background: #1a365d; color: white; display: flex; flex-direction: column; padding: 40px; }
+    h1 { font-size: 4rem; margin: 0 0 20px 0; color: #27ae60; }
+    .current-token { font-family: 'Bebas Neue', sans-serif; font-size: 16rem; line-height: 1; margin: 0; color: #1a365d; text-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .counter-text { font-size: 3rem; margin-top: 20px; color: #718096; }
+    .right-panel h2 { font-size: 2.5rem; border-bottom: 2px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-top: 0; color: #f39c12; }
+    .upcoming-list { list-style: none; padding: 0; margin: 0; font-size: 4rem; font-family: 'Bebas Neue', sans-serif; }
+    .upcoming-list li { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+    /* Blinking effect for new token */
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .blink { animation: blink 0.8s 4; }
+  </style>
+</head>
+<body>
+  <div class="left-panel">
+    <h1 style="font-family: 'Tiro Devanagari Hindi', serif; font-size: 3rem;">अब सेवा में<br><span style="font-size:2rem; color:#718096; font-family:'Bebas Neue', sans-serif;">NOW SERVING</span></h1>
+    <div id="current-token" class="current-token">---</div>
+    <div class="counter-text" style="font-family: 'Tiro Devanagari Hindi', serif;">कृपया काउंटर पर जाएं <br><span style="font-size:2rem; color:#718096; font-family:'Rajdhani', sans-serif;">PLEASE PROCEED TO COUNTER</span></div>
+  </div>
+  <div class="right-panel">
+    <h2 style="font-family: 'Tiro Devanagari Hindi', serif;">आगामी टोकन <span style="font-size:1.5rem; color:#aaa; font-family:'Bebas Neue', sans-serif;">(UPCOMING TOKENS)</span></h2>
+    <ul class="upcoming-list" id="upcoming-list">
+      <!-- Generated via JS -->
+    </ul>
+  </div>
+
+  <script>
+    function updateDisplay() {
+      const current = localStorage.getItem('kiosk_current_token') || '---';
+      const queue = JSON.parse(localStorage.getItem('kiosk_queue') || '[]');
+      
+      const currentEl = document.getElementById('current-token');
+      if (currentEl.innerText !== current) {
+        currentEl.innerText = current;
+        currentEl.classList.remove('blink');
+        void currentEl.offsetWidth; // trigger reflow
+        currentEl.classList.add('blink');
+      }
+
+      const listEl = document.getElementById('upcoming-list');
+      listEl.innerHTML = '';
+      queue.slice(0, 7).forEach(token => {
+        const li = document.createElement('li');
+        li.innerText = token;
+        listEl.appendChild(li);
+      });
+    }
+
+    // Update immediately
+    updateDisplay();
+
+    // Listen for cross-tab changes
+    window.addEventListener('storage', updateDisplay);
+    // Fallback polling just in case
+    setInterval(updateDisplay, 1000);
+  </script>
+</body>
+</html>

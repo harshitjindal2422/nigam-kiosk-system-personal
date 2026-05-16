@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kiosk Admin Panel</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 40px; margin: 0; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h1 { color: #1a365d; margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+    .status-card { background: #e2e8f0; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+    .status-card h2 { margin: 0; color: #718096; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+    .current { font-size: 5rem; font-weight: bold; color: #e67e22; margin: 10px 0; line-height: 1; }
+    .btn { display: inline-block; padding: 15px 30px; font-size: 1.2rem; border: none; border-radius: 6px; cursor: pointer; color: white; transition: 0.2s; width: 100%; margin-bottom: 15px; font-weight: bold; }
+    .btn-call { background: #27ae60; }
+    .btn-call:hover { background: #1e8449; }
+    .btn-announce { background: #2980b9; }
+    .btn-announce:hover { background: #1f618d; }
+    .btn-reset { background: #c0392b; margin-top: 30px; opacity: 0.8; }
+    .btn-reset:hover { opacity: 1; }
+    .queue-list { border: 1px solid #ddd; padding: 15px; border-radius: 6px; min-height: 100px; max-height: 250px; overflow-y: auto; background: #fafafa; }
+    .queue-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-size: 1.2rem; }
+    .queue-item:last-child { border: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 style="font-family: 'Tiro Devanagari Hindi', serif;">कतार प्रबंधन (Queue Management)</h1>
+    
+    <div class="status-card">
+      <h2 style="font-family: 'Tiro Devanagari Hindi', serif;">वर्तमान में सेवारत (Currently Serving)</h2>
+      <div class="current" id="current-display">---</div>
+    </div>
+
+    <button class="btn btn-call" onclick="callNext()" style="font-family: 'Tiro Devanagari Hindi', serif;">अगला टोकन बुलाएं (CALL NEXT TOKEN)</button>
+    <button class="btn btn-announce" onclick="announceCurrent()" style="font-family: 'Tiro Devanagari Hindi', serif;">वर्तमान टोकन की घोषणा करें</button>
+    
+    <h3 style="margin-top: 30px; color: #2c3e50; font-family: 'Tiro Devanagari Hindi', serif;">प्रतीक्षा सूची (Waiting Queue) - <span id="q-count">0</span></h3>
+    <div class="queue-list" id="queue-list">
+      <!-- List -->
+    </div>
+
+    <button class="btn btn-reset" onclick="resetQueue()">Reset System (Clear All)</button>
+  </div>
+
+  <script>
+    function getQueue() { return JSON.parse(localStorage.getItem('kiosk_queue') || '[]'); }
+    function setQueue(q) { localStorage.setItem('kiosk_queue', JSON.stringify(q)); }
+    function getCurrent() { return localStorage.getItem('kiosk_current_token') || '---'; }
+    function setCurrent(t) { localStorage.setItem('kiosk_current_token', t); }
+
+    function updateUI() {
+      const q = getQueue();
+      document.getElementById('current-display').innerText = getCurrent();
+      document.getElementById('q-count').innerText = q.length;
+      
+      const listEl = document.getElementById('queue-list');
+      listEl.innerHTML = '';
+      if (q.length === 0) {
+        listEl.innerHTML = '<div style="color:#aaa;text-align:center;padding:20px;font-style:italic;">Queue is empty</div>';
+      } else {
+        q.forEach((t, i) => {
+          listEl.innerHTML += `<div class="queue-item"><strong>${t}</strong> <span style="color:#718096;">Pos: ${i+1}</span></div>`;
+        });
+      }
+    }
+
+    function callNext() {
+      let q = getQueue();
+      if (q.length > 0) {
+        const next = q.shift();
+        setCurrent(next);
+        setQueue(q);
+        updateUI();
+        announceCurrent();
+      } else {
+        alert("Queue is empty! No one is waiting.");
+      }
+    }
+
+    function announceCurrent() {
+      const current = getCurrent();
+      if (current === '---') return;
+      const synth = window.speechSynthesis;
+      if (synth) {
+        // Stop any currently playing audio
+        synth.cancel();
+        const msg = "Token number " + current.replace('-', ' ') + ", please come to the counter.";
+        const utterance = new SpeechSynthesisUtterance(msg);
+        utterance.rate = 0.9;
+        synth.speak(utterance);
+      }
+    }
+
+    function resetQueue() {
+      if (confirm("WARNING: Are you sure you want to clear the entire queue and reset token counters?")) {
+        localStorage.removeItem('kiosk_queue');
+        localStorage.setItem('kiosk_current_token', '---');
+        localStorage.setItem('kiosk_last_token_num', '0');
+        updateUI();
+      }
+    }
+
+    window.addEventListener('storage', updateUI);
+    updateUI();
+  </script>
+</body>
+</html>

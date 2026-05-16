@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nagar Nigam Kiosk User Guide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    @page { size: A4 portrait; margin: 0; }
+    body { 
+      margin: 0; padding: 0; background: #e2e8f0; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .page { 
+      width: 210mm; min-height: 297mm; background: white; 
+      margin: 10mm auto; box-sizing: border-box; padding: 15mm; 
+      position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      page-break-after: always;
+    }
+    @media print {
+      body { background: white; margin: 0; }
+      .page { margin: 0; box-shadow: none; width: 100%; height: 100%; page-break-after: always; padding: 15mm; }
+    }
+    .title-bar { background: #1a365d; color: white; padding: 15px 20px; border-bottom: 5px solid #f39c12; margin-bottom: 30px; border-radius: 8px; }
+    .title-bar h1 { margin: 0; font-family: 'Tiro Devanagari Hindi', serif; font-size: 2.2rem; }
+    .title-bar p { margin: 5px 0 0 0; font-size: 1.1rem; color: #a0aec0; }
+    
+    .section-title { font-size: 1.6rem; color: #2c3e50; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 20px; font-family: 'Tiro Devanagari Hindi', serif; }
+    
+    /* Mockup Canvas */
+    .mockup-canvas { position: relative; border: 2px solid #cbd5e0; border-radius: 10px; background: #f4f7f6; height: 140mm; margin-bottom: 20px; overflow: hidden; }
+    
+    /* Legend Table */
+    .legend-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    .legend-table th, .legend-table td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; vertical-align: top; }
+    .legend-table th { background: #edf2f7; color: #4a5568; font-size: 0.9rem; text-transform: uppercase; }
+    .legend-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #e74c3c; color: white; border-radius: 50%; font-weight: bold; font-size: 1rem; margin-right: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .hi-text { font-family: 'Tiro Devanagari Hindi', serif; color: #2980b9; font-size: 1.05rem; display: block; margin-top: 4px; }
+    .en-text { font-weight: bold; color: #2d3748; }
+
+    /* Number Pointer Overlay */
+    .pointer { position: absolute; display: flex; align-items: center; z-index: 10; }
+    .pointer-line { width: 40px; height: 2px; background: #e74c3c; position: relative; }
+    .pointer-line::after { content: ''; position: absolute; right: -5px; top: -4px; border-left: 6px solid #e74c3c; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+    .pointer.left .pointer-line { width: 40px; }
+    .pointer.left .pointer-line::after { right: auto; left: -5px; border-left: none; border-right: 6px solid #e74c3c; }
+    
+    /* UI Mockup Elements */
+    .m-header { background: white; padding: 10px; text-align: center; border-top: 4px solid #f39c12; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .m-lang { position: absolute; top: 15px; right: 15px; background: #1a365d; color: white; padding: 5px 15px; border-radius: 15px; font-size: 0.8rem; }
+    .m-blocks { display: flex; gap: 15px; padding: 30px 20px; justify-content: center; }
+    .m-btn { flex: 1; height: 160px; border-radius: 10px; color: white; text-align: center; display: flex; flex-direction: column; justify-content: center; font-size: 1.2rem; font-weight: bold; position: relative; }
+    .m-btn.saffron { background: #e67e22; }
+    .m-btn.blue { background: #2980b9; }
+    .m-btn.green { background: #27ae60; }
+    .m-footer { position: absolute; bottom: 0; width: 100%; background: #1a365d; height: 40px; color: white; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; box-sizing: border-box; font-size: 0.8rem; }
+    .m-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
+    .m-modal { background: white; border-radius: 8px; width: 60%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; border: 1px solid #ccc; z-index: 6; }
+    .m-modal-hdr { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; font-weight: bold; color: #1a365d; }
+    .m-modal-body { padding: 20px; font-size: 0.9rem; text-align: left; }
+    .m-modal-btn { background: #2980b9; color: white; padding: 8px; border-radius: 4px; text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1: HOME SCREEN -->
+  <div class="page">
+    <div class="title-bar">
+      <h1>कियोस्क उपयोगकर्ता गाइड (Kiosk User Guide)</h1>
+      <p>Official guide for navigating the Nagar Nigam Citizen Kiosk features.</p>
+    </div>
+
+    <h2 class="section-title">1. मुख्य पृष्ठ (Home Screen)</h2>
+    
+    <div class="mockup-canvas">
+      <!-- Mockup UI -->
+      <div class="m-header">NAGAR NIGAM KIOSK</div>
+      <div class="m-lang">Switch to English</div>
+      <div class="m-blocks">
+        <div class="m-btn saffron">CERTIFICATE<br>PRINT</div>
+        <div class="m-btn blue">CERTIFICATE<br>CORRECTION</div>
+        <div class="m-btn green">CORRECTION<br>RECEIPT</div>
+      </div>
+      <div class="m-footer">
+        <div>Help: 1800-180-6785</div>
+        <div>AUTO RESET [===  ]</div>
+      </div>
+
+      <!-- Pointers -->
+      <div class="pointer" style="top: 15px; right: 140px;">
+        <div class="legend-badge">1</div><div class="pointer-line"></div>
+      </div>
+      <div class="pointer left" style="top: 120px; left: 160px;">
+        <div class="pointer-line"></div><div class="legend-badge" style="margin-left:10px; margin-right:0;">2</div>
+      </div>
+      <div class="pointer left" style="top: 120px; left: 390px;">
+        <div class="pointer-line"></div><div class="legend-badge" style="margin-left:10px; margin-right:0;">3</div>
+      </div>
+      <div class="pointer left" style="top: 120px; left: 630px;">
+        <div class="pointer-line"></div><div class="legend-badge" style="margin-left:10px; margin-right:0;">4</div>
+      </div>
+      <div class="pointer" style="bottom: 10px; right: 140px;">
+        <div class="legend-badge">5</div><div class="pointer-line"></div>
+      </div>
+    </div>
+
+    <table class="legend-table">
+      <tr>
+        <th width="80">Ref</th>
+        <th>English Description</th>
+        <th>हिंदी विवरण (Hindi Description)</th>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">1</div></td>
+        <td><span class="en-text">Language Toggle Button:</span> Click here to instantly switch all text between Hindi and English.</td>
+        <td><span class="hi-text">भाषा टॉगल बटन:</span> हिंदी और अंग्रेजी के बीच सभी टेक्स्ट को तुरंत बदलने के लिए यहां क्लिक करें।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">2</div></td>
+        <td><span class="en-text">Certificate Print:</span> Opens the Pehchan portal flow to download and pay for certificate printing.</td>
+        <td><span class="hi-text">प्रमाण-पत्र प्रिंट:</span> प्रमाण-पत्र डाउनलोड करने और भुगतान के लिए पहचान पोर्टल प्रवाह खोलता है।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">3</div></td>
+        <td><span class="en-text">Certificate Correction:</span> Redirects users to the official portal to edit their details.</td>
+        <td><span class="hi-text">प्रमाण-पत्र सुधार:</span> उपयोगकर्ताओं को विवरण संपादित करने के लिए आधिकारिक पोर्टल पर निर्देशित करता है।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">4</div></td>
+        <td><span class="en-text">Correction Receipt:</span> Generates a token receipt for a correction request to join the queue.</td>
+        <td><span class="hi-text">सुधार रसीद:</span> कतार में शामिल होने के लिए सुधार अनुरोध हेतु टोकन रसीद उत्पन्न करता है।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">5</div></td>
+        <td><span class="en-text">Idle Timer:</span> A visual bar showing time until the kiosk automatically resets for privacy.</td>
+        <td><span class="hi-text">निष्क्रिय टाइमर:</span> यह दर्शाता है कि गोपनीयता के लिए कियोस्क कब ऑटो-रीसेट होगा।</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- PAGE 2: PRINT & PAYMENT FLOW -->
+  <div class="page">
+    <h2 class="section-title">2. प्रिंट और भुगतान (Print & Payment Flows)</h2>
+    
+    <div class="mockup-canvas" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0;">
+      
+      <!-- Modal 1 -->
+      <div class="m-modal" style="width: 40%; position:relative;">
+        <div class="m-modal-hdr">Print Certificate</div>
+        <div class="m-modal-body" style="text-align:center;">
+          <div style="width:80px; height:80px; border:2px dashed #333; margin:0 auto 10px; display:flex; align-items:center; justify-content:center;">QR CODE</div>
+          <div style="font-weight:bold;">Please pay ₹20</div>
+          <div class="m-modal-btn" style="background:#27ae60;">Payment Success</div>
+        </div>
+        <div class="pointer left" style="top: 80px; left: -10px;">
+          <div class="pointer-line" style="width:20px;"></div><div class="legend-badge" style="margin-left:5px;">6</div>
+        </div>
+      </div>
+
+      <!-- Modal 2 -->
+      <div class="m-modal" style="width: 45%; position:relative;">
+        <div class="m-modal-hdr">Generate Receipt</div>
+        <div class="m-modal-body">
+          <div style="margin-bottom:10px;">Type: [Dropdown]</div>
+          <div style="margin-bottom:10px;">Num: [Input Box]</div>
+          <div style="color:#c0392b; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">I verify details are correct.</div>
+          <div style="margin-bottom:10px;"><input type="checkbox"> I Agree</div>
+          <div class="m-modal-btn">Proceed to Payment</div>
+        </div>
+        <div class="pointer left" style="bottom: 30px; left: -10px;">
+          <div class="pointer-line" style="width:20px;"></div><div class="legend-badge" style="margin-left:5px;">7</div>
+        </div>
+        <div class="pointer left" style="bottom: 70px; right: -50px; left: auto;">
+          <div class="legend-badge" style="margin-right:5px;">8</div><div class="pointer-line" style="width:20px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <table class="legend-table">
+      <tr>
+        <th width="80">Ref</th>
+        <th>English Description</th>
+        <th>हिंदी विवरण (Hindi Description)</th>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">6</div></td>
+        <td><span class="en-text">UPI QR Payment:</span> Users must scan this QR code to pay the required fee before printing or token generation.</td>
+        <td><span class="hi-text">UPI QR भुगतान:</span> प्रिंटिंग या टोकन प्राप्त करने से पहले उपयोगकर्ताओं को शुल्क का भुगतान करने के लिए इस QR कोड को स्कैन करना होगा।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">7</div></td>
+        <td><span class="en-text">Data Entry Form:</span> Users enter their certificate details here to request a correction receipt.</td>
+        <td><span class="hi-text">डेटा एंट्री फॉर्म:</span> सुधार रसीद का अनुरोध करने के लिए उपयोगकर्ता यहाँ अपने प्रमाण-पत्र का विवरण दर्ज करते हैं।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">8</div></td>
+        <td><span class="en-text">Mandatory Consent:</span> Users must legally agree that the entered details are correct before paying.</td>
+        <td><span class="hi-text">अनिवार्य सहमति:</span> भुगतान करने से पहले उपयोगकर्ताओं को सहमत होना होगा कि दर्ज किया गया विवरण सही है।</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- PAGE 3: QUEUE SYSTEM -->
+  <div class="page">
+    <h2 class="section-title">3. कतार प्रबंधन प्रणाली (Queue Management System)</h2>
+    
+    <div class="mockup-canvas" style="display:flex; justify-content:space-around; align-items:center; background:#e2e8f0; height: 160mm;">
+      
+      <!-- Screen 1: Display -->
+      <div style="width: 45%; height: 80%; background: #1a365d; display:flex; color:white; position:relative; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+        <div style="flex:1; background:white; color:#1a365d; padding:10px; text-align:center;">
+          <h3 style="margin:0; font-size:1rem; color:#e67e22;">NOW SERVING</h3>
+          <h1 style="font-size:3rem; margin:10px 0;">TKN-001</h1>
+        </div>
+        <div style="flex:1; padding:10px;">
+          <h3 style="margin:0; font-size:0.9rem; color:#e67e22; border-bottom:1px solid #555;">UPCOMING</h3>
+          <p style="margin:5px 0;">TKN-002</p>
+          <p style="margin:5px 0;">TKN-003</p>
+        </div>
+        <div class="pointer" style="top: -20px; left: 50%; transform:translateX(-50%); flex-direction:column;">
+          <div class="legend-badge" style="margin-bottom:5px;">9</div>
+          <div style="width:2px; height:20px; background:#e74c3c; position:relative;">
+            <div style="position:absolute; bottom:-4px; left:-4px; border-top:6px solid #e74c3c; border-left:5px solid transparent; border-right:5px solid transparent;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen 2: Admin -->
+      <div style="width: 40%; height: 70%; background: white; padding:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); position:relative;">
+        <h3 style="margin:0 0 10px 0; border-bottom:1px solid #ccc;">Queue Admin Panel</h3>
+        <div style="background:#e2e8f0; padding:10px; text-align:center; font-weight:bold; font-size:1.5rem; color:#e67e22; margin-bottom:10px;">TKN-001</div>
+        <div class="m-modal-btn" style="background:#27ae60;">CALL NEXT TOKEN</div>
+        <div class="m-modal-btn">ANNOUNCE TOKEN</div>
+        <div class="pointer" style="top: 100px; right: -40px;">
+          <div class="legend-badge">10</div><div class="pointer-line"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <table class="legend-table">
+      <tr>
+        <th width="80">Ref</th>
+        <th>English Description</th>
+        <th>हिंदी विवरण (Hindi Description)</th>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">9</div></td>
+        <td><span class="en-text">External Display Screen:</span> Placed outside the counter. Updates in real-time to show the current token being served and upcoming tokens.</td>
+        <td><span class="hi-text">बाहरी डिस्प्ले स्क्रीन:</span> काउंटर के बाहर लगाई जाती है। वर्तमान टोकन और आगामी टोकन दिखाने के लिए रीयल-टाइम में अपडेट होती है।</td>
+      </tr>
+      <tr>
+        <td><div class="legend-badge">10</div></td>
+        <td><span class="en-text">Admin Control Buttons:</span> Used by staff to call the next person in line or announce the token number via audio speakers.</td>
+        <td><span class="hi-text">एडमिन कंट्रोल बटन:</span> कर्मचारियों द्वारा कतार में अगले व्यक्ति को बुलाने या ऑडियो स्पीकर के माध्यम से टोकन की घोषणा करने के लिए उपयोग किया जाता है।</td>
+      </tr>
+    </table>
+  </div>
+
+</body>
+</html>

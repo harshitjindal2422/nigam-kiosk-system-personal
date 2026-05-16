@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nagar Nigam Kiosk</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --saffron: #f39c12;
+      --saffron-dark: #d35400;
+      --green: #27ae60;
+      --green-dark: #1e8449;
+      --blue: #2980b9;
+      --blue-dark: #1f618d;
+      --navy: #1a365d;
+      --white: #ffffff;
+      --bg-color: #f4f7f6;
+      --text-main: #2d3748;
+      --border-light: #e2e8f0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      font-family: 'Rajdhani', sans-serif;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 100vh;
+      position: relative;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .bg-pattern {
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px);
+      background-size: 30px 30px;
+      opacity: 0.7;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .header-top-band {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
+      z-index: 3;
+    }
+
+    .header {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      padding: 28px 40px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--white);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    .header-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .emblem {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .emblem img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .org-name-hi {
+      font-family: 'Tiro Devanagari Hindi', serif;
+      font-size: 1.6rem;
+      color: var(--navy);
+      font-weight: bold;
+    }
+
+    .org-name-en {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem;
+      letter-spacing: 0.15em;
+      color: var(--saffron-dark);
+      line-height: 1;
+    }
+
+    .org-subtitle {
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      color: #718096;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Top Right Lang Toggle */
+    .lang-toggle-wrap {
+      position: absolute;
+      top: 20px;
+      right: 40px;
+      z-index: 10;
+    }
+
+    .lang-toggle-btn {
+      background: var(--navy);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    .lang-toggle-btn:active {
+      transform: scale(0.95);
+    }
+
+    .main {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 40px;
+    }
+
+    .buttons-row {
+      display: flex;
+      gap: 30px;
+      width: 100%;
+      max-width: 1200px;
+      align-items: stretch;
+    }
+
+    .btn-service {
+      flex: 1;
+      min-height: 240px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 30px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-service::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 100%);
+      transform: rotate(30deg);
+      pointer-events: none;
+    }
+
+    .btn-service:hover,
+    .btn-service:focus {
+      transform: translateY(-8px);
+    }
+
+    .btn-service:active {
+      transform: translateY(2px);
+    }
+
+    .btn-saffron {
+      background: linear-gradient(135deg, var(--saffron) 0%, var(--saffron-dark) 100%);
+    }
+
+    .btn-saffron:hover {
+      box-shadow: 0 15px 35px rgba(211, 84, 0, 0.3);
+    }
+
+    .btn-blue {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+    }
+
+    .btn-blue:hover {
+      box-shadow: 0 15px 35px rgba(31, 97, 141, 0.3);
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+    }
+
+    .btn-green:hover {
+      box-shadow: 0 15px 35px rgba(30, 132, 73, 0.3);
+    }
+
+    .btn-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      backdrop-filter: blur(4px);
+    }
+
+    .btn-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: #fff;
+    }
+
+    .btn-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 0.1em;
+      color: #fff;
+      text-align: center;
+      line-height: 1.1;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-desc {
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.9);
+      text-align: center;
+      line-height: 1.4;
+      max-width: 220px;
+      font-weight: 500;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      padding: 30px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      font-size: 1.8rem;
+      color: var(--navy);
+      margin-bottom: 20px;
+      font-weight: bold;
+      border-bottom: 2px solid var(--border-light);
+      padding-bottom: 10px;
+      font-family: 'Tiro Devanagari Hindi', sans-serif;
+    }
+
+    .modal-body {
+      font-size: 1.1rem;
+      color: #4a5568;
+      margin-bottom: 25px;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .modal-body.center {
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: var(--navy);
+    }
+
+    .form-group input[type="text"],
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .form-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      width: fit-content;
+    }
+
+    .modal-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: white;
+      font-weight: bold;
+      transition: 0.2s;
+      width: 100%;
+      margin-bottom: 10px;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+    }
+
+    .btn-primary:active {
+      background: var(--blue-dark);
+    }
+
+    .btn-success {
+      background: var(--green);
+    }
+
+    .btn-success:active {
+      background: var(--green-dark);
+    }
+
+    .btn-close {
+      background: #cbd5e0;
+      color: #2d3748;
+    }
+
+    .btn-close:active {
+      background: #a0aec0;
+    }
+
+    .btn-disabled {
+      background: #cbd5e0 !important;
+      cursor: not-allowed;
+      color: #718096;
+    }
+
+    .qr-box {
+      text-align: center;
+      margin: 20px auto;
+      padding: 20px;
+      border: 2px dashed #cbd5e0;
+      border-radius: 8px;
+      background: #f7fafc;
+      width: max-content;
+    }
+
+    .receipt-box {
+      background: #fdf6e3;
+      border: 1px dashed #d4af37;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .receipt-box h3 {
+      margin: 0 0 10px;
+      color: #8a6d3b;
+    }
+
+    .token-number {
+      font-size: 3rem;
+      font-family: 'Bebas Neue', sans-serif;
+      color: #c0392b;
+      letter-spacing: 2px;
+    }
+
+    /* Footer */
+    .footer {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--navy);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .idle-info {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+      letter-spacing: 0.1em;
+      text-align: right;
+      font-weight: 600;
+    }
+
+    #idle-bar-wrap {
+      width: 120px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    #idle-bar {
+      height: 100%;
+      width: 100%;
+      background: var(--green);
+      border-radius: 2px;
+      transition: width 1s linear, background 0.5s;
+    }
+
+    /* Idle Overlay */
+    #idle-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(5px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      animation: overlayIn 0.3s ease;
+    }
+
+    #idle-overlay.show {
+      display: flex;
+    }
+
+    #idle-overlay p {
+      font-family: 'Tiro Devanagari Hindi', serif;
+      font-size: 2.2rem;
+      color: var(--navy);
+      font-weight: bold;
+    }
+
+    #idle-overlay .en-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 0.15em;
+      color: var(--saffron-dark);
+      margin-top: -10px;
+    }
+
+    #idle-countdown {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 8rem;
+      color: var(--navy);
+      line-height: 1;
+      text-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    @keyframes overlayIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Accessibility Overrides */
+    body.large-text {
+      font-size: 130%;
+    }
+
+    body.large-text .btn-label {
+      font-size: 2.2rem;
+    }
+
+    body.large-text .modal-header {
+      font-size: 2.2rem;
+    }
+
+    body.large-text .modal-body {
+      font-size: 1.4rem;
+    }
+
+    body.large-text .modal-btn {
+      font-size: 1.5rem;
+    }
+
+    body.high-contrast {
+      --bg-color: #000000;
+      --text-main: #ffff00;
+      --white: #000000;
+      --navy: #ffff00;
+      --saffron: #000000;
+      --saffron-dark: #000000;
+      --blue: #000000;
+      --blue-dark: #000000;
+      --green: #000000;
+      --green-dark: #000000;
+      --border-light: #ffff00;
+    }
+
+    body.high-contrast * {
+      color: #ffff00 !important;
+      border-color: #ffff00 !important;
+    }
+
+    body.high-contrast .btn-service,
+    body.high-contrast .modal-content,
+    body.high-contrast .header,
+    body.high-contrast .footer,
+    body.high-contrast .lang-toggle-btn,
+    body.high-contrast .modal-btn,
+    body.high-contrast .receipt-box {
+      background: #000000 !important;
+      border: 3px solid #ffff00 !important;
+      box-shadow: none !important;
+    }
+
+    body.high-contrast input[type="text"],
+    body.high-contrast select,
+    body.high-contrast option {
+      color: #000000 !important;
+      background: #ffffff !important;
+      border: 2px solid #ffff00 !important;
+    }
+
+    body.high-contrast #idle-bar-wrap {
+      background: #333333 !important;
+      border: 1px solid #ffff00 !important;
+    }
+
+    body.high-contrast #idle-bar {
+      background: #ffff00 !important;
+    }
+
+    body.high-contrast .bg-pattern {
+      display: none;
+    }
+
+    body.high-contrast .header-top-band {
+      display: none;
+    }
+
+    body.high-contrast .emblem img {
+      filter: invert(1) sepia(1) saturate(5) hue-rotate(10deg);
+    }
+
+    /* Accessibility Button & Menu */
+    .a11y-fab {
+      position: fixed;
+      bottom: 80px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      z-index: 90;
+      border: 3px solid white;
+      transition: transform 0.2s;
+    }
+
+    .a11y-fab:active {
+      transform: scale(0.9);
+    }
+
+    .a11y-menu {
+      position: fixed;
+      bottom: 150px;
+      right: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      z-index: 90;
+      width: 280px;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+      border: 2px solid var(--navy);
+    }
+
+    .a11y-menu.active {
+      display: flex;
+    }
+
+    .a11y-menu h3 {
+      margin: 0;
+      font-family: 'Tiro Devanagari Hindi', serif;
+      color: var(--navy);
+      text-align: center;
+      border-bottom: 2px solid var(--border-light);
+      padding-bottom: 10px;
+    }
+
+    .a11y-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+
+    .toggle-switch {
+      width: 50px;
+      height: 26px;
+      background: #ccc;
+      border-radius: 13px;
+      position: relative;
+      transition: 0.3s;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .a11y-toggle input {
+      display: none;
+    }
+
+    .a11y-toggle input:checked+.toggle-switch {
+      background: var(--green);
+    }
+
+    .a11y-toggle input:checked+.toggle-switch::after {
+      transform: translateX(24px);
+    }
+
+    /* Tap to Start Overlay */
+    #start-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(5px);
+      transition: opacity 0.3s ease;
+    }
+
+    #start-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .start-title-hi {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .start-title-en {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #f39c12;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TAP TO START OVERLAY -->
+  <div id="start-screen" onclick="startKiosk()">
+    <div class="start-title-hi">कियोस्क प्रारंभ करने के लिए स्क्रीन पर टैप करें</div>
+    <div class="start-title-en">TAP SCREEN TO START KIOSK</div>
+  </div>
+
+  <!-- Accessibility System -->
+  <div class="a11y-fab" onclick="toggleA11yMenu()" title="दिव्यांगजन सुविधा (Accessibility)"
+    data-voice-instruction="दिव्यांगजन सुविधा मेनू खोलने के लिए क्लिक करें">♿</div>
+  <div class="a11y-menu" id="a11y-menu">
+    <h3 data-i18n="a11y_title">दिव्यांगजन सुविधा</h3>
+    <label class="a11y-toggle" data-voice-instruction="वॉइस असिस्टेंट चालू या बंद करें">
+      <span data-i18n="a11y_voice">वॉइस असिस्टेंट</span>
+      <input type="checkbox" id="a11y-voice" onchange="toggleVoiceAssist()">
+      <div class="toggle-switch"></div>
+    </label>
+    <label class="a11y-toggle" data-voice-instruction="हाई कंट्रास्ट चालू या बंद करें">
+      <span data-i18n="a11y_contrast">हाई कंट्रास्ट</span>
+      <input type="checkbox" id="a11y-contrast" onchange="toggleHighContrast()">
+      <div class="toggle-switch"></div>
+    </label>
+    <label class="a11y-toggle" data-voice-instruction="बड़ा टेक्स्ट चालू या बंद करें">
+      <span data-i18n="a11y_text">बड़ा टेक्स्ट</span>
+      <input type="checkbox" id="a11y-text" onchange="toggleLargeText()">
+      <div class="toggle-switch"></div>
+    </label>
+  </div>
+
+  <div class="bg-pattern"></div>
+  <div class="header-top-band"></div>
+
+  <!-- Language Toggle -->
+  <div class="lang-toggle-wrap">
+    <button id="lang-btn" class="lang-toggle-btn" onclick="toggleLang()"
+      data-voice-instruction="भाषा बदलने के लिए क्लिक करें">Switch to English</button>
+  </div>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="emblem"><img src="assets/nigam-logo.png" alt="Nagar Nigam Logo" /></div>
+      <div class="org-name-hi" data-i18n="org_name_hi">नगर निगम — नागरिक सेवा केंद्र</div>
+      <div class="org-name-en" data-i18n="org_name_en">NAGAR NIGAM</div>
+      <div class="org-subtitle" data-i18n="org_subtitle">Citizen Service Kiosk &nbsp;·&nbsp; नागरिक सेवा कियोस्क</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="buttons-row">
+      <!-- Block 1 -->
+      <button class="btn-service btn-saffron" onclick="openMockPehchan()">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM12 17l-4-4 1.41-1.41L12 14.17l6.59-6.58L20 9l-8 8z" />
+          </svg>
+        </div>
+        <div class="btn-label" data-i18n="btn1_title">प्रमाण-पत्र<br>प्रिंट</div>
+        <div class="btn-desc" data-i18n="btn1_desc">पहचान पोर्टल से डाउनलोड कर यहाँ प्रिंट करें</div>
+      </button>
+
+      <!-- Block 2 (Blue) -->
+      <button class="btn-service btn-blue" onclick="handleCorrectionRedirect()">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+          </svg>
+        </div>
+        <div class="btn-label" data-i18n="btn2_title">प्रमाण-पत्र<br>सुधार</div>
+        <div class="btn-desc" data-i18n="btn2_desc">नाम, पता या तिथि में संशोधन के लिए पोर्टल पर जाएं</div>
+      </button>
+
+      <!-- Block 3 (Green) -->
+      <button class="btn-service btn-green" onclick="openReceiptModal()">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z" />
+          </svg>
+        </div>
+        <div class="btn-label" data-i18n="btn3_title">सुधार<br>रसीद</div>
+        <div class="btn-desc" data-i18n="btn3_desc">सुधार अनुरोध के लिए टोकन रसीद प्राप्त करें</div>
+      </button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div style="color:white; font-size: 0.9rem;" data-i18n="footer_help">सहायता: 0141-2747400</div>
+    <div class="idle-info">
+      <span data-i18n="auto_reset">ऑटो रीसेट</span>
+      <div id="idle-bar-wrap">
+        <div id="idle-bar"></div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ── IDLE COUNTDOWN OVERLAY ── -->
+  <div id="idle-overlay">
+    <p data-i18n="reset_msg_hi">सत्र समाप्त हो रहा है...</p>
+    <span class="en-text" data-i18n="reset_msg_en">Resetting Session...</span>
+    <div id="idle-countdown">5</div>
+  </div>
+
+  <!-- ── MODALS ── -->
+
+  <!-- Custom Error Modal -->
+  <div class="modal-overlay" id="error-modal" style="z-index: 105;">
+    <div class="modal-content" style="border: 2px solid #e74c3c;">
+      <div class="modal-header" style="color: #c0392b; border-bottom-color: #e74c3c;" data-i18n="error_title">त्रुटि
+        (Error)</div>
+      <div class="modal-body center" id="error-msg" style="font-weight: bold; font-size: 1.3rem;"></div>
+      <button class="modal-btn btn-close" onclick="closeModal('error-modal')" data-i18n="close_btn">बंद करें</button>
+    </div>
+  </div>
+
+  <!-- Print Flow Modal -->
+  <div class="modal-overlay" id="print-modal">
+    <div class="modal-content">
+      <div class="modal-header" data-i18n="print_modal_title">प्रमाण-पत्र प्रिंट करें</div>
+
+      <!-- Step 2: UPI Payment -->
+      <div id="print-step-2">
+        <div class="modal-body center" data-i18n="print_step2_body">प्रिंट करने के लिए कृपया ₹20 का भुगतान करें। नीचे
+          दिए गए QR कोड को स्कैन करें।</div>
+        <div class="qr-box">
+          <img
+            src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fff'/><path fill='%23000' d='M10,10 h30 v30 h-30 z M15,15 h20 v20 h-20 z M60,10 h30 v30 h-30 z M65,15 h20 v20 h-20 z M10,60 h30 v30 h-30 z M15,65 h20 v20 h-20 z M45,45 h10 v10 h-10 z M60,60 h10 v10 h-10 z M75,75 h15 v15 h-15 z'/></svg>"
+            width="120" alt="QR Code" />
+          <div data-i18n="scan_to_pay" style="margin-top:10px; font-weight:bold; color:var(--navy);">UPI द्वारा भुगतान
+            करें</div>
+        </div>
+        <button class="modal-btn btn-success" onclick="simulatePaymentSuccess('print')"
+          data-i18n="payment_success_btn">सिम्युलेट: भुगतान सफल</button>
+        <button class="modal-btn btn-close" onclick="closeModal('print-modal')" data-i18n="cancel_btn">रद्द
+          करें</button>
+      </div>
+
+      <!-- Step 3: Printing Success -->
+      <div id="print-step-3" style="display:none;">
+        <div class="modal-body center" style="color: var(--green); font-size: 1.5rem; font-weight: bold;">
+          <span data-i18n="print_success">प्रमाण-पत्र प्रिंट हो रहा है... कृपया मशीन से प्राप्त करें।</span><br><br>🖨️
+        </div>
+        <button class="modal-btn btn-close" onclick="closeModal('print-modal')" data-i18n="done_btn">हो गया</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Generation Modal -->
+  <div class="modal-overlay" id="receipt-modal">
+    <div class="modal-content">
+      <div class="modal-header" data-i18n="receipt_modal_title">सुधार रसीद जनरेट करें</div>
+
+      <!-- Step 1: Form -->
+      <div id="receipt-step-1">
+        <div class="form-group">
+          <label data-i18n="cert_type">प्रमाण-पत्र का प्रकार</label>
+          <select id="certType" data-voice-instruction="कृपया प्रमाण-पत्र का प्रकार चुनें: जन्म, मृत्यु, या विवाह">
+            <option value="birth" data-i18n="opt_birth">जन्म प्रमाण-पत्र (Birth)</option>
+            <option value="death" data-i18n="opt_death">मृत्यु प्रमाण-पत्र (Death)</option>
+            <option value="marriage" data-i18n="opt_marriage">विवाह प्रमाण-पत्र (Marriage)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="cert_num">प्रमाण-पत्र संख्या</label>
+          <input type="text" id="certNum" placeholder="e.g. 12345678"
+            data-voice-instruction="कृपया अपना प्रमाण-पत्र संख्या यहाँ दर्ज करें" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="fields_to_correct">सुधार के लिए फ़ील्ड चुनें</label>
+          <label class="form-check" data-voice-instruction="नाम में सुधार के लिए चुनें"><input type="checkbox"
+              id="chk-name"> <span data-i18n="field_name">नाम
+              (Name)</span></label>
+          <label class="form-check" data-voice-instruction="दिनांक में सुधार के लिए चुनें"><input type="checkbox"
+              id="chk-date"> <span data-i18n="field_date">दिनांक
+              (Date)</span></label>
+          <label class="form-check" data-voice-instruction="पते में सुधार के लिए चुनें"><input type="checkbox"
+              id="chk-address"> <span data-i18n="field_address">पता
+              (Address)</span></label>
+        </div>
+        <button class="modal-btn btn-primary" onclick="goToConsent()" data-i18n="next_btn">अगला</button>
+        <button class="modal-btn btn-close" onclick="closeModal('receipt-modal')" data-i18n="close_btn">बंद
+          करें</button>
+      </div>
+
+      <!-- Step 2: Consent Form -->
+      <div id="receipt-step-2" style="display:none;">
+        <div class="modal-body center">
+          <p style="font-weight:bold; color:#c0392b;" data-i18n="consent_warn">मैं प्रमाणित करता/करती हूँ कि दर्ज की गई
+            सभी जानकारी सही है। यदि भुगतान के बाद कोई त्रुटि पाई जाती है, तो यह मेरी अपनी जिम्मेदारी होगी।</p>
+          <label class="form-check"
+            data-voice-instruction="मैं प्रमाणित करता हूँ कि दर्ज की गई सभी जानकारी सही है। सहमति के लिए बॉक्स चेक करें।"
+            style="display:inline-flex; align-items:center; gap:10px; font-weight:bold; margin-top:20px; cursor:pointer;">
+            <input type="checkbox" id="consentCheck" style="width:20px; height:20px;" onchange="toggleConsentBtn()">
+            <span data-i18n="consent_agree">मैं सहमत हूँ (I Agree)</span>
+          </label>
+        </div>
+        <button id="btn-proceed-pay" class="modal-btn btn-disabled" onclick="goToReceiptPayment()"
+          data-i18n="proceed_pay_btn" disabled>भुगतान के लिए आगे बढ़ें</button>
+        <button class="modal-btn btn-close" onclick="closeModal('receipt-modal')" data-i18n="cancel_btn">रद्द
+          करें</button>
+      </div>
+
+      <!-- Step 3: Payment -->
+      <div id="receipt-step-3" style="display:none;">
+        <div class="modal-body center" data-i18n="receipt_pay_body">टोकन रसीद प्राप्त करने के लिए कृपया ₹20 का भुगतान
+          करें। नीचे
+          दिए गए QR कोड को स्कैन करें।</div>
+        <div class="qr-box">
+          <img
+            src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fff'/><path fill='%23000' d='M10,10 h30 v30 h-30 z M15,15 h20 v20 h-20 z M60,10 h30 v30 h-30 z M65,15 h20 v20 h-20 z M10,60 h30 v30 h-30 z M15,65 h20 v20 h-20 z M45,45 h10 v10 h-10 z M60,60 h10 v10 h-10 z M75,75 h15 v15 h-15 z'/></svg>"
+            width="120" alt="QR Code" />
+          <div data-i18n="scan_to_pay" style="margin-top:10px; font-weight:bold; color:var(--navy);">UPI द्वारा भुगतान
+            करें</div>
+        </div>
+        <button class="modal-btn btn-success" onclick="simulatePaymentSuccess('receipt')"
+          data-i18n="payment_success_btn">सिम्युलेट: भुगतान सफल</button>
+        <button class="modal-btn btn-close" onclick="closeModal('receipt-modal')" data-i18n="cancel_btn">रद्द
+          करें</button>
+      </div>
+
+      <!-- Step 4: Success & Token -->
+      <div id="receipt-step-4" class="receipt-box" style="display:none;">
+        <h3 data-i18n="your_token">आपका टोकन नंबर</h3>
+        <div class="token-number" id="display-token">---</div>
+        <p style="margin-top:10px; font-size:0.9rem; color:#555;" data-i18n="wait_msg">कृपया स्क्रीन पर अपना टोकन आने की
+          प्रतीक्षा करें।</p>
+        <button class="modal-btn btn-success" style="margin-top:15px;" onclick="closeModal('receipt-modal')"
+          data-i18n="print_receipt_btn">प्रिंट रसीद & बंद करें</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // --- LANGUAGE DICTIONARY ---
+    const dict = {
+      hi: {
+        org_name_hi: "नगर निगम — नागरिक सेवा केंद्र",
+        org_name_en: "NAGAR NIGAM",
+        org_subtitle: "Citizen Service Kiosk · नागरिक सेवा कियोस्क",
+        btn1_title: "प्रमाण-पत्र<br>प्रिंट",
+        btn1_desc: "पहचान पोर्टल से डाउनलोड कर यहाँ प्रिंट करें",
+        btn2_title: "प्रमाण-पत्र<br>सुधार",
+        btn2_desc: "नाम, पता या तिथि में संशोधन के लिए पोर्टल पर जाएं",
+        btn3_title: "सुधार<br>रसीद",
+        btn3_desc: "सुधार अनुरोध के लिए टोकन रसीद प्राप्त करें",
+        footer_help: "सहायता: 1800-180-6785",
+        auto_reset: "ऑटो रीसेट",
+        reset_msg_hi: "सत्र समाप्त हो रहा है...",
+        reset_msg_en: "Resetting Session...",
+        print_modal_title: "प्रमाण-पत्र प्रिंट करें",
+        close_btn: "बंद करें",
+        print_step2_body: "प्रिंट करने के लिए कृपया ₹20 का भुगतान करें। नीचे दिए गए QR कोड को स्कैन करें।",
+        scan_to_pay: "UPI द्वारा भुगतान करें",
+        payment_success_btn: "सिम्युलेट: भुगतान सफल",
+        cancel_btn: "रद्द करें",
+        print_success: "प्रमाण-पत्र प्रिंट हो रहा है... कृपया मशीन से प्राप्त करें।",
+        done_btn: "हो गया",
+        receipt_modal_title: "सुधार रसीद जनरेट करें",
+        cert_type: "प्रमाण-पत्र का प्रकार",
+        opt_birth: "जन्म प्रमाण-पत्र (Birth)",
+        opt_death: "मृत्यु प्रमाण-पत्र (Death)",
+        opt_marriage: "विवाह प्रमाण-पत्र (Marriage)",
+        cert_num: "प्रमाण-पत्र संख्या",
+        fields_to_correct: "सुधार के लिए फ़ील्ड चुनें",
+        field_name: "नाम (Name)",
+        field_date: "दिनांक (Date)",
+        field_address: "पता (Address)",
+        next_btn: "अगला",
+        consent_warn: "मैं प्रमाणित करता/करती हूँ कि दर्ज की गई सभी जानकारी सही है। यदि भुगतान के बाद कोई त्रुटि पाई जाती है, तो यह मेरी अपनी जिम्मेदारी होगी।",
+        consent_agree: "मैं सहमत हूँ (I Agree)",
+        proceed_pay_btn: "भुगतान के लिए आगे बढ़ें",
+        receipt_pay_body: "टोकन रसीद प्राप्त करने के लिए कृपया ₹20 का भुगतान करें। नीचे दिए गए QR कोड को स्कैन करें।",
+        your_token: "आपका टोकन नंबर",
+        wait_msg: "कृपया स्क्रीन पर अपना टोकन आने की प्रतीक्षा करें।",
+        print_receipt_btn: "प्रिंट रसीद & बंद करें",
+        alert_no_cert: "कृपया प्रमाण-पत्र संख्या दर्ज करें!",
+        alert_no_field: "कृपया सुधार के लिए कम से कम एक फ़ील्ड चुनें!",
+        lang_btn_text: "Switch to English",
+        alert_correction: "सुधार पोर्टल पर ले जाया जा रहा है...",
+        a11y_title: "दिव्यांगजन सुविधा",
+        a11y_voice: "वॉइस असिस्टेंट",
+        a11y_contrast: "हाई कंट्रास्ट",
+        a11y_text: "बड़ा टेक्स्ट",
+        welcome_msg: "नगर निगम कियोस्क में आपका स्वागत है। कृपया नीचे दिए गए विकल्पों में से चुनें।",
+        error_title: "त्रुटि (Error)"
+      },
+      en: {
+        org_name_hi: "Nagar Nigam - Citizen Service Center",
+        org_name_en: "NAGAR NIGAM",
+        org_subtitle: "Citizen Service Kiosk",
+        btn1_title: "Certificate<br>Print",
+        btn1_desc: "Download from Pehchan Portal and Print here",
+        btn2_title: "Certificate<br>Correction",
+        btn2_desc: "Go to portal to edit name, address, or date",
+        btn3_title: "Correction<br>Receipt",
+        btn3_desc: "Generate a token receipt for correction request",
+        footer_help: "Help: 1800-180-6785",
+        auto_reset: "AUTO RESET",
+        reset_msg_hi: "Session is ending...",
+        reset_msg_en: "Resetting Session...",
+        print_modal_title: "Print Certificate",
+        close_btn: "Close",
+        print_step2_body: "Please pay ₹20 to print. Scan the QR code below.",
+        scan_to_pay: "Scan to Pay via UPI",
+        payment_success_btn: "Simulate: Payment Success",
+        cancel_btn: "Cancel",
+        print_success: "Certificate is printing... Please collect from the machine.",
+        done_btn: "Done",
+        receipt_modal_title: "Generate Correction Receipt",
+        cert_type: "Certificate Type",
+        opt_birth: "Birth Certificate",
+        opt_death: "Death Certificate",
+        opt_marriage: "Marriage Certificate",
+        cert_num: "Certificate Number",
+        fields_to_correct: "Select fields to correct",
+        field_name: "Name",
+        field_date: "Date",
+        field_address: "Address",
+        next_btn: "Next",
+        consent_warn: "I verify that all entered details are correct. If any error is found after payment, it is entirely my responsibility.",
+        consent_agree: "I Agree",
+        proceed_pay_btn: "Proceed to Payment",
+        receipt_pay_body: "Please pay ₹20 to generate your token receipt. Scan the QR code below.",
+        your_token: "Your Token Number",
+        wait_msg: "Please wait for your token to appear on the screen.",
+        print_receipt_btn: "Print Receipt & Close",
+        alert_no_cert: "Please enter Certificate Number!",
+        alert_no_field: "Please select at least one field for correction!",
+        lang_btn_text: "हिंदी में बदलें",
+        alert_correction: "Redirecting to correction portal...",
+        a11y_title: "Accessibility",
+        a11y_voice: "Voice Assistant",
+        a11y_contrast: "High Contrast",
+        a11y_text: "Large Text",
+        welcome_msg: "Welcome to the Nagar Nigam Kiosk. Please select from the options below.",
+        error_title: "Error"
+      }
+    };
+
+    let currentLang = 'hi';
+
+    function toggleLang() {
+      currentLang = currentLang === 'hi' ? 'en' : 'hi';
+      document.getElementById('lang-btn').innerText = dict[currentLang].lang_btn_text;
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[currentLang][key]) {
+          el.innerHTML = dict[currentLang][key];
+        }
+      });
+    }
+
+    // --- MODAL LOGIC ---
+    function showError(msg) {
+      document.getElementById('error-msg').innerText = msg;
+      openModal('error-modal');
+      if (isVoiceAssistEnabled) speakText(msg);
+    }
+
+    function openModal(id) {
+      resetIdle();
+      const modal = document.getElementById(id);
+      modal.classList.add('active');
+
+      // Auto-read modal title and main body text when it opens
+      setTimeout(() => {
+        if (isVoiceAssistEnabled && id !== 'error-modal') {
+          let textToRead = "";
+          const titleEl = modal.querySelector('.modal-header');
+          if (titleEl) {
+            const titleKey = titleEl.getAttribute('data-i18n');
+            if (titleKey && dict[currentLang][titleKey]) {
+              textToRead += dict[currentLang][titleKey] + ". ";
+            }
+          }
+
+          // Specifically read the ₹20 amount body for the print modal
+          if (id === 'print-modal') {
+            textToRead += dict[currentLang].print_step2_body;
+          } else if (id === 'receipt-modal') {
+            textToRead += "कृपया प्रमाण-पत्र का प्रकार और संख्या दर्ज करें।";
+          }
+
+          if (textToRead) speakText(textToRead);
+        }
+      }, 300);
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+      window.speechSynthesis.cancel();
+    }
+
+    // --- FLOW 1: Print & Pay ---
+    function openMockPehchan() {
+      window.location.href = 'mock-pehchan.html';
+    }
+
+    function simulatePaymentSuccess(flow) {
+      if (flow === 'print') {
+        document.getElementById('print-step-2').style.display = 'none';
+        document.getElementById('print-step-3').style.display = 'block';
+        if (isVoiceAssistEnabled) speakText(dict[currentLang].print_success);
+      } else if (flow === 'receipt') {
+        generateToken();
+      }
+    }
+
+    // --- FLOW 2: Correction Redirect ---
+    function handleCorrectionRedirect() {
+      // Redirect to the actual Pehchan portal as requested
+      window.location.href = 'https://pehchan.rajasthan.gov.in/ECertificate.aspx?Event=&RegistrationNumber=&Year=&MobileNumber=&WABOT=1';
+      // window.location.href = 'https://pehchan.rajasthan.gov.in/';
+    }
+
+    // --- FLOW 3: Correction Receipt & Token Generation ---
+    function openReceiptModal() {
+      document.getElementById('receipt-step-1').style.display = 'block';
+      document.getElementById('receipt-step-2').style.display = 'none';
+      document.getElementById('receipt-step-3').style.display = 'none';
+      document.getElementById('receipt-step-4').style.display = 'none';
+
+      document.getElementById('certNum').value = '';
+      document.getElementById('consentCheck').checked = false;
+      toggleConsentBtn();
+      openModal('receipt-modal');
+    }
+
+    function goToConsent() {
+      const certNum = document.getElementById('certNum').value;
+      if (!certNum) {
+        showError(dict[currentLang].alert_no_cert);
+        return;
+      }
+
+      const chkName = document.getElementById('chk-name').checked;
+      const chkDate = document.getElementById('chk-date').checked;
+      const chkAddress = document.getElementById('chk-address').checked;
+
+      if (!chkName && !chkDate && !chkAddress) {
+        showError(dict[currentLang].alert_no_field || "कृपया सुधार के लिए कम से कम एक फ़ील्ड चुनें!");
+        return;
+      }
+
+      document.getElementById('receipt-step-1').style.display = 'none';
+      document.getElementById('receipt-step-2').style.display = 'block';
+      if (isVoiceAssistEnabled) speakText(dict[currentLang].consent_warn);
+    }
+
+    function toggleConsentBtn() {
+      const chk = document.getElementById('consentCheck');
+      const btn = document.getElementById('btn-proceed-pay');
+      if (chk.checked) {
+        btn.disabled = false;
+        btn.classList.remove('btn-disabled');
+        btn.classList.add('btn-primary');
+      } else {
+        btn.disabled = true;
+        btn.classList.add('btn-disabled');
+        btn.classList.remove('btn-primary');
+      }
+    }
+
+    function goToReceiptPayment() {
+      document.getElementById('receipt-step-2').style.display = 'none';
+      document.getElementById('receipt-step-3').style.display = 'block';
+      if (isVoiceAssistEnabled) speakText(dict[currentLang].receipt_pay_body);
+    }
+
+    function generateToken() {
+      let lastNum = parseInt(localStorage.getItem('kiosk_last_token_num') || '0');
+      lastNum += 1;
+      localStorage.setItem('kiosk_last_token_num', lastNum);
+      const token = "TKN-" + lastNum.toString().padStart(3, '0');
+
+      let queue = JSON.parse(localStorage.getItem('kiosk_queue') || '[]');
+      queue.push(token);
+      localStorage.setItem('kiosk_queue', JSON.stringify(queue));
+
+      document.getElementById('display-token').innerText = token;
+      document.getElementById('receipt-step-3').style.display = 'none';
+      document.getElementById('receipt-step-4').style.display = 'block';
+
+      if (isVoiceAssistEnabled) {
+        speakText(dict[currentLang].your_token + " " + token + ". " + dict[currentLang].wait_msg);
+      }
+    }
+
+    // --- IDLE TIMER LOGIC ---
+    const IDLE_TIMEOUT = 120;
+    const COUNTDOWN_WARN = 5;
+    let idleSeconds = 0;
+    let countdownTimer = null;
+    const idleBar = document.getElementById('idle-bar');
+    const idleOverlay = document.getElementById('idle-overlay');
+    const idleCountEl = document.getElementById('idle-countdown');
+
+    function resetIdle() {
+      idleSeconds = 0;
+      idleBar.style.width = '100%';
+      idleBar.style.background = 'var(--green)';
+      idleOverlay.classList.remove('show');
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    }
+
+    function startCountdown() {
+      let remaining = COUNTDOWN_WARN;
+      idleOverlay.classList.add('show');
+      idleCountEl.textContent = remaining;
+      countdownTimer = setInterval(() => {
+        remaining--;
+        idleCountEl.textContent = remaining;
+        if (remaining <= 0) {
+          clearInterval(countdownTimer);
+          location.reload();
+        }
+      }, 1000);
+    }
+
+    setInterval(() => {
+      if (idleOverlay.classList.contains('show')) return;
+      idleSeconds++;
+      const pct = Math.max(0, 100 - (idleSeconds / IDLE_TIMEOUT) * 100);
+      idleBar.style.width = pct + '%';
+
+      if (pct < 25) idleBar.style.background = 'var(--saffron-dark)';
+      else if (pct < 50) idleBar.style.background = 'var(--saffron)';
+      else idleBar.style.background = 'var(--green)';
+
+      if (idleSeconds >= IDLE_TIMEOUT - COUNTDOWN_WARN && !countdownTimer) {
+        startCountdown();
+      }
+    }, 1000);
+
+    ['touchstart', 'mousemove', 'mousedown', 'keydown'].forEach(ev =>
+      document.addEventListener(ev, resetIdle, { passive: true })
+    );
+
+    // Initial Setup & Local Storage Load
+    document.addEventListener("DOMContentLoaded", () => {
+      // 1. Load Accessibility Settings from Local Storage
+      let shouldWelcome = false;
+      if (localStorage.getItem('kiosk_a11y_contrast') === 'true') {
+        document.getElementById('a11y-contrast').checked = true;
+        document.body.classList.add('high-contrast');
+      }
+      if (localStorage.getItem('kiosk_a11y_text') === 'true') {
+        document.getElementById('a11y-text').checked = true;
+        document.body.classList.add('large-text');
+      }
+      if (localStorage.getItem('kiosk_a11y_voice') === 'true') {
+        document.getElementById('a11y-voice').checked = true;
+        isVoiceAssistEnabled = true;
+        shouldWelcome = true;
+      }
+
+      // 2. Initial check for print payment flow
+      if (window.location.search.includes('payment=true')) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        document.getElementById('start-screen').classList.add('hidden'); // Hide start screen if mid-session
+        document.getElementById('print-step-2').style.display = 'block';
+        document.getElementById('print-step-3').style.display = 'none';
+        openModal('print-modal');
+      }
+      // Else: Start screen remains visible until user taps
+    });
+
+    function startKiosk() {
+      document.getElementById('start-screen').classList.add('hidden');
+      resetIdle();
+      if (isVoiceAssistEnabled) {
+        speakText(dict[currentLang].welcome_msg);
+      }
+    }
+
+    // --- ACCESSIBILITY LOGIC (DIVYANGJAN) ---
+    function toggleA11yMenu() {
+      const menu = document.getElementById('a11y-menu');
+      menu.classList.toggle('active');
+    }
+
+    function toggleHighContrast() {
+      const isHighContrast = document.getElementById('a11y-contrast').checked;
+      localStorage.setItem('kiosk_a11y_contrast', isHighContrast);
+      if (isHighContrast) {
+        document.body.classList.add('high-contrast');
+      } else {
+        document.body.classList.remove('high-contrast');
+      }
+    }
+
+    function toggleLargeText() {
+      const isLargeText = document.getElementById('a11y-text').checked;
+      localStorage.setItem('kiosk_a11y_text', isLargeText);
+      if (isLargeText) {
+        document.body.classList.add('large-text');
+      } else {
+        document.body.classList.remove('large-text');
+      }
+    }
+
+    let isVoiceAssistEnabled = false;
+    function toggleVoiceAssist() {
+      isVoiceAssistEnabled = document.getElementById('a11y-voice').checked;
+      localStorage.setItem('kiosk_a11y_voice', isVoiceAssistEnabled);
+      if (isVoiceAssistEnabled) {
+        speakText(dict[currentLang].a11y_voice + " " + (currentLang === 'hi' ? "चालू" : "ON"));
+      }
+    }
+
+    function speakText(text) {
+      if (!isVoiceAssistEnabled || !text) return;
+      window.speechSynthesis.cancel(); // Stop current speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Advanced "Full Instruction Mode": Hover & Focus
+    function handleInstruction(e) {
+      if (!isVoiceAssistEnabled) return;
+
+      const target = e.target;
+      let textToSpeak = "";
+
+      // 1. Check for specific instructional data attribute (Forms/Dropdowns)
+      if (target.getAttribute('data-voice-instruction')) {
+        textToSpeak = target.getAttribute('data-voice-instruction');
+      }
+      // 2. Check if it's a standard translatable element
+      else if (target.closest('[data-i18n]')) {
+        const i18nNode = target.closest('[data-i18n]');
+        const i18nKey = i18nNode.getAttribute('data-i18n');
+        if (dict[currentLang][i18nKey]) {
+          textToSpeak = dict[currentLang][i18nKey].replace(/<br>/g, " ");
+        }
+      }
+      // 3. Check for Service Blocks (Title + Desc)
+      else if (target.closest('.btn-service')) {
+        const btn = target.closest('.btn-service');
+        const titleKey = btn.querySelector('.btn-label').getAttribute('data-i18n');
+        const descKey = btn.querySelector('.btn-desc').getAttribute('data-i18n');
+        textToSpeak = dict[currentLang][titleKey].replace(/<br>/g, " ") + ". " + dict[currentLang][descKey];
+      }
+
+      if (textToSpeak) {
+        speakText(textToSpeak);
+      }
+    }
+
+    // Attach to mouseenter (hover) and focus (keyboard/touch inputs)
+    document.addEventListener('mouseenter', (e) => {
+      // Only trigger on specific interactive elements to avoid spam
+      if (e.target && e.target.matches && e.target.matches('.btn-service, .modal-btn, .lang-toggle-btn, .form-check, .a11y-fab, .a11y-toggle')) {
+        handleInstruction(e);
+      }
+    }, true);
+
+    document.addEventListener('focus', (e) => {
+      if (e.target && e.target.matches && e.target.matches('input, select')) {
+        handleInstruction(e);
+      }
+    }, true);
+
+    // Close accessibility menu when clicking outside
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('a11y-menu');
+      const fab = document.querySelector('.a11y-fab');
+      if (menu.classList.contains('active') && !menu.contains(e.target) && !fab.contains(e.target)) {
+        menu.classList.remove('active');
+      }
+    });
+  </script>
+</body>
+
+</html>
