@@ -1,111 +1,136 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&display=swap');
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+@theme {
+  --color-saffron: #f39c12;
+  --color-saffron-dark: #d35400;
+  --color-green-custom: #27ae60;
+  --color-green-custom-dark: #1e8449;
+  --color-blue-custom: #2980b9;
+  --color-blue-custom-dark: #1f618d;
+  --color-purple-custom: #9b59b6;
+  --color-purple-custom-dark: #8e44ad;
+  --color-navy: #1a365d;
+  
+  --font-rajdhani: 'Rajdhani', sans-serif;
+  --font-hindi: 'Tiro Devanagari Hindi', serif;
+  --font-bebas: 'Bebas Neue', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+/* ==========================================================
+   🖥️ Global Kiosk UI Base Rules
+   ========================================================== */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
+html,
+body {
+  width: 100vw;
+  height: 100vh;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+  background-color: #f4f7f6;
+  font-family: 'Rajdhani', sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* Dot grid background pattern */
+.bg-pattern {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px);
+  background-size: 30px 30px;
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Header top tricolor band */
+.header-top-band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
+  z-index: 50;
 }
+
+/* ==========================================================
+   ♿ Accessibility Overrides
+   ========================================================== */
+/* Large Text Settings */
+body.large-text {
+  font-size: 120%;
+}
+
+body.large-text .btn-label {
+  font-size: 2rem !important;
+}
+
+body.large-text .modal-header {
+  font-size: 2.2rem !important;
+}
+
+body.large-text .modal-body {
+  font-size: 1.4rem !important;
+}
+
+/* High Contrast Settings */
+body.high-contrast {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.high-contrast * {
+  color: #ffff00 !important;
+  border-color: #ffff00 !important;
+}
+
+body.high-contrast .bg-pattern {
+  display: none !important;
+}
+
+body.high-contrast .header-top-band {
+  display: none !important;
+}
+
+body.high-contrast input[type="text"],
+body.high-contrast select,
+body.high-contrast option {
+  color: #000000 !important;
+  background: #ffffff !important;
+  border: 2px solid #ffff00 !important;
+}
+
+/* ==========================================================
+   🖨️ High-Fidelity Kiosk Print Stylings
+   ========================================================== */
+@media print {
+  /* Hide the screen application root completely to print portals directly attached to body */
+  #root {
+    display: none !important;
+  }
+
+  /* Only display the printable receipt container */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Force light theme/high contrast printable view */
+  .print\:text-black {
+    color: #000000 !important;
+  }
+
+  /* Ensure thermal receipt occupies exact physical size */
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}
+

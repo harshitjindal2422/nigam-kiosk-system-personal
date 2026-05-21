@@ -1,0 +1,2 @@
+# Sandbox directory for temporary citizen certificate downloads
+# Files inside this directory are sandboxed and automatically pruned after print or session reset.

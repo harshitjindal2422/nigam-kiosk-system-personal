@@ -1,0 +1,127 @@
+erDiagram
+
+    %% =====================================================
+    %% SUPER ADMIN
+    %% =====================================================
+
+    SUPER_ADMIN {
+        int super_admin_id PK
+        string full_name
+        string email
+        string password
+        datetime created_at
+    }
+
+    %% =====================================================
+    %% ADMIN
+    %% =====================================================
+
+    ADMIN {
+        int admin_id PK
+        int super_admin_id FK
+        string full_name
+        string email
+        string password
+        string role
+        datetime created_at
+    }
+
+    %% =====================================================
+    %% PAYMENT TABLE
+    %% =====================================================
+
+    PAYMENT {
+        int payment_id PK
+        string registration_number
+        decimal amount
+        string payment_mode
+        string transaction_id
+        string qr_reference
+        string payment_status
+        datetime paid_at
+    }
+
+    %% =====================================================
+    %% CERTIFICATE PRINT RECORDS
+    %% =====================================================
+
+    CERTIFICATE_PRINT_RECORD {
+        int print_record_id PK
+        int payment_id FK
+        int admin_id FK
+        string applicant_name
+        string mobile_number
+        string registration_number
+        string certificate_type
+        int total_copies
+        string downloaded_file_name
+        datetime printed_at
+    }
+
+    %% =====================================================
+    %% COUNTER CORRECTION TOKEN RECORDS
+    %% =====================================================
+
+    COUNTER_CORRECTION_RECORD {
+        int correction_record_id PK
+        int payment_id FK
+        int admin_id FK
+        string applicant_name
+        string mobile_number
+        string registration_number
+        string certificate_type
+        string correction_type
+        string token_number
+        string remarks
+        datetime generated_at
+    }
+
+    %% =====================================================
+    %% PEHCHAN PORTAL CORRECTION RECORDS
+    %% =====================================================
+
+    PEHCHAN_CORRECTION_RECORD {
+        int pehchan_record_id PK
+        int payment_id FK
+        int admin_id FK
+        string applicant_name
+        string mobile_number
+        string registration_number
+        string certificate_type
+        string correction_type
+        string correction_status
+        datetime created_at
+    }
+
+    %% =====================================================
+    %% TOKEN TABLE
+    %% =====================================================
+
+    TOKEN {
+        int token_id PK
+        int correction_record_id FK
+        string token_number
+        string counter_number
+        string queue_status
+        datetime issued_at
+    }
+
+    %% =====================================================
+    %% RELATIONSHIPS
+    %% =====================================================
+
+    SUPER_ADMIN ||--o{ ADMIN : manages
+
+    PAYMENT ||--|| CERTIFICATE_PRINT_RECORD : payment_for
+
+    PAYMENT ||--|| COUNTER_CORRECTION_RECORD : payment_for
+
+    PAYMENT ||--|| PEHCHAN_CORRECTION_RECORD : payment_for
+
+    COUNTER_CORRECTION_RECORD ||--|| TOKEN : generates
+
+    ADMIN ||--o{ CERTIFICATE_PRINT_RECORD : monitors
+
+    ADMIN ||--o{ COUNTER_CORRECTION_RECORD : monitors
+
+    ADMIN ||--o{ PEHCHAN_CORRECTION_RECORD : monitors

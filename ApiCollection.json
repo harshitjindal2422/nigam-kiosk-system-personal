@@ -1,0 +1,72 @@
+
+{
+  "auth": {
+    "adminLogin": {
+      "method": "POST",
+      "endpoint": "/api/v1/auth/admin/login"
+    },
+    "superAdminLogin": {
+      "method": "POST",
+      "endpoint": "/api/v1/auth/super-admin/login"
+    }
+  },
+
+  "certificatePrint": {
+    "createPrintRecord": {
+      "method": "POST",
+      "endpoint": "/api/v1/certificate-print/create"
+    },
+    "getDailyPrintRecords": {
+      "method": "GET",
+      "endpoint": "/api/v1/certificate-print/daily"
+    }
+  },
+
+  "registrationSearch": {
+    "searchRegistration": {
+      "method": "GET",
+      "endpoint": "/api/v1/registration/search"
+    }
+  },
+
+  "counterCorrection": {
+    "createCorrectionToken": {
+      "method": "POST",
+      "endpoint": "/api/v1/counter-correction/create"
+    },
+    "getAllTokens": {
+      "method": "GET",
+      "endpoint": "/api/v1/counter-correction/tokens"
+    }
+  },
+
+  "pehchanCorrection": {
+    "createCorrectionRecord": {
+      "method": "POST",
+      "endpoint": "/api/v1/pehchan-correction/create"
+    }
+  },
+
+  "payment": {
+    "createPayment": {
+      "method": "POST",
+      "endpoint": "/api/v1/payment/create"
+    },
+    "verifyPayment": {
+      "method": "POST",
+      "endpoint": "/api/v1/payment/verify"
+    }
+  },
+
+  "printer": {
+    "printCertificate": {
+      "method": "POST",
+      "endpoint": "/api/v1/printer/certificate"
+    },
+    "printToken": {
+      "method": "POST",
+      "endpoint": "/api/v1/printer/token"
+    }
+  }
+}
+

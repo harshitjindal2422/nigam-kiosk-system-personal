@@ -1,0 +1,84 @@
+---
+config:
+  theme: neo-dark
+---
+flowchart TB
+ subgraph BLOCK_A["Block 1 — Download Certificate"]
+    direction TB
+        A["Download Certificate"]
+        A1["Redirect to Pehchan Portal"]
+        A2["Citizen Downloads Certificate PDF"]
+        A3["Continue for Payment & Print"]
+        A4["Print Information Form"]
+        A5["Validate Latest Downloaded File"]
+        A6["Select Number of Copies"]
+        A7["QR Payment"]
+        A8["Print Certificate"]
+        A9["Print Successful"]
+        A10["Return to Home Screen"]
+  end
+ subgraph BLOCK_B["Block 2 — Search Registration"]
+    direction TB
+        B["Search Registration"]
+        B1["Redirect to Pehchan Portal"]
+        B2["Search Registration Details"]
+        B3["Display Search Result"]
+        B4["Return to Home Screen"]
+  end
+ subgraph BLOCK_C["Block 3 — Counter Certificate Correction"]
+    direction TB
+        C["Certificate Correction<br>at Counter"]
+        C1["Select Certificate Type"]
+        C2["Enter User Details"]
+        C3["Required Document Checklist"]
+        C4["Disclaimer & Consent"]
+        C5["QR Payment"]
+        C6["Generate Token"]
+        C7["Print Token Receipt"]
+        C8["Return to Home Screen"]
+  end
+ subgraph BLOCK_D["Block 4 — Certificate Correction via Pehchan"]
+    direction TB
+        D["Certificate Correction<br>via Pehchan Portal"]
+        D1["Collect User Information"]
+        D2["Disclaimer & Consent"]
+        D3["QR Payment"]
+        D4["Redirect to Pehchan Portal"]
+        D5["Certificate Correction Process"]
+        D6["Return to Home Screen"]
+  end
+    USER(["Citizen / User"]) --> HOME["Home Screen<br>Nagar Nigam Citizen Service Kiosk"]
+    HOME --> A & B & C & D
+    A --> A1
+    A1 --> A2
+    A2 --> A3
+    A3 --> A4
+    A4 --> A5
+    A5 --> A6
+    A6 --> A7
+    A7 --> A8
+    A8 --> A9
+    A9 --> A10
+    B --> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --> B4
+    C --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> C4
+    C4 --> C5
+    C5 --> C6
+    C6 --> C7
+    C7 --> C8
+    D --> D1
+    D1 --> D2
+    D2 --> D3
+    D3 --> D4
+    D4 --> D5
+    D5 --> D6
+    A8 -. Store Print Record .-> DB[("PostgreSQL Database")]
+    C6 -. Store Token Record .-> DB
+    D1 -. Store Correction Record .-> DB
+    SUPERADMIN["Super Admin Panel"] --> ADMIN["Admin Panel"] & DB
+    ADMIN --> DB

@@ -24,6 +24,8 @@
       --green-dark: #1e8449;
       --blue: #2980b9;
       --blue-dark: #1f618d;
+      --purple: #9b59b6;
+      --purple-dark: #8e44ad;
       --navy: #1a365d;
       --white: #ffffff;
       --bg-color: #f4f7f6;
@@ -76,7 +78,7 @@
       position: relative;
       z-index: 2;
       width: 100%;
-      padding: 28px 40px 20px;
+      padding: 14px 40px 10px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -88,13 +90,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
 
     .emblem {
-      width: 80px;
-      height: 80px;
-      margin-bottom: 8px;
+      width: 60px;
+      height: 60px;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -163,20 +165,22 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px 40px;
+      padding: 10px 40px;
     }
 
     .buttons-row {
       display: flex;
-      gap: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
       width: 100%;
       max-width: 1200px;
-      align-items: stretch;
     }
 
     .btn-service {
-      flex: 1;
-      min-height: 240px;
+      flex: 0 0 calc(50% - 10px);
+      max-width: calc(50% - 10px);
+      min-height: 180px;
       border: none;
       border-radius: 20px;
       cursor: pointer;
@@ -184,8 +188,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 16px;
-      padding: 30px 24px;
+      gap: 10px;
+      padding: 16px 20px;
       position: relative;
       overflow: hidden;
       transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
@@ -239,9 +243,17 @@
       box-shadow: 0 15px 35px rgba(30, 132, 73, 0.3);
     }
 
+    .btn-purple {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+    }
+
+    .btn-purple:hover {
+      box-shadow: 0 15px 35px rgba(142, 68, 173, 0.3);
+    }
+
     .btn-icon {
-      width: 70px;
-      height: 70px;
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.2);
       border: 2px solid rgba(255, 255, 255, 0.4);
@@ -253,14 +265,14 @@
     }
 
     .btn-icon svg {
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       fill: #fff;
     }
 
     .btn-label {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.8rem;
+      font-size: 1.5rem;
       letter-spacing: 0.1em;
       color: #fff;
       text-align: center;
@@ -269,11 +281,11 @@
     }
 
     .btn-desc {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       letter-spacing: 0.05em;
       color: rgba(255, 255, 255, 0.9);
       text-align: center;
-      line-height: 1.4;
+      line-height: 1.3;
       max-width: 220px;
       font-weight: 500;
     }
@@ -538,7 +550,7 @@
     }
 
     body.large-text .btn-label {
-      font-size: 2.2rem;
+      font-size: 1.8rem;
     }
 
     body.large-text .modal-header {
@@ -564,6 +576,8 @@
       --blue-dark: #000000;
       --green: #000000;
       --green-dark: #000000;
+      --purple: #000000;
+      --purple-dark: #000000;
       --border-light: #ffff00;
     }
 
@@ -812,16 +826,16 @@
         <div class="btn-desc" data-i18n="btn1_desc">पहचान पोर्टल से डाउनलोड कर यहाँ प्रिंट करें</div>
       </button>
 
-      <!-- Block 2 (Blue) -->
-      <button class="btn-service btn-blue" onclick="handleCorrectionRedirect()">
+      <!-- Block 2 (Purple - NEW) -->
+      <button class="btn-service btn-purple" onclick="handleSearchRedirect()">
         <div class="btn-icon">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path
-              d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
           </svg>
         </div>
-        <div class="btn-label" data-i18n="btn2_title">प्रमाण-पत्र<br>सुधार</div>
-        <div class="btn-desc" data-i18n="btn2_desc">नाम, पता या तिथि में संशोधन के लिए पोर्टल पर जाएं</div>
+        <div class="btn-label" data-i18n="btn4_title">पंजीकरण<br>खोजें</div>
+        <div class="btn-desc" data-i18n="btn4_desc">पहचान पोर्टल पर पंजीकरण खोजने के लिए जाएँ</div>
       </button>
 
       <!-- Block 3 (Green) -->
@@ -834,6 +848,18 @@
         </div>
         <div class="btn-label" data-i18n="btn3_title">सुधार<br>रसीद</div>
         <div class="btn-desc" data-i18n="btn3_desc">सुधार अनुरोध के लिए टोकन रसीद प्राप्त करें</div>
+      </button>
+
+      <!-- Block 4 (Blue) -->
+      <button class="btn-service btn-blue" onclick="handleCorrectionRedirect()">
+        <div class="btn-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+          </svg>
+        </div>
+        <div class="btn-label" data-i18n="btn2_title">प्रमाण-पत्र<br>सुधार</div>
+        <div class="btn-desc" data-i18n="btn2_desc">नाम, पता या तिथि में संशोधन के लिए पोर्टल पर जाएं</div>
       </button>
     </div>
   </main>
@@ -998,6 +1024,8 @@
         btn2_desc: "नाम, पता या तिथि में संशोधन के लिए पोर्टल पर जाएं",
         btn3_title: "सुधार<br>रसीद",
         btn3_desc: "सुधार अनुरोध के लिए टोकन रसीद प्राप्त करें",
+        btn4_title: "पंजीकरण<br>खोजें",
+        btn4_desc: "पहचान पोर्टल पर पंजीकरण खोजने के लिए जाएँ",
         footer_help: "सहायता: 1800-180-6785",
         auto_reset: "ऑटो रीसेट",
         reset_msg_hi: "सत्र समाप्त हो रहा है...",
@@ -1036,7 +1064,7 @@
         a11y_voice: "वॉइस असिस्टेंट",
         a11y_contrast: "हाई कंट्रास्ट",
         a11y_text: "बड़ा टेक्स्ट",
-        welcome_msg: "नगर निगम कियोस्क में आपका स्वागत है। कृपया नीचे दिए गए विकल्पों में से चुनें।",
+        welcome_msg: "नगर निगम कियोस्क में स्वागत है। कृपया नीचे दिए गए विकल्पों में से चुनें।",
         error_title: "त्रुटि (Error)"
       },
       en: {
@@ -1049,6 +1077,8 @@
         btn2_desc: "Go to portal to edit name, address, or date",
         btn3_title: "Correction<br>Receipt",
         btn3_desc: "Generate a token receipt for correction request",
+        btn4_title: "Search<br>Registration",
+        btn4_desc: "Search for registration details on Pehchan portal",
         footer_help: "Help: 1800-180-6785",
         auto_reset: "AUTO RESET",
         reset_msg_hi: "Session is ending...",
@@ -1148,7 +1178,7 @@
 
     // --- FLOW 1: Print & Pay ---
     function openMockPehchan() {
-      window.location.href = 'mock-pehchan.html';
+      window.open('mock-pehchan.html', '_blank');
     }
 
     function simulatePaymentSuccess(flow) {
@@ -1164,8 +1194,12 @@
     // --- FLOW 2: Correction Redirect ---
     function handleCorrectionRedirect() {
       // Redirect to the actual Pehchan portal as requested
-      window.location.href = 'https://pehchan.rajasthan.gov.in/ECertificate.aspx?Event=&RegistrationNumber=&Year=&MobileNumber=&WABOT=1';
+      window.open('https://pehchan.rajasthan.gov.in/ECertificate.aspx?Event=&RegistrationNumber=&Year=&MobileNumber=&WABOT=1', '_blank');
       // window.location.href = 'https://pehchan.rajasthan.gov.in/';
+    }
+
+    function handleSearchRedirect() {
+      window.open('https://pehchan.rajasthan.gov.in/pehchan10/VerifyRegisNum.aspx?PehRed=MmRkYzZkZWY=OGRlYjRmY2NlZWQwOTcwZGJmOGZjMWE=', '_blank');
     }
 
     // --- FLOW 3: Correction Receipt & Token Generation ---

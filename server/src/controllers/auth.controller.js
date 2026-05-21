@@ -1,0 +1,39 @@
+import AuthService from '../services/auth.service.js';
+import { ApiResponse } from '../utils/ApiResponse.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const { user, token } = await AuthService.login(email, password);
+
+  // Set secure HTTP-only cookie matching proposed 12h policy
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 12 * 60 * 60 * 1000, // 12 hours
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { user, token }, 'Logged in successfully'));
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, 'Logged out successfully'));
+});
+
+export const getMe = asyncHandler(async (req, res) => {
+  const profile = await AuthService.getMe(req.user.id, req.user.role);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { user: profile }, 'Session retrieved successfully'));
+});

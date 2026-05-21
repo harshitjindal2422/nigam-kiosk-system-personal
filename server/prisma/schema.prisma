@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. SUPER ADMIN MODEL
+// ==========================================
+model SuperAdmin {
+  super_admin_id Int      @id @default(autoincrement())
+  full_name      String
+  email          String   @unique
+  password       String
+  created_at     DateTime @default(now())
+  admins         Admin[]
+
+  @@map("super_admins")
+}
+
+// ==========================================
+// 2. ADMIN MODEL
+// ==========================================
+model Admin {
+  admin_id       Int      @id @default(autoincrement())
+  super_admin_id Int?
+  full_name      String
+  email          String   @unique
+  password       String
+  role           String   @default("ADMIN") // ADMIN, SUPERADMIN
+  created_at     DateTime @default(now())
+
+  super_admin        SuperAdmin?                 @relation(fields: [super_admin_id], references: [super_admin_id], onDelete: SetNull)
+  certificate_prints CertificatePrintRecord[]
+  counter_corrections CounterCorrectionRecord[]
+  pehchan_corrections PehchanCorrectionRecord[]
+
+  @@map("admins")
+}
+
+// ==========================================
+// 3. PAYMENT MODEL
+// ==========================================
+model Payment {
+  payment_id          Int       @id @default(autoincrement())
+  registration_number String?
+  amount              Decimal   @db.Decimal(10, 2)
+  payment_mode        String    @default("UPI")
+  transaction_id      String    @unique
+  qr_reference        String?
+  payment_status      String    @default("PENDING") // PENDING, SUCCESS, FAILED
+  paid_at             DateTime?
+
+  certificate_print  CertificatePrintRecord?
+  counter_correction CounterCorrectionRecord?
+  pehchan_correction PehchanCorrectionRecord?
+
+  @@map("payments")
+}
+
+// ==========================================
+// 4. CERTIFICATE PRINT RECORD MODEL
+// ==========================================
+model CertificatePrintRecord {
+  print_record_id      Int      @id @default(autoincrement())
+  payment_id           Int      @unique
+  admin_id             Int?
+  applicant_name       String
+  mobile_number        String
+  registration_number  String
+  certificate_type     String   // BIRTH, DEATH, MARRIAGE
+  total_copies         Int      @default(1)
+  downloaded_file_name String
+  printed_at           DateTime @default(now())
+
+  payment Payment @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+  admin   Admin?  @relation(fields: [admin_id], references: [admin_id], onDelete: SetNull)
+
+  @@map("certificate_print_records")
+}
+
+// ==========================================
+// 5. COUNTER CORRECTION RECORD MODEL
+// ==========================================
+model CounterCorrectionRecord {
+  correction_record_id Int      @id @default(autoincrement())
+  payment_id           Int      @unique
+  admin_id             Int?
+  applicant_name       String
+  mobile_number        String
+  registration_number  String
+  certificate_type     String   // BIRTH, DEATH, MARRIAGE
+  correction_type      String   // MULTI
+  correction_details   Json?    // Stores array: [{particular, oldValue, newValue}]
+  token_number         String
+  remarks              String?
+  generated_at         DateTime @default(now())
+
+  payment Payment @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+  admin   Admin?  @relation(fields: [admin_id], references: [admin_id], onDelete: SetNull)
+  token   Token?
+
+  @@map("counter_correction_records")
+}
+
+// ==========================================
+// 6. PEHCHAN PORTAL CORRECTION RECORD MODEL
+// ==========================================
+model PehchanCorrectionRecord {
+  pehchan_record_id   Int      @id @default(autoincrement())
+  payment_id           Int      @unique
+  admin_id             Int?
+  applicant_name       String
+  mobile_number        String
+  registration_number  String
+  certificate_type     String   // BIRTH, DEATH, MARRIAGE
+  correction_type      String   // NAME, DATE, ADDRESS, OTHER
+  correction_status   String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  created_at           DateTime @default(now())
+
+  payment Payment @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+  admin   Admin?  @relation(fields: [admin_id], references: [admin_id], onDelete: SetNull)
+
+  @@map("pehchan_correction_records")
+}
+
+// ==========================================
+// 7. QUEUE TOKEN MODEL
+// ==========================================
+model Token {
+  token_id             Int      @id @default(autoincrement())
+  correction_record_id Int      @unique
+  token_number         String
+  counter_number       String   @default("Counter 1")
+  queue_status         String   @default("WAITING") // WAITING, SERVING, COMPLETED, NOSHOW
+  issued_at            DateTime @default(now())
+
+  correction_record CounterCorrectionRecord @relation(fields: [correction_record_id], references: [correction_record_id], onDelete: Cascade)
+
+  @@map("tokens")
+}
