@@ -4,6 +4,7 @@ import fs from 'fs';
 import { app } from './app.js';
 import { prisma } from './config/db.js';
 import { logger } from './config/logger.js';
+import { initSocketServer } from './socket.js';
 
 // 1. Load environment configurations
 dotenv.config();
@@ -30,6 +31,8 @@ async function bootstrap() {
       logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
       logger.info(`🎯 API Base: http://localhost:${PORT}/api/v1`);
     });
+    
+    initSocketServer(server);
   } catch (error) {
     logger.error('❌ Failed to bootstrap the server due to database connection error:', error);
     process.exit(1);

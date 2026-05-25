@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import AuthRepository from '../repositories/auth.repository.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -21,7 +20,7 @@ export default class AuthService {
     }
 
     // 4. Verify password match
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect = password === user.password;
     if (!isPasswordCorrect) {
       throw new ApiError(401, 'Invalid email or password');
     }

@@ -98,16 +98,22 @@ export default class PrintService {
 
     logger.info(`🖨️ [PRINTER]: Print spool completed. Triggering absolute sandbox purge...`);
 
-    // 4. Delete the downloaded PDF file immediately to maintain strict user privacy
+    // 4. Read the file to Base64 then delete it to maintain strict user privacy
+    let base64Pdf = null;
     if (!isMock) {
       try {
-        fs.unlinkSync(filePath);
-        logger.info(`🗑️ [SANDBOX]: File ${downloadedFileName} permanently deleted to secure citizen details.`);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          base64Pdf = fileBuffer.toString('base64');
+          fs.unlinkSync(filePath);
+          logger.info(`🗑️ [SANDBOX]: File ${downloadedFileName} permanently deleted to secure citizen details.`);
+        }
       } catch (err) {
         logger.error(`⚠️ [SANDBOX]: Failed to purge file ${downloadedFileName}: ${err.message}`);
       }
     } else {
       logger.info(`🗑️ [SANDBOX]: Bypassed file purge for simulated mock file ${downloadedFileName}.`);
+      base64Pdf = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
     }
 
     // 5. Commit atomic transaction logs to PostgreSQL via Prisma
@@ -146,6 +152,10 @@ Thank you for using civic services!
       logger.info(`💾 [RECEIPT]: Thermal receipt backup successfully saved to: ${receiptPath}`);
     } catch (receiptErr) {
       logger.error(`⚠️ [RECEIPT]: Failed to save thermal receipt backup: ${receiptErr.message}`);
+    }
+
+    if (base64Pdf) {
+      result.base64Pdf = base64Pdf;
     }
 
     return result;

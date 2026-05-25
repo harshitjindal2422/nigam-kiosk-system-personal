@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRouter from './auth.routes.js';
 import paymentRouter from './payment.routes.js';
 import printRouter from './print.routes.js';
+import { router as adminRouter } from './admin.routes.js';
 
 const router = Router();
 
@@ -23,5 +24,8 @@ router.use('/print', printRouter);
 import correctionRouter from './correction.routes.js';
 router.use('/counter-correction', correctionRouter);
 // router.use('/pehchan-correction', pehchanCorrectionRouter);
+
+// Admin / Database routes
+router.use('/admin', adminRouter);
 
 export { router };

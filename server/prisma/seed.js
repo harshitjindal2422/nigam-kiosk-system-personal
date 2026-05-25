@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -17,9 +16,9 @@ async function main() {
 
   console.log('🧹 Cleaned existing database tables.');
 
-  // 2. Hash passwords
-  const superAdminPasswordHash = await bcrypt.hash('SuperAdmin@123', 10);
-  const adminPasswordHash = await bcrypt.hash('Admin@123', 10);
+  // 2. Passwords (Plain Text)
+  const superAdminPasswordHash = 'SuperAdmin@123';
+  const adminPasswordHash = 'Admin@123';
 
   // 3. Create Super Admin
   const superAdmin = await prisma.superAdmin.create({

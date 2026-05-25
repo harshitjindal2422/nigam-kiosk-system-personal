@@ -5,6 +5,7 @@ import { useKioskStore } from '../../store/kioskStore.js';
 import { dictionary } from '../../translations/dictionary.js';
 import axiosInstance from '../../api/axiosInstance.js';
 import { createPortal } from 'react-dom';
+import printJS from 'print-js';
 
 export default function PrintModal() {
   const { 
@@ -43,6 +44,7 @@ export default function PrintModal() {
 
   // Spooling states
   const [spooledRecord, setSpooledRecord] = useState(null);
+  const [base64Pdf, setBase64Pdf] = useState(null);
 
   // 🔄 Real-time Payment Status Polling Effect
   useEffect(() => {
@@ -80,6 +82,9 @@ export default function PrintModal() {
               });
 
               setSpooledRecord(response.data);
+              if (response.data.base64Pdf) {
+                setBase64Pdf(response.data.base64Pdf);
+              }
               setStep('SUCCESS');
 
               // Play final thank you synthesized cue
@@ -120,21 +125,48 @@ export default function PrintModal() {
   // 🖨️ Physical Browser Printing Trigger Effect & Auto-Close
   useEffect(() => {
     if (step === 'SUCCESS' && spooledRecord) {
-      const printTimer = setTimeout(() => {
-        window.print();
-      }, 1000);
       
-      const redirectTimer = setTimeout(() => {
-        handleClose();
-        setKioskState('SLEEP');
-      }, 8000);
-      
-      return () => {
-        clearTimeout(printTimer);
-        clearTimeout(redirectTimer);
+      const handleAfterReceiptPrint = () => {
+        setTimeout(() => {
+          handleClose();
+          setKioskState('SLEEP');
+        }, 3000);
       };
+
+      window.addEventListener('afterprint', handleAfterReceiptPrint, { once: true });
+
+      if (base64Pdf) {
+        const printTimer = setTimeout(() => {
+          printJS({
+            printable: base64Pdf,
+            type: 'pdf',
+            base64: true,
+            onPrintDialogClose: () => {
+              // Trigger receipt print right after PDF print dialog closes
+              setTimeout(() => {
+                window.print();
+              }, 1000);
+            }
+          });
+        }, 1000);
+        
+        return () => {
+          clearTimeout(printTimer);
+          window.removeEventListener('afterprint', handleAfterReceiptPrint);
+        };
+      } else {
+        // If no PDF found, just print the receipt
+        const printTimer = setTimeout(() => {
+          window.print();
+        }, 1000);
+
+        return () => {
+          clearTimeout(printTimer);
+          window.removeEventListener('afterprint', handleAfterReceiptPrint);
+        };
+      }
     }
-  }, [step, spooledRecord]);
+  }, [step, spooledRecord, base64Pdf]);
 
   // Clear states on close/unmount
   const handleClose = () => {
@@ -153,6 +185,7 @@ export default function PrintModal() {
     setDetectedFile(null);
     setPaymentSession(null);
     setSpooledRecord(null);
+    setBase64Pdf(null);
     closeModal();
     // Return the kiosk to a clean HOME state when exiting the print wizard
     const storeState = useKioskStore.getState().kioskState;
@@ -279,6 +312,9 @@ export default function PrintModal() {
       });
 
       setSpooledRecord(response.data);
+      if (response.data.base64Pdf) {
+        setBase64Pdf(response.data.base64Pdf);
+      }
       setStep('SUCCESS');
 
       // Play final thank you synthesized cue
