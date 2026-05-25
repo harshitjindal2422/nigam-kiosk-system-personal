@@ -68,9 +68,10 @@ export default class PrintService {
   static async executePrint(data) {
     const { downloadedFileName, totalCopies } = data;
     const filePath = path.join(DOWNLOAD_DIR, downloadedFileName);
+    const isMock = downloadedFileName && downloadedFileName.startsWith('mock_download_');
 
     // 1. Double-check that the file exists before printing
-    if (!fs.existsSync(filePath)) {
+    if (!isMock && !fs.existsSync(filePath)) {
       throw new ApiError(404, 'Sandboxed certificate file not found. File may have been purged.');
     }
 
@@ -98,11 +99,15 @@ export default class PrintService {
     logger.info(`🖨️ [PRINTER]: Print spool completed. Triggering absolute sandbox purge...`);
 
     // 4. Delete the downloaded PDF file immediately to maintain strict user privacy
-    try {
-      fs.unlinkSync(filePath);
-      logger.info(`🗑️ [SANDBOX]: File ${downloadedFileName} permanently deleted to secure citizen details.`);
-    } catch (err) {
-      logger.error(`⚠️ [SANDBOX]: Failed to purge file ${downloadedFileName}: ${err.message}`);
+    if (!isMock) {
+      try {
+        fs.unlinkSync(filePath);
+        logger.info(`🗑️ [SANDBOX]: File ${downloadedFileName} permanently deleted to secure citizen details.`);
+      } catch (err) {
+        logger.error(`⚠️ [SANDBOX]: Failed to purge file ${downloadedFileName}: ${err.message}`);
+      }
+    } else {
+      logger.info(`🗑️ [SANDBOX]: Bypassed file purge for simulated mock file ${downloadedFileName}.`);
     }
 
     // 5. Commit atomic transaction logs to PostgreSQL via Prisma

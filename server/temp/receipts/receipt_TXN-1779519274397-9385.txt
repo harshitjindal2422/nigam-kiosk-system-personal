@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         5/23/2026, 12:24:38 PM
+SERVICE:      CERTIFICATE PRINT
+REG NO:       DEJGEC
+APPLICANT:    ABC
+MOBILE:       8003000770
+CERT TYPE:    BIRTH
+COPIES:       1
+AMOUNT:       ₹20.00
+TXN ID:       TXN-1779519274397-9385
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

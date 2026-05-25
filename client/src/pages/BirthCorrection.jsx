@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { QrCode, Printer, ArrowRight } from 'lucide-react';
+import { QrCode, Printer, ArrowRight, Users, Calendar, PenLine, Heart, UserCircle, Home, MapPin } from 'lucide-react';
 import { useKioskStore } from '../store/kioskStore.js';
 import axiosInstance from '../api/axiosInstance.js';
 import { createPortal } from 'react-dom';
@@ -21,12 +21,44 @@ const BIRTH_PARTICULARS = [
   { id: 12, label: 'Present Address English' }
 ];
 
+// Lucide icon mapping for GRID step
+const FIELD_ICONS = {
+  1: Users,
+  2: Calendar,
+  3: PenLine,
+  4: PenLine,
+  5: Heart,
+  6: Heart,
+  7: UserCircle,
+  8: UserCircle,
+  9: Home,
+  10: Home,
+  11: MapPin,
+  12: MapPin,
+};
+
+const FIELD_LABELS_HI = {
+  1: 'लिंग',
+  2: 'जन्म तिथि',
+  3: 'बच्चे का नाम (हिंदी)',
+  4: 'बच्चे का नाम (अंग्रेज़ी)',
+  5: 'माता का नाम (हिंदी)',
+  6: 'माता का नाम (अंग्रेज़ी)',
+  7: 'पिता का नाम (हिंदी)',
+  8: 'पिता का नाम (अंग्रेज़ी)',
+  9: 'स्थायी पता (हिंदी)',
+  10: 'स्थायी पता (अंग्रेज़ी)',
+  11: 'वर्तमान पता (हिंदी)',
+  12: 'वर्तमान पता (अंग्रेज़ी)',
+};
+
 export default function BirthCorrection() {
   const { language, setKioskState, speak, voiceAssist, triggerError } = useKioskStore();
   const navigate = useNavigate();
 
   // Workflow Steps: FORM -> PAYMENT -> SUCCESS
-  const [step, setStep] = useState('FORM');
+  // Workflow Steps: GRID -> FORM -> PAYMENT -> SUCCESS
+  const [step, setStep] = useState('GRID');
 
   // Form States
   const [headerDetails, setHeaderDetails] = useState({
@@ -105,6 +137,19 @@ export default function BirthCorrection() {
 
   const handleInputChange = (id, field, value) => {
     setRows(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+  };
+
+  // GRID step: pre-check selected field and transition to FORM
+  const handleFieldSelect = (id) => {
+    setRows(prev => {
+      const reset = {};
+      Object.keys(prev).forEach(key => {
+        reset[key] = { ...prev[key], checked: false, oldValue: '', newValue: '' };
+      });
+      reset[id] = { ...reset[id], checked: true };
+      return reset;
+    });
+    setStep('FORM');
   };
 
   const getSelectedCorrections = () => {
@@ -194,6 +239,40 @@ export default function BirthCorrection() {
         document.getElementById('header-action-portal')
       )}
 
+      {/* STEP 0: FIELD SELECTION GRID */}
+      {step === 'GRID' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="bg-[#b53d34] px-10 py-5 text-white shrink-0">
+            <h2 className="font-hindi text-3xl font-bold text-center m-0">
+              {language === 'hi' ? 'सुधार के लिए विवरण चुनें' : 'Select Field to Correct'}
+            </h2>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+            <div className="grid grid-cols-3 gap-5 max-w-[1000px] mx-auto">
+              {BIRTH_PARTICULARS.map((item) => {
+                const IconComp = FIELD_ICONS[item.id];
+                return (
+                  <motion.button
+                    key={item.id}
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleFieldSelect(item.id)}
+                    className="flex flex-col items-center justify-center gap-3 p-5 bg-white rounded-3xl border-2 border-slate-200 shadow-md hover:border-[#b53d34] hover:shadow-lg cursor-pointer transition-all min-h-[130px]"
+                  >
+                    <div className="w-14 h-14 rounded-full bg-[#b53d34]/10 flex items-center justify-center shrink-0">
+                      <IconComp className="w-7 h-7 text-[#b53d34]" />
+                    </div>
+                    <span className="font-rajdhani font-bold text-base text-navy text-center leading-tight">
+                      {language === 'hi' ? FIELD_LABELS_HI[item.id] : item.label}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* STEP 1: TABLE FORM */}
       {step === 'FORM' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col overflow-hidden relative">
@@ -221,10 +300,10 @@ export default function BirthCorrection() {
             </div>
 
             <div className="flex flex-col overflow-y-auto flex-1 p-4 gap-3">
-              {BIRTH_PARTICULARS.map((item) => (
+              {BIRTH_PARTICULARS.filter(item => rows[item.id].checked).map((item) => (
                 <div key={item.id} className="grid grid-cols-[80px_80px_1fr_1.2fr_1.2fr] items-center text-white py-1">
                   <div className="flex justify-center items-center">
-                    <input type="checkbox" className="w-6 h-6 cursor-pointer accent-white" checked={rows[item.id].checked} onChange={() => handleCheckboxChange(item.id)} />
+                    <input type="checkbox" className="w-6 h-6 accent-white" disabled={true} checked={rows[item.id].checked} onChange={() => handleCheckboxChange(item.id)} />
                   </div>
                   <div className="text-center font-bold text-lg">{item.id}</div>
                   <div className="font-bold text-[15px] pl-4 pr-4 tracking-wide">{item.label}</div>

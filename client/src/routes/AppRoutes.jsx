@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import KioskLayout from '../layouts/KioskLayout.jsx';
+import LanguageSelection from '../pages/LanguageSelection.jsx';
 import Home from '../pages/Home.jsx';
+import PrintSelection from '../pages/PrintSelection.jsx';
 import CorrectionSelection from '../pages/CorrectionSelection.jsx';
 import BirthCorrection from '../pages/BirthCorrection.jsx';
 import DeathCorrection from '../pages/DeathCorrection.jsx';
@@ -40,7 +42,9 @@ export default function AppRoutes() {
       <Routes>
         {/* 📱 Citizen Kiosk View Paths */}
         <Route path="/" element={<KioskLayout />}>
-          <Route index element={<Home />} />
+          <Route index element={<LanguageSelection />} />
+          <Route path="home" element={<Home />} />
+          <Route path="print" element={<PrintSelection />} />
           <Route path="correction" element={<CorrectionSelection />} />
           <Route path="correction/birth" element={<BirthCorrection />} />
           <Route path="correction/death" element={<DeathCorrection />} />

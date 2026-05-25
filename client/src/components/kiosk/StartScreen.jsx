@@ -1,16 +1,23 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useKioskStore } from '../../store/kioskStore.js';
 import { dictionary } from '../../translations/dictionary.js';
 
 export default function StartScreen() {
   const { language, setKioskState, kioskState } = useKioskStore();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   if (kioskState !== 'SLEEP') return null;
 
   const handleStart = () => {
     // Transition to active HOME screen state
     setKioskState('HOME');
+    // Always reset to Language Selection for fresh citizen session
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
   };
 
   return (

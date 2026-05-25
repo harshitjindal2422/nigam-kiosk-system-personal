@@ -33,8 +33,8 @@ export default function IdleOverlay() {
     // Automatically trigger page reload/reset when countdown hits 0
     if (idleSeconds >= maxIdleSeconds) {
       window.speechSynthesis.cancel();
-      // Reload page to reset states securely
-      window.location.reload();
+      // Navigate to Language Selection for fresh citizen session
+      window.location.href = '/';
     }
   }, [showWarning, remaining, idleSeconds]);
 
