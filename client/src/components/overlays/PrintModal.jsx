@@ -26,8 +26,8 @@ export default function PrintModal() {
   const [form, setForm] = useState({
     applicantName: '',
     mobileNumber: '',
-    registrationNumber: '',
-    certificateType: 'BIRTH', // BIRTH, DEATH, MARRIAGE
+    registrationNumber: `REG-${Math.floor(100000 + Math.random() * 900000)}`,
+    certificateType: (localStorage.getItem('kiosk_active_block') || 'birth').toUpperCase(), // BIRTH, DEATH, MARRIAGE
     totalCopies: 1
   });
   
@@ -127,44 +127,42 @@ export default function PrintModal() {
     if (step === 'SUCCESS' && spooledRecord) {
       
       const handleAfterReceiptPrint = () => {
-        setTimeout(() => {
-          handleClose();
-          setKioskState('SLEEP');
-        }, 3000);
+        if (base64Pdf) {
+          // Trigger certificate print right after receipt print closes
+          setTimeout(() => {
+            printJS({
+              printable: base64Pdf,
+              type: 'pdf',
+              base64: true,
+              onPrintDialogClose: () => {
+                // Return to home page after certificate print dialog closes
+                setTimeout(() => {
+                  handleClose();
+                  setKioskState('SLEEP');
+                }, 1000);
+              }
+            });
+          }, 1000);
+        } else {
+          // If no PDF found, just close
+          setTimeout(() => {
+            handleClose();
+            setKioskState('SLEEP');
+          }, 1000);
+        }
       };
 
       window.addEventListener('afterprint', handleAfterReceiptPrint, { once: true });
 
-      if (base64Pdf) {
-        const printTimer = setTimeout(() => {
-          printJS({
-            printable: base64Pdf,
-            type: 'pdf',
-            base64: true,
-            onPrintDialogClose: () => {
-              // Trigger receipt print right after PDF print dialog closes
-              setTimeout(() => {
-                window.print();
-              }, 1000);
-            }
-          });
-        }, 1000);
-        
-        return () => {
-          clearTimeout(printTimer);
-          window.removeEventListener('afterprint', handleAfterReceiptPrint);
-        };
-      } else {
-        // If no PDF found, just print the receipt
-        const printTimer = setTimeout(() => {
-          window.print();
-        }, 1000);
+      // Trigger receipt print first
+      const printTimer = setTimeout(() => {
+        window.print();
+      }, 1000);
 
-        return () => {
-          clearTimeout(printTimer);
-          window.removeEventListener('afterprint', handleAfterReceiptPrint);
-        };
-      }
+      return () => {
+        clearTimeout(printTimer);
+        window.removeEventListener('afterprint', handleAfterReceiptPrint);
+      };
     }
   }, [step, spooledRecord, base64Pdf]);
 
@@ -177,8 +175,8 @@ export default function PrintModal() {
     setForm({
       applicantName: '',
       mobileNumber: '',
-      registrationNumber: '',
-      certificateType: 'BIRTH',
+      registrationNumber: `REG-${Math.floor(100000 + Math.random() * 900000)}`,
+      certificateType: (localStorage.getItem('kiosk_active_block') || 'birth').toUpperCase(),
       totalCopies: 1
     });
     setError('');
@@ -210,10 +208,6 @@ export default function PrintModal() {
     }
     if (!form.mobileNumber.match(/^[0-9]{10}$/)) {
       setError(language === 'hi' ? 'कृपया 10-अंकीय मान्य मोबाइल नंबर दर्ज करें' : 'Please enter a valid 10-digit mobile number');
-      return;
-    }
-    if (!form.registrationNumber.trim()) {
-      setError(language === 'hi' ? 'कृपया पंजीकरण संख्या दर्ज करें' : 'Please enter registration number');
       return;
     }
 
@@ -430,37 +424,6 @@ export default function PrintModal() {
                     onChange={(e) => setForm({ ...form, mobileNumber: e.target.value.replace(/[^0-9]/g, '') })}
                     className="p-4 border-2 border-slate-300 rounded-2xl text-xl font-bold text-navy bg-white focus:border-navy outline-none font-rajdhani"
                   />
-                </div>
-
-                {/* 3. Registration Number */}
-                <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-600 font-rajdhani text-lg">
-                    {language === 'hi' ? 'प्रमाण-पत्र पंजीकरण संख्या' : 'Certificate Registration Number'}
-                  </label>
-                  <input 
-                    type="text"
-                    required
-                    placeholder="e.g. B-2026/89712"
-                    value={form.registrationNumber}
-                    onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })}
-                    className="p-4 border-2 border-slate-300 rounded-2xl text-xl font-bold text-navy bg-white focus:border-navy outline-none font-rajdhani uppercase"
-                  />
-                </div>
-
-                {/* 4. Certificate Type Select */}
-                <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-600 font-rajdhani text-lg">
-                    {language === 'hi' ? 'प्रमाण-पत्र का प्रकार' : 'Type of Certificate'}
-                  </label>
-                  <select 
-                    value={form.certificateType}
-                    onChange={(e) => setForm({ ...form, certificateType: e.target.value })}
-                    className="p-4 border-2 border-slate-300 rounded-2xl text-xl font-bold text-navy bg-white focus:border-navy outline-none font-rajdhani"
-                  >
-                    <option value="BIRTH">{language === 'hi' ? 'जन्म प्रमाण-पत्र (Birth Certificate)' : 'Birth Certificate'}</option>
-                    <option value="DEATH">{language === 'hi' ? 'मृत्यु प्रमाण-पत्र (Death Certificate)' : 'Death Certificate'}</option>
-                    <option value="MARRIAGE">{language === 'hi' ? 'विवाह प्रमाण-पत्र (Marriage Certificate)' : 'Marriage Certificate'}</option>
-                  </select>
                 </div>
               </div>
 

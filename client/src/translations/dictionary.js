@@ -16,6 +16,33 @@ export const dictionary = {
     btn4_title: "पंजीकरण<br>खोजें",
     btn4_desc: "पहचान पोर्टल पर पंजीकरण खोजने के लिए जाएँ",
 
+    // V2.0 Main Home Blocks
+    block_birth_title: "जन्म प्रमाण-पत्र सेवाएं",
+    block_birth_desc: "नवीन जन्म पंजीकरण, प्रमाणपत्र डाउनलोड, व सुधार टोकन हेतु",
+    block_death_title: "मृत्यु प्रमाण-पत्र सेवाएं",
+    block_death_desc: "नवीन मृत्यु पंजीकरण, प्रमाणपत्र डाउनलोड, व सुधार टोकन हेतु",
+    block_marriage_title: "विवाह प्रमाण-पत्र सेवाएं",
+    block_marriage_desc: "नवीन विवाह पंजीकरण टोकन आवेदन हेतु",
+
+    // V2.0 Service Selection
+    service_select_title: "सेवा का चयन करें",
+    service_dl_title: "प्रमाण-पत्र डाउनलोड / प्रिंट",
+    service_dl_desc: "पहचान पोर्टल से प्रमाणपत्र डाउनलोड कर तुरंत प्रिंट प्राप्त करें",
+    service_corr_title: "प्रमाण-पत्र में सुधार अनुरोध",
+    service_corr_desc: "प्रमाणपत्र विवरण में संशोधन हेतु काउंटर टोकन प्राप्त करें",
+    service_reg_title: "नवीन प्रमाण-पत्र पंजीकरण",
+    service_reg_desc: "नवीन पंजीकरण आवेदन प्रक्रिया शुरू करने हेतु काउंटर टोकन प्राप्त करें",
+    service_marriage_only: "विवाह विभाग के अंतर्गत केवल नवीन पंजीकरण उपलब्ध है।",
+
+    // V2.0 Token Generation Page
+    token_gen_title: "टोकन सफलतापूर्वक जनरेट हुआ!",
+    token_number_label: "टोकन नंबर",
+    token_block_label: "विभाग",
+    token_service_label: "सेवा प्रकार",
+    token_print_receipt: "टोकन रसीद प्रिंट करें",
+    token_instructions: "कृपया प्रिंट की गई रसीद को लें और नगर निगम प्रशासनिक काउंटर पर जाएँ। काउंटर अधिकारी आपका आवेदन संसाधित करेंगे।",
+    token_back_home: "मुख्य पृष्ठ पर लौटें",
+
     // Session Reset & Idle Overlay
     auto_reset: "ऑटो रीसेट",
     reset_msg_hi: "सत्र समाप्त हो रहा है...",
@@ -110,6 +137,33 @@ export const dictionary = {
     btn3_desc: "Generate a token receipt for correction request",
     btn4_title: "Search<br>Registration",
     btn4_desc: "Search for registration details on Pehchan portal",
+
+    // V2.0 Main Home Blocks
+    block_birth_title: "Birth Certificate Services",
+    block_birth_desc: "New birth registration, certificate download, or correction token",
+    block_death_title: "Death Certificate Services",
+    block_death_desc: "New death registration, certificate download, or correction token",
+    block_marriage_title: "Marriage Certificate Services",
+    block_marriage_desc: "Apply for a new marriage registration counter token",
+
+    // V2.0 Service Selection
+    service_select_title: "Select Service Option",
+    service_dl_title: "Download & Print Certificate",
+    service_dl_desc: "Download certificate from Pehchan Portal and print instantly here",
+    service_corr_title: "Request Certificate Correction",
+    service_corr_desc: "Get counter token to correct details in certificate at the office",
+    service_reg_title: "New Certificate Registration",
+    service_reg_desc: "Get counter token to begin registration process for new event",
+    service_marriage_only: "Only New Registration is available under the Marriage block.",
+
+    // V2.0 Token Generation Page
+    token_gen_title: "Token Successfully Generated!",
+    token_number_label: "Token Number",
+    token_block_label: "Department",
+    token_service_label: "Service Type",
+    token_print_receipt: "Print Token Receipt",
+    token_instructions: "Please collect the printed token receipt and proceed to the Nagar Nigam Admin Counter. The counter executive will process your request.",
+    token_back_home: "Back to Home Screen",
 
     // Session Reset & Idle Overlay
     auto_reset: "AUTO RESET",

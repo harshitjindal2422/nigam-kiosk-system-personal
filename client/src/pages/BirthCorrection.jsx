@@ -121,15 +121,37 @@ export default function BirthCorrection() {
     };
   }, [step, paymentSession, headerDetails, rows]);
 
-  // 🖨️ Physical Browser Printing Trigger Effect
+  // 🖨️ Physical Browser Printing Trigger Effect & Auto-Close
   useEffect(() => {
     if (step === 'SUCCESS' && tokenRecord) {
+      const handleAfterPrint = () => {
+        setKioskState('SLEEP');
+        navigate('/');
+      };
+
+      window.addEventListener('afterprint', handleAfterPrint, { once: true });
+
       const printTimer = setTimeout(() => {
         window.print();
       }, 1000);
-      return () => clearTimeout(printTimer);
+
+      return () => {
+        clearTimeout(printTimer);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
     }
-  }, [step, tokenRecord]);
+  }, [step, tokenRecord, navigate, setKioskState]);
+
+  // ⏳ Auto-redirect fallback after SUCCESS
+  useEffect(() => {
+    if (step === 'SUCCESS') {
+      const redirectTimer = setTimeout(() => {
+        setKioskState('SLEEP');
+        navigate('/');
+      }, 8000);
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [step, navigate, setKioskState]);
 
   const handleCheckboxChange = (id) => {
     setRows(prev => ({ ...prev, [id]: { ...prev[id], checked: !prev[id].checked } }));

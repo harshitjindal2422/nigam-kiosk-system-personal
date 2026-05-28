@@ -16,7 +16,11 @@ export default function AdminLogin() {
     
     const result = await login(email, password);
     if (result.success) {
-      navigate('/admin/dashboard');
+      if (result.role === 'COUNTER_OPERATOR') {
+        navigate('/counter/dashboard');
+      } else {
+        navigate('/admin/dashboard');
+      }
     } else {
       setLocalError(result.message);
     }

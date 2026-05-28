@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Activity, Receipt, Printer, Landmark, LayoutDashboard, Users, Database } from 'lucide-react';
+import { LogOut, Activity, Receipt, Printer, Landmark, LayoutDashboard, Users, Database, ShieldAlert } from 'lucide-react';
 import QueueManager from '../components/admin/QueueManager.jsx';
 import DatabaseViewer from '../components/admin/DatabaseViewer.jsx';
+import CounterOperations from '../components/admin/CounterOperations.jsx';
+import OperatorManager from '../components/admin/OperatorManager.jsx';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuthStore();
@@ -93,6 +95,20 @@ export default function AdminDashboard() {
           >
             <Database className="w-5 h-5" /> Database Viewer
           </button>
+          <button 
+            onClick={() => setActiveTab('counter_ops')}
+            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-colors ${activeTab === 'counter_ops' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+          >
+            <ShieldAlert className="w-5 h-5" /> Counter Operations
+          </button>
+          {user?.role === 'SUPER_ADMIN' && (
+            <button 
+              onClick={() => setActiveTab('operators')}
+              className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-colors ${activeTab === 'operators' ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+            >
+              <Users className="w-5 h-5" /> Manage Operators
+            </button>
+          )}
         </div>
 
         {activeTab === 'overview' && (
@@ -133,6 +149,10 @@ export default function AdminDashboard() {
         {activeTab === 'queue' && <QueueManager />}
         
         {activeTab === 'database' && <DatabaseViewer />}
+
+        {activeTab === 'counter_ops' && <CounterOperations />}
+
+        {activeTab === 'operators' && user?.role === 'SUPER_ADMIN' && <OperatorManager />}
 
       </main>
     </div>

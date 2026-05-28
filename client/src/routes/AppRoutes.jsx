@@ -8,8 +8,11 @@ import PrintSelection from '../pages/PrintSelection.jsx';
 import CorrectionSelection from '../pages/CorrectionSelection.jsx';
 import BirthCorrection from '../pages/BirthCorrection.jsx';
 import DeathCorrection from '../pages/DeathCorrection.jsx';
+import ServiceSelection from '../pages/ServiceSelection.jsx';
+import TokenGeneration from '../pages/TokenGeneration.jsx';
 import AdminLogin from '../pages/AdminLogin.jsx';
 import AdminDashboard from '../pages/AdminDashboard.jsx';
+import CounterDashboard from '../pages/CounterDashboard.jsx';
 
 // 🛡️ Protected Route Guard for Administrative views
 function ProtectedRoute({ children }) {
@@ -44,6 +47,8 @@ export default function AppRoutes() {
         <Route path="/" element={<KioskLayout />}>
           <Route index element={<LanguageSelection />} />
           <Route path="home" element={<Home />} />
+          <Route path="services" element={<ServiceSelection />} />
+          <Route path="token-generation" element={<TokenGeneration />} />
           <Route path="print" element={<PrintSelection />} />
           <Route path="correction" element={<CorrectionSelection />} />
           <Route path="correction/birth" element={<BirthCorrection />} />
@@ -57,6 +62,14 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/counter/dashboard"
+          element={
+            <ProtectedRoute>
+              <CounterDashboard />
             </ProtectedRoute>
           }
         />

@@ -2,8 +2,12 @@ import React, { useEffect } from 'react';
 import { useKioskStore } from '../store/kioskStore.js';
 import ServiceCard from '../components/kiosk/ServiceCard.jsx';
 
+import { useSearchParams } from 'react-router-dom';
+
 export default function PrintSelection() {
   const { language, setKioskState, speak, voiceAssist } = useKioskStore();
+  const [searchParams] = useSearchParams();
+  const block = searchParams.get('block') || 'birth';
 
   useEffect(() => {
     if (voiceAssist) {
@@ -17,6 +21,7 @@ export default function PrintSelection() {
   // Block 1: Pehchan Certificate Download & Print (exact original handler)
   const handlePrintDocuments = () => {
     setKioskState('PAUSE', 'BLOCK_1');
+    localStorage.setItem('kiosk_active_block', block);
     window.open(
       'https://pehchan.rajasthan.gov.in/ECertificate.aspx',
       '_blank'
@@ -26,6 +31,7 @@ export default function PrintSelection() {
   // Block 2: Registration Search on Pehchan Portal (exact original handler)
   const handleSearchPortal = () => {
     setKioskState('PAUSE', 'BLOCK_2');
+    localStorage.setItem('kiosk_active_block', block);
     window.open(
       'https://pehchan.rajasthan.gov.in/VerifyRegisNum.aspx?PehRed=MmRkYzZkZWY=OGRlYjRmY2NlZWQwOTcwZGJmOGZjMWE=',
       '_blank'

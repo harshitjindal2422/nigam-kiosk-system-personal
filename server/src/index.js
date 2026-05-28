@@ -18,6 +18,33 @@ if (!fs.existsSync(TEMP_DOWNLOAD_DIR)) {
   logger.info(`📁 Created temporary downloaded files directory at: ${TEMP_DOWNLOAD_DIR}`);
 }
 
+// Function to clean up sandboxed downloaded files older than 3 days
+function cleanupSandboxedFiles() {
+  try {
+    const files = fs.readdirSync(TEMP_DOWNLOAD_DIR);
+    const now = Date.now();
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+
+    files.forEach((file) => {
+      if (file === '.gitkeep') return;
+      
+      const filePath = path.join(TEMP_DOWNLOAD_DIR, file);
+      const stats = fs.statSync(filePath);
+      
+      if (now - stats.mtimeMs > threeDaysMs) {
+        fs.unlinkSync(filePath);
+        logger.info(`🗑️ [SANDBOX CLEANUP]: Automatically purged old downloaded file ${file} (older than 3 days).`);
+      }
+    });
+  } catch (error) {
+    logger.error('⚠️ [SANDBOX CLEANUP]: Error running background cleanup:', error);
+  }
+}
+
+// Execute cleanup immediately on startup and run hourly in the background
+cleanupSandboxedFiles();
+setInterval(cleanupSandboxedFiles, 60 * 60 * 1000);
+
 // 3. Connect to database & start server
 let server;
 

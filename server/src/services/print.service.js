@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { PDFDocument } from 'pdf-lib';
 import { logger } from '../config/logger.js';
 import PrintRepository from '../repositories/print.repository.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -8,6 +9,9 @@ import { ApiError } from '../utils/ApiError.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOWNLOAD_DIR = path.resolve(__dirname, '../../temp/downloads');
 const RECEIPTS_DIR = path.resolve(__dirname, '../../temp/receipts');
+
+// Keep track of already printed sandboxed files to prevent double-detection
+const PRINTED_FILES = new Set();
 
 export default class PrintService {
   /**
@@ -28,11 +32,13 @@ export default class PrintService {
       return null;
     }
 
-    // 3. Resolve the latest modified PDF based on timestamp
+    // 3. Resolve the latest modified PDF based on timestamp (skipping already printed files)
     let latestFile = null;
     let latestTime = 0;
 
     for (const file of pdfFiles) {
+      if (PRINTED_FILES.has(file)) continue;
+
       const filePath = path.join(DOWNLOAD_DIR, file);
       const stat = fs.statSync(filePath);
 
@@ -98,22 +104,44 @@ export default class PrintService {
 
     logger.info(`🖨️ [PRINTER]: Print spool completed. Triggering absolute sandbox purge...`);
 
-    // 4. Read the file to Base64 then delete it to maintain strict user privacy
+    // 4. Read the file, duplicate pages based on totalCopies, and save to secure privacy
     let base64Pdf = null;
-    if (!isMock) {
-      try {
+    try {
+      let existingPdfBytes = null;
+      if (!isMock) {
         if (fs.existsSync(filePath)) {
-          const fileBuffer = fs.readFileSync(filePath);
-          base64Pdf = fileBuffer.toString('base64');
-          fs.unlinkSync(filePath);
-          logger.info(`🗑️ [SANDBOX]: File ${downloadedFileName} permanently deleted to secure citizen details.`);
+          existingPdfBytes = fs.readFileSync(filePath);
         }
-      } catch (err) {
-        logger.error(`⚠️ [SANDBOX]: Failed to purge file ${downloadedFileName}: ${err.message}`);
+      } else {
+        const mockBase64 = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
+        existingPdfBytes = Buffer.from(mockBase64, 'base64');
       }
-    } else {
-      logger.info(`🗑️ [SANDBOX]: Bypassed file purge for simulated mock file ${downloadedFileName}.`);
-      base64Pdf = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
+
+      if (existingPdfBytes) {
+        const pdfDoc = await PDFDocument.load(existingPdfBytes);
+        const outputPdf = await PDFDocument.create();
+        const copiesToMake = Math.max(1, parseInt(totalCopies) || 1);
+
+        for (let i = 0; i < copiesToMake; i++) {
+          const copiedPages = await outputPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+          copiedPages.forEach((page) => {
+            outputPdf.addPage(page);
+          });
+        }
+
+        const pdfBytes = await outputPdf.save();
+        base64Pdf = Buffer.from(pdfBytes).toString('base64');
+
+        if (!isMock) {
+          PRINTED_FILES.add(downloadedFileName);
+          logger.info(`💾 [SANDBOX]: File ${downloadedFileName} marked as printed in memory. Will be permanently deleted after 3 days.`);
+        } else {
+          logger.info(`🗑️ [SANDBOX]: Bypassed file actions for simulated mock file ${downloadedFileName}.`);
+        }
+      }
+    } catch (err) {
+      logger.error(`⚠️ [SANDBOX]: Failed to process file ${downloadedFileName} using pdf-lib: ${err.message}`);
+      throw new ApiError(500, `Failed to process PDF for printing: ${err.message}`);
     }
 
     // 5. Commit atomic transaction logs to PostgreSQL via Prisma

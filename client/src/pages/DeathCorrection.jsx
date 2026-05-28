@@ -127,17 +127,28 @@ export default function DeathCorrection() {
     };
   }, [step, paymentSession, headerDetails, rows]);
 
-  // 🖨️ Physical Browser Printing Trigger Effect
+  // 🖨️ Physical Browser Printing Trigger Effect & Auto-Close
   useEffect(() => {
     if (step === 'SUCCESS' && tokenRecord) {
+      const handleAfterPrint = () => {
+        setKioskState('SLEEP');
+        navigate('/');
+      };
+
+      window.addEventListener('afterprint', handleAfterPrint, { once: true });
+
       const printTimer = setTimeout(() => {
         window.print();
       }, 1000);
-      return () => clearTimeout(printTimer);
-    }
-  }, [step, tokenRecord]);
 
-  // ⏳ Auto-redirect after SUCCESS
+      return () => {
+        clearTimeout(printTimer);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+    }
+  }, [step, tokenRecord, navigate, setKioskState]);
+
+  // ⏳ Auto-redirect fallback after SUCCESS
   useEffect(() => {
     if (step === 'SUCCESS') {
       const redirectTimer = setTimeout(() => {
@@ -146,7 +157,7 @@ export default function DeathCorrection() {
       }, 8000);
       return () => clearTimeout(redirectTimer);
     }
-  }, [step]);
+  }, [step, navigate, setKioskState]);
 
   const handleCheckboxChange = (id) => {
     setRows(prev => ({ ...prev, [id]: { ...prev[id], checked: !prev[id].checked } }));

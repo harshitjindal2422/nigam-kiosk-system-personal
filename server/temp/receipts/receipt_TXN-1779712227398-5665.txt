@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         25/5/2026, 6:00:31 pm
+SERVICE:      CERTIFICATE PRINT
+REG NO:       FGFDG-62323
+APPLICANT:    RISHAB SHARMA
+MOBILE:       9863257410
+CERT TYPE:    BIRTH
+COPIES:       3
+AMOUNT:       ₹60.00
+TXN ID:       TXN-1779712227398-5665
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

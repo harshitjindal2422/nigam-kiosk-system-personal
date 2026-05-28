@@ -41,9 +41,20 @@ export default function QueueManager() {
     const synth = window.speechSynthesis;
     if (synth) {
       synth.cancel();
-      const msg = "Token number " + tokenStr.replace('-', ' ') + ", please come to the counter.";
+      
+      const cleanToken = tokenStr.replace('-', ' ');
+      const msg = `टोकन नंबर ${cleanToken}, कृपया काउंटर पर आएं।`;
+      
       const utterance = new SpeechSynthesisUtterance(msg);
-      utterance.rate = 0.9;
+      utterance.lang = 'hi-IN';
+      utterance.rate = 0.85;
+      
+      const voices = synth.getVoices();
+      const hindiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+      if (hindiVoice) {
+        utterance.voice = hindiVoice;
+      }
+      
       synth.speak(utterance);
     }
   };
