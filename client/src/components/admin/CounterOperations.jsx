@@ -21,7 +21,17 @@ export default function CounterOperations() {
 
   // Local Wizard Wizard State
   const [tokenInput, setTokenInput] = useState('');
-  const [step, setStep] = useState('VERIFICATION'); // VERIFICATION, DETAILS, SCANNING, PAYMENT, COMPLETE
+  const [step, setStep] = useState('VERIFICATION'); // VERIFICATION, CORRECTION_FIELDS, DETAILS, SCANNING, PAYMENT, COMPLETE
+  
+  const getStepNumber = (currentStepName) => {
+    const isCorrection = activeTokenProcess?.serviceType === 'correction';
+    const stepsList = isCorrection 
+      ? ['VERIFICATION', 'CORRECTION_FIELDS', 'DETAILS', 'SCANNING', 'PAYMENT', 'COMPLETE']
+      : ['VERIFICATION', 'DETAILS', 'SCANNING', 'PAYMENT', 'COMPLETE'];
+    
+    const index = stepsList.indexOf(currentStepName);
+    return index !== -1 ? index + 1 : 1;
+  };
   
   // Verification states
   const [cameraActive, setCameraActive] = useState(false);
@@ -60,6 +70,7 @@ export default function CounterOperations() {
     ageAtDeath: '',
     causeOfDeath: '',
     placeOfDeath: '',
+    placeOfDeathCategory: 'HOSPITAL',
     
     // Marriage
     groomName: '',
@@ -87,15 +98,51 @@ export default function CounterOperations() {
     const block = activeTokenProcess?.block || 'birth';
     if (block === 'death') {
       return [
-        { id: 'deceasedName', label: "Deceased Name (मृतक का नाम)", isMajor: true },
-        { id: 'fatherHusbandName', label: "Father's / Husband's Name (पिता/पति का नाम)", isMajor: true },
-        { id: 'dod', label: "Date of Death (मृत्यु तिथि)", isMajor: true },
-        { id: 'placeOfDeath', label: "Place of Death (मृत्यु का स्थान)", isMajor: true },
-        { id: 'permanentAddress', label: "Permanent Address (स्थायी पता)", isMajor: true },
-        { id: 'gender', label: "Gender (लिंग)", isMajor: false },
-        { id: 'ageAtDeath', label: "Age at Death (मृत्यु के समय आयु)", isMajor: false },
-        { id: 'informantName', label: "Informant Name (सचेतक का नाम)", isMajor: false },
-        { id: 'informantAddress', label: "Informant Address (सचेतक का पता)", isMajor: false }
+        { id: 'deceasedNameHi', label: "मृतक का नाम हिंदी में (Deceased Name in Hindi)", isMajor: true },
+        { id: 'deceasedNameEn', label: "मृतक का नाम अंग्रेजी में (Deceased Name in English)", isMajor: true },
+        { id: 'motherNameHi', label: "मृतक की माता का नाम हिंदी में (Mother's Name in Hindi)", isMajor: true },
+        { id: 'motherNameEn', label: "मृतक की माता का नाम अंग्रेजी में (Mother's Name in English)", isMajor: true },
+        { id: 'fatherNameHi', label: "मृतक के पिता का नाम हिंदी में (Father's Name in Hindi)", isMajor: true },
+        { id: 'fatherNameEn', label: "मृतक के पिता का नाम अंग्रेजी में (Father's Name in English)", isMajor: true },
+        { id: 'spouseNameHi', label: "मृतक के पति/पत्नी का नाम हिंदी में (Spouse Name in Hindi)", isMajor: true },
+        { id: 'spouseNameEn', label: "मृतक के पति/पत्नी का नाम अंग्रेजी में (Spouse Name in English)", isMajor: true },
+        { id: 'dod', label: "मृत्यु की दिनांक (Date of Death)", isMajor: true },
+        { id: 'hospitalName', label: "अस्पताल का नाम / मृत्यु स्थान (Hospital / Place of Death)", isMajor: true },
+        
+        // Minor Fields
+        { id: 'permanentAddressHi', label: "मृतक का स्थायी पता हिंदी में (Deceased Permanent Address in Hindi)", isMajor: false },
+        { id: 'permanentAddressEn', label: "मृतक का स्थायी पता अंग्रेजी में (Deceased Permanent Address in English)", isMajor: false },
+        { id: 'deathAddressHi', label: "मृतक का मृत्यु के समय पता हिंदी में (Address at Time of Death in Hindi)", isMajor: false },
+        { id: 'deathAddressEn', label: "मृतक का मृत्यु के समय पता अंग्रेजी में (Address at Time of Death in English)", isMajor: false },
+        { id: 'deceasedAge', label: "मृतक की आयु (Deceased Age)", isMajor: false },
+        { id: 'janAadhaar', label: "जन-आधार (Jan-Aadhaar)", isMajor: false },
+        { id: 'dateOfInformation', label: "सूचना की दिनांक (Date of Information)", isMajor: false },
+        { id: 'dateOfRegistration', label: "पंजीकरण की दिनांक (Date of Registration)", isMajor: false },
+        { id: 'informantMobile', label: "इत्तिला देने वाले का मोबाइल नंबर (Informant's Mobile Number)", isMajor: false },
+        { id: 'pincode', label: "पिन कोड (Pin Code)", isMajor: false },
+        { id: 'informantEmail', label: "इत्तिला देने वाले का ईमेल (Informant's Email)", isMajor: false },
+        { id: 'fatherAadhaar', label: "पिता का आधार नंबर (Father's Aadhaar Number)", isMajor: false },
+        { id: 'motherAadhaar', label: "माता का आधार नंबर (Mother's Aadhaar Number)", isMajor: false },
+        { id: 'deceasedAadhaar', label: "मृतक का आधार नंबर (Deceased's Aadhaar Number)", isMajor: false },
+        { id: 'spouseAadhaar', label: "मृतक के पति/पत्नी का आधार (Deceased's Spouse's Aadhaar)", isMajor: false },
+        { id: 'informantNameHi', label: "इत्तिला देने वाले का नाम (Informant's Name)", isMajor: false },
+        { id: 'informantNameEn', label: "इत्तिला देने वाले का नाम अंग्रेजी में (Informant's Name in English)", isMajor: false },
+        { id: 'informantAddress', label: "इत्तिला देने वाले का पता (Informant's Address)", isMajor: false },
+        { id: 'informantAadhaar', label: "इत्तिला देने वाले का आधार नंबर (Informant's Aadhaar Number)", isMajor: false },
+        { id: 'gender', label: "लिंग (Gender)", isMajor: false },
+        { id: 'remarksHi', label: "टिप्पणी हिंदी में (Remarks in Hindi)", isMajor: false },
+        { id: 'remarksEn', label: "टिप्पणी अंग्रेजी में (Remarks in English)", isMajor: false },
+        { id: 'eSign', label: "ई-साइन (E-Sign)", isMajor: false },
+        { id: 'deceasedDob', label: "मृतक की जन्म दिनांक (Deceased Date of Birth)", isMajor: false },
+        { id: 'motherMobile', label: "माता का मोबाइल नंबर (Mother's Mobile Number)", isMajor: false },
+        { id: 'motherEmail', label: "माता का ईमेल (Mother's Email)", isMajor: false },
+        { id: 'fatherMobile', label: "पिता का मोबाइल नंबर (Father's Mobile Number)", isMajor: false },
+        { id: 'fatherEmail', label: "पिता का ईमेल (Father's Email)", isMajor: false },
+        { id: 'spouseDob', label: "मृतक के पति / पत्नी की जन्म दिनांक (Spouse's Date of Birth)", isMajor: false },
+        { id: 'spouseEmail', label: "मृतक के पति / पत्नी का ईमेल (Spouse's Email)", isMajor: false },
+        { id: 'spouseAge', label: "मृतक के पति / पत्नी की आयु (Spouse's Age)", isMajor: false },
+        { id: 'spouseMobile', label: "मृतक के पति / पत्नी का मोबाइल नंबर (Spouse's Mobile Number)", isMajor: false },
+        { id: 'affidavitCorrection', label: "एफिडेविट में संशोधन (Affidavit Amendment)", isMajor: false }
       ];
     } else if (block === 'marriage') {
       return [
@@ -187,6 +234,7 @@ export default function CounterOperations() {
         ageAtDeath: '',
         causeOfDeath: '',
         placeOfDeath: '',
+        placeOfDeathCategory: 'HOSPITAL',
         groomName: '',
         groomAge: '',
         groomFather: '',
@@ -268,9 +316,57 @@ export default function CounterOperations() {
     if (!activeTokenProcess) return [];
 
     if (activeTokenProcess.serviceType === 'correction') {
+      const block = activeTokenProcess.block;
       const docs = [];
       const selectedIds = Object.keys(selectedFields).filter(id => selectedFields[id]);
       
+      if (block === 'death') {
+        // Name Corrections (Deceased, spouse, parents)
+        if (
+          selectedIds.includes('deceasedNameHi') || selectedIds.includes('deceasedNameEn') ||
+          selectedIds.includes('spouseNameHi') || selectedIds.includes('spouseNameEn') ||
+          selectedIds.includes('fatherNameHi') || selectedIds.includes('fatherNameEn') ||
+          selectedIds.includes('motherNameHi') || selectedIds.includes('motherNameEn')
+        ) {
+          docs.push("Two Identity Cards other than Aadhaar/JanAadhaar (आधार व जन आधार के अतिरिक्त कोई दो पहचान पत्र ID)");
+          docs.push("Magistrate-certified name change affidavit (नाम संशोधन हेतु मजिस्ट्रेट शपथ पत्र)");
+          if (selectedIds.includes('spouseNameHi') || selectedIds.includes('spouseNameEn')) {
+            docs.push("Deceased Identity Proof (मृतक की आईडी)");
+            docs.push("Spouse Aadhaar Card (पति/पत्नी का आधार कार्ड)");
+            docs.push("Two Identity Cards other than JanAadhaar e.g. Voter ID, Ration Card (जन आधार के अतिरिक्त दो आईडी जैसे वोटर आईडी, राशन कार्ड)");
+          }
+        }
+        // Date of Death Corrections
+        if (selectedIds.includes('dod')) {
+          docs.push("Hospital death verification records (अस्पताल के मृत्यु संबंधी दस्तावेज व रिकॉर्ड)");
+        }
+        // Place of Death Corrections
+        if (selectedIds.includes('hospitalName')) {
+          docs.push("Hospital death registration discharge summary (अस्पताल मृत्यु रिकॉर्ड व प्रपत्र)");
+        }
+        // Address Corrections
+        if (
+          selectedIds.includes('permanentAddressHi') || selectedIds.includes('permanentAddressEn') ||
+          selectedIds.includes('deathAddressHi') || selectedIds.includes('deathAddressEn')
+        ) {
+          docs.push("Deceased Address Proof Document (मृतक के पते के सत्यापन हेतु दस्तावेज)");
+        }
+        // Aadhaar corrections
+        if (
+          selectedIds.includes('deceasedAadhaar') || selectedIds.includes('spouseAadhaar') ||
+          selectedIds.includes('fatherAadhaar') || selectedIds.includes('motherAadhaar') ||
+          selectedIds.includes('informantAadhaar')
+        ) {
+          docs.push("Copy of Aadhaar Card matching registry (आधार कार्ड की प्रति)");
+        }
+        
+        if (docs.length === 0) {
+          docs.push("Self-Declaration Form verified by Municipal councilor (पार्षद द्वारा सत्यापित स्व-घोषणा पत्र)");
+        }
+        return [...new Set(docs)];
+      }
+
+      // Default / Birth block correction documents
       if (
         selectedIds.includes('childName') || 
         selectedIds.includes('childNameHi') || 
@@ -314,11 +410,25 @@ export default function CounterOperations() {
           "Self-declaration address verification (स्व-घोषणा पता प्रमाण)"
         ];
       } else if (blockType === 'death') {
-        return [
-          "Medical Practitioner Death Certificate (चिकित्सक मृत्यु प्रमाण-पत्र)",
-          "Cremation / Burial Ground receipt (श्मशान/कब्रिस्तान रसीद)",
-          "Aadhaar Card copy of deceased (मृतक का आधार कार्ड)"
-        ];
+        const placeCat = newRegData.placeOfDeathCategory || 'HOSPITAL';
+        if (placeCat === 'HOSPITAL') {
+          return [
+            "Hospital death report Propatra-2 (अस्पताल प्रपत्र-2 एवं प्रमाणित रिपोर्ट फोरम)",
+            "Aadhaar/JanAadhaar copy of Deceased, Spouse & Parents (मृतक, मृतक के पति/पत्नी, माता-पिता के आधार, जन आधार की प्रति)"
+          ];
+        } else if (placeCat === 'HOME') {
+          return [
+            "Affidavit & Report Form-2 (शपथ पत्र, रिपोर्ट फोरम प्रपत्र-2)",
+            "Government employee certified Report Propatra-2 or verification document (राजकीय कार्मिक से प्रमाणित रिपोर्ट फोरम प्रपत्र-2 अथवा मृत्यु प्रमाणीकरण दस्तावेज)",
+            "Deceased, spouse & parents identity/Aadhaar proof (मृतक, मृतक के पति/पत्नी, माता-पिता के पहचान दस्तावेज/आधार आईडी)"
+          ];
+        } else {
+          // BROUGHT_DEAD
+          return [
+            "Letter of Brought Dead from hospital (अस्पताल Brought Dead पत्र)",
+            "Report Form-2 certified by Hospital (अस्पताल से प्रमाणित रिपोर्ट फोरम प्रपत्र-2)"
+          ];
+        }
       } else {
         // Marriage
         return [
@@ -418,6 +528,7 @@ export default function CounterOperations() {
       ageAtDeath: '',
       causeOfDeath: '',
       placeOfDeath: '',
+      placeOfDeathCategory: 'HOSPITAL',
       groomName: '',
       groomAge: '',
       groomFather: '',
@@ -517,207 +628,149 @@ export default function CounterOperations() {
             </div>
           ) : (
             // Active Token details loaded, start verification and camera capture
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
-              
-              {/* Column 1: Token Specs and Camera */}
-              <div className="flex flex-col gap-5 bg-white p-6 border border-slate-200 shadow-sm rounded-2xl">
-                <div>
-                  <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step 1 — Verify Token Identity</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
-                    Verify request type and capture applicant snapshot
+            <div className="flex flex-col gap-6 mt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                
+                {/* Column 1: Token Specs (Clean & Professional) */}
+                <div className="flex flex-col gap-6 bg-white p-7 border border-slate-200 shadow-sm rounded-2xl">
+                  <div>
+                    <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Verify Token Identity</h3>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
+                      Review active municipal citizen token specifications
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6 text-sm font-semibold border-y py-5 my-1 leading-relaxed">
+                    <div>
+                      <span className="text-slate-400 block uppercase text-xs font-bold tracking-wider">Token Number</span>
+                      <span className="text-2xl font-extrabold font-mono text-navy mt-1 block">{activeTokenProcess.tokenNumber}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block uppercase text-xs font-bold tracking-wider">Department Block</span>
+                      <span className="text-2xl font-extrabold text-navy uppercase mt-1 block">{activeTokenProcess.block}</span>
+                    </div>
+                    <div className="mt-4">
+                      <span className="text-slate-400 block uppercase text-xs font-bold tracking-wider">Service Type</span>
+                      <span className="text-2xl font-extrabold text-saffron uppercase mt-1 block">
+                        {activeTokenProcess.serviceType.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <span className="text-slate-400 block uppercase text-xs font-bold tracking-wider">Issued Time</span>
+                      <span className="text-lg font-bold text-slate-500 font-mono mt-1 block">
+                        {new Date(activeTokenProcess.createdAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Visual status onboarding badge */}
+                  <div className="mt-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 flex gap-3 text-sm font-semibold leading-relaxed shadow-sm">
+                    <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="font-extrabold block uppercase text-[11px] tracking-wider leading-none mb-1 text-emerald-700">Token Status: Active</span>
+                      Citizen ticket successfully verified against local municipal queue database. Capture live photo to proceed.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column 2: Camera Portal Viewport (where "select fields to correction was initially") */}
+                <div className="flex flex-col gap-6 bg-white p-7 border border-slate-200 shadow-sm rounded-2xl justify-between min-h-[400px]">
+                  <div>
+                    <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Citizen Portrait Verification</h3>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
+                      Launch integrated camera to capture citizen selfie verification
+                    </p>
+                  </div>
+
+                  {/* Webcam Viewport box */}
+                  <div className="flex flex-col items-center gap-5 my-2">
+                    <div className="w-72 h-52 bg-slate-950 border-2 border-slate-800 rounded-2xl relative flex items-center justify-center overflow-hidden shadow-inner">
+                      {selfieSrc ? (
+                        <img src={selfieSrc} alt="Applicant Portrait" className="w-full h-full object-cover" />
+                      ) : cameraActive ? (
+                        <video ref={videoRef} autoPlay className="w-full h-full object-cover scale-x-[-1]" />
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-600 gap-2">
+                          <Camera className="w-12 h-12 animate-pulse" />
+                          <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Integrated Camera Offline</span>
+                        </div>
+                      )}
+                      
+                      <canvas ref={canvasRef} className="hidden" />
+
+                      {cameraActive && (
+                        <div className="absolute inset-0 border-2 border-emerald-400 rounded-2xl pointer-events-none flex flex-col justify-between p-3.5">
+                          <div className="flex justify-between">
+                            <span className="w-4 h-4 border-t-2 border-l-2 border-emerald-400" />
+                            <span className="w-4 h-4 border-t-2 border-r-2 border-emerald-400" />
+                          </div>
+                          <div className="w-full text-center text-[10px] text-emerald-400 font-extrabold uppercase tracking-widest bg-slate-950/60 py-0.5 animate-pulse rounded-md">
+                            rec active feed
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="w-4 h-4 border-b-2 border-l-2 border-emerald-400" />
+                            <span className="w-4 h-4 border-b-2 border-r-2 border-emerald-400" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Camera buttons */}
+                    <div className="flex gap-3">
+                      {!cameraActive && !selfieSrc ? (
+                        <button 
+                          onClick={startCamera}
+                          className="px-6 py-3 bg-navy text-white text-md font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer border border-slate-700 shadow-md hover:bg-slate-800"
+                        >
+                          <Camera className="w-4 h-4 text-saffron" />
+                          <span>Launch Camera</span>
+                        </button>
+                      ) : cameraActive ? (
+                        <button 
+                          onClick={captureCamera}
+                          className="px-6 py-3 bg-emerald-600 text-white text-md font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer shadow-md border border-emerald-400 hover:bg-emerald-700"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Capture Photo</span>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={startCamera}
+                          className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-md font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer border border-slate-200"
+                        >
+                          <RotateCcw className="w-4 h-4 text-slate-500" />
+                          <span>Retake Snapshot</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Onboarding text helper */}
+                  <p className="text-xs text-slate-500 text-center font-semibold m-0 leading-normal border-t pt-3">
+                    Integrated webcam complies with Aadhaar secure snapshot protocols. Captured photo is temporarily spooled with application metadata.
                   </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm font-semibold border-y py-4 my-1">
-                  <div>
-                    <span className="text-slate-400 block uppercase">Token Number</span>
-                    <span className="text-xl font-bold font-mono text-navy">{activeTokenProcess.tokenNumber}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block uppercase">Department Block</span>
-                    <span className="text-xl font-bold text-navy uppercase">{activeTokenProcess.block}</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-slate-400 block uppercase">Service Type</span>
-                    <span className="text-xl font-bold text-saffron uppercase">
-                      {activeTokenProcess.serviceType.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-slate-400 block uppercase">Issued Time</span>
-                    <span className="text-sm font-bold text-slate-500 font-mono">
-                      {new Date(activeTokenProcess.createdAt).toLocaleTimeString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Selfie Webcam Feed Box */}
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-60 h-48 bg-slate-900 border-2 border-slate-800 rounded-2xl relative flex items-center justify-center overflow-hidden shadow-inner">
-                    {selfieSrc ? (
-                      <img src={selfieSrc} alt="Applicant Captured Portrait" className="w-full h-full object-cover" />
-                    ) : cameraActive ? (
-                      <video ref={videoRef} autoPlay className="w-full h-full object-cover scale-x-[-1]" />
-                    ) : (
-                      <div className="flex flex-col items-center text-slate-500 gap-2">
-                        <Camera className="w-12 h-12" />
-                        <span className="text-xs uppercase font-bold tracking-wider">No active image</span>
-                      </div>
-                    )}
-                    
-                    {/* Simulated canvas layer */}
-                    <canvas ref={canvasRef} className="hidden" />
-
-                    {/* Camera simulation visual indicators */}
-                    {cameraActive && (
-                      <div className="absolute inset-0 border-2 border-emerald-400 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
-                        <div className="flex justify-between">
-                          <span className="w-3 h-3 border-t-2 border-l-2 border-emerald-400" />
-                          <span className="w-3 h-3 border-t-2 border-r-2 border-emerald-400" />
-                        </div>
-                        <div className="w-full text-center text-[10px] text-emerald-400 font-bold uppercase tracking-widest bg-slate-950/40 py-0.5 animate-pulse">
-                          rec feed active
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="w-3 h-3 border-b-2 border-l-2 border-emerald-400" />
-                          <span className="w-3 h-3 border-b-2 border-r-2 border-emerald-400" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {!cameraActive && !selfieSrc ? (
-                      <button 
-                        onClick={startCamera}
-                        className="px-6 py-2.5 bg-navy text-white text-md font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer border border-slate-700"
-                      >
-                        <Camera className="w-4 h-4 text-saffron" />
-                        <span>Launch Camera</span>
-                      </button>
-                    ) : cameraActive ? (
-                      <button 
-                        onClick={captureCamera}
-                        className="px-6 py-2.5 bg-emerald-600 text-white text-md font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer shadow-md border border-emerald-400"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Capture Photo</span>
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={startCamera}
-                        className="px-6 py-2.5 bg-slate-200 text-slate-700 text-md font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer border"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        <span>Retake Snapshot</span>
-                      </button>
-                    )}
-                  </div>
                 </div>
 
               </div>
 
-              {/* Column 2: Correction Preselection Checkboxes */}
-              <div className="flex flex-col justify-between">
-                
-                {activeTokenProcess.serviceType === 'correction' ? (
-                  // CORRECTION: PRE-SELECT CORRECTION FIELDS
-                  <div className="flex flex-col gap-4 border border-slate-200 p-6 rounded-2xl flex-1 bg-white">
-                    <div>
-                      <h3 className="m-0 text-navy font-bold text-lg">Select Fields to Correct</h3>
-                      <p className="text-xs text-slate-400 font-bold m-0 mt-1 uppercase tracking-widest">
-                        approx 25 predefined fields available
-                      </p>
-                    </div>
-
-                    {/* Checkbox fields grid scrollable */}
-                    <div className="flex-1 overflow-y-auto max-h-[220px] pr-2 grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-xl p-3 bg-slate-50 shadow-inner">
-                      {PREDEFINED_FIELDS.map((field) => (
-                        <label 
-                          key={field.id}
-                          className={`flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer select-none transition-colors text-sm font-semibold hover:bg-white ${
-                            selectedFields[field.id] 
-                              ? 'bg-white border-navy shadow-sm' 
-                              : 'border-slate-200/60 bg-transparent text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={!!selectedFields[field.id]}
-                            onChange={(e) => setSelectedFields({
-                              ...selectedFields,
-                              [field.id]: e.target.checked
-                            })}
-                            className="w-4 h-4 accent-navy"
-                          />
-                          <div className="flex flex-col">
-                            <span className="leading-tight text-navy">{field.label}</span>
-                            <span className={`text-[10px] uppercase font-bold tracking-wider leading-none mt-0.5 ${
-                              field.isMajor ? 'text-saffron-dark' : 'text-emerald-600'
-                            }`}>
-                              {field.isMajor ? 'Major' : 'Minor'}
-                            </span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-
-                    {/* Correction Severity Checker Badge */}
-                    <div className="p-3.5 rounded-xl border flex items-center justify-between font-bold text-md leading-none shadow-sm transition-all"
-                      style={{
-                        backgroundColor: Object.keys(selectedFields).filter(k => selectedFields[k]).length === 0 
-                          ? '#f1f5f9' 
-                          : isMajorCorrection ? 'rgba(211,84,0,0.08)' : 'rgba(30,132,73,0.08)',
-                        borderColor: Object.keys(selectedFields).filter(k => selectedFields[k]).length === 0 
-                          ? '#cbd5e1' 
-                          : isMajorCorrection ? '#d35400' : '#1e8449',
-                        color: Object.keys(selectedFields).filter(k => selectedFields[k]).length === 0 
-                          ? '#475569' 
-                          : isMajorCorrection ? '#d35400' : '#1e8449',
-                      }}
-                    >
-                      <span className="uppercase">Classification type:</span>
-                      <span className="text-lg tracking-wider uppercase">
-                        {Object.keys(selectedFields).filter(k => selectedFields[k]).length === 0 
-                          ? 'No fields chosen' 
-                          : isMajorCorrection ? '⚠️ Major Correction Required' : '✅ Minor Correction Required'}
-                      </span>
-                    </div>
-
-                  </div>
-                ) : (
-                  // NEW REGISTRATION: SIMPLE PRE-FLIGHT CHECKS
-                  <div className="flex flex-col justify-center items-center gap-5 border border-dashed border-blue-200 bg-blue-50/10 p-6 rounded-2xl flex-1 text-center">
-                    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center shadow-sm">
-                      <FileText className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="m-0 text-navy font-bold text-lg">New registration application</h3>
-                      <p className="text-sm text-slate-500 font-semibold leading-normal max-w-[320px] mt-2">
-                        Applicant must present required hospital reports or identity credentials to proceed with registration details entry.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Verification transition action button */}
-                <div className="flex gap-4 mt-6">
-                  <button 
-                    onClick={handleCloseProcess}
-                    className="flex-1 py-4 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl active:scale-95 transition-transform cursor-pointer"
-                  >
-                    Cancel Session
-                  </button>
-                  <button 
-                    disabled={!selfieSrc || (activeTokenProcess.serviceType === 'correction' && Object.keys(selectedFields).filter(k => selectedFields[k]).length === 0)}
-                    onClick={() => setStep('DETAILS')}
-                    className="flex-1 py-4 bg-navy hover:bg-slate-800 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-                  >
-                    <span>Proceed to Form Details</span>
-                    <ArrowRight className="w-5 h-5 text-saffron" />
-                  </button>
-                </div>
-
+              {/* Verification transition action button container (aligned consistently at bottom-right) */}
+              <div className="flex gap-4 justify-end mt-4 border-t pt-4">
+                <button 
+                  onClick={handleCloseProcess}
+                  className="px-8 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl active:scale-95 transition-transform cursor-pointer"
+                >
+                  Cancel Session
+                </button>
+                <button 
+                  disabled={!selfieSrc}
+                  onClick={() => setStep(activeTokenProcess.serviceType === 'correction' ? 'CORRECTION_FIELDS' : 'DETAILS')}
+                  className="px-8 py-3 bg-navy hover:bg-slate-800 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <span>
+                    {activeTokenProcess.serviceType === 'correction' ? 'Proceed to Fields Selection' : 'Proceed to Form Details'}
+                  </span>
+                  <ArrowRight className="w-5 h-5 text-saffron" />
+                </button>
               </div>
 
             </div>
@@ -726,19 +779,96 @@ export default function CounterOperations() {
         </div>
       )}
 
+      {/* STEP 1.5: CORRECTION FIELDS SELECTION */}
+      {step === 'CORRECTION_FIELDS' && (
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step {getStepNumber('CORRECTION_FIELDS')} — Select Correction Fields</h3>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
+                Choose the Pehchan certificate fields requiring corrections
+              </p>
+            </div>
+            
+            <button
+              onClick={() => setStep('VERIFICATION')}
+              className="px-4 py-2 border rounded-xl hover:bg-slate-50 text-slate-600 font-bold text-sm cursor-pointer"
+            >
+              Back
+            </button>
+          </div>
+
+          <div className="bg-white border border-slate-200 shadow-sm p-6 rounded-2xl flex flex-col gap-4">
+            <div>
+              <h4 className="m-0 text-navy font-bold text-lg flex items-center gap-1.5 uppercase">
+                <Sparkles className="w-5 h-5 text-saffron" />
+                Select Fields to Correct
+              </h4>
+              <p className="text-xs text-slate-400 font-bold m-0 mt-1 uppercase tracking-widest">
+                Choose one or more fields from the official government registry list
+              </p>
+            </div>
+
+            {/* Checkbox fields grid (3 columns for premium widescreen, collapses on mobile) */}
+            <div className="overflow-y-auto max-h-[380px] pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 border rounded-xl p-4 bg-slate-50 shadow-inner font-semibold">
+              {PREDEFINED_FIELDS.map((field) => (
+                <label 
+                  key={field.id}
+                  className={`flex items-center gap-3.5 p-3.5 border rounded-xl cursor-pointer select-none transition-all text-md font-bold hover:bg-white ${
+                    selectedFields[field.id] 
+                      ? 'bg-navy/5 border-navy shadow-sm text-navy font-extrabold' 
+                      : 'border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!selectedFields[field.id]}
+                    onChange={(e) => setSelectedFields({
+                      ...selectedFields,
+                      [field.id]: e.target.checked
+                    })}
+                    className="w-5 h-5 accent-navy shrink-0 cursor-pointer"
+                  />
+                  <span className="leading-snug">{field.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-4 justify-end mt-4 border-t pt-4">
+              <button
+                onClick={() => setStep('VERIFICATION')}
+                className="px-8 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl active:scale-95 transition-transform cursor-pointer"
+              >
+                Previous Step
+              </button>
+              
+              <button
+                disabled={Object.keys(selectedFields).filter(k => selectedFields[k]).length === 0}
+                onClick={() => setStep('DETAILS')}
+                className="px-8 py-3 bg-navy hover:bg-slate-800 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+              >
+                <span>Proceed to Form Details</span>
+                <ArrowRight className="w-5 h-5 text-saffron" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* STEP 2: DYNAMIC DETAILS INPUT FORM */}
       {step === 'DETAILS' && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step 2 — Applicant Information Forms</h3>
+              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step {getStepNumber('DETAILS')} — Applicant Information Forms</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
                 Complete details for administrative enrollment database
               </p>
             </div>
             
             <button
-              onClick={() => setStep('VERIFICATION')}
+              onClick={() => setStep(activeTokenProcess?.serviceType === 'correction' ? 'CORRECTION_FIELDS' : 'VERIFICATION')}
               className="px-4 py-2 border rounded-xl hover:bg-slate-50 text-slate-600 font-bold text-sm cursor-pointer"
             >
               Back
@@ -1033,7 +1163,19 @@ export default function CounterOperations() {
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-slate-600">Place of Death</label>
+                          <label className="text-slate-600 font-bold">Place of Death Category (मृत्यु स्थान श्रेणी)</label>
+                          <select
+                            value={newRegData.placeOfDeathCategory || 'HOSPITAL'}
+                            onChange={(e) => setNewRegData({ ...newRegData, placeOfDeathCategory: e.target.value })}
+                            className="p-2.5 border rounded-xl text-base text-navy font-bold bg-white"
+                          >
+                            <option value="HOSPITAL">Hospital / Institution (अस्पताल)</option>
+                            <option value="HOME">Domiciliary / Home (घर पर)</option>
+                            <option value="BROUGHT_DEAD">Brought Dead to Hospital (अस्पताल में मृत लाया गया)</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-slate-600">Place of Death Details (मृत्यु स्थान का विवरण)</label>
                           <input
                             type="text"
                             placeholder="Hospital name or residential location details"
@@ -1159,7 +1301,7 @@ export default function CounterOperations() {
           {/* Form Actions */}
           <div className="flex gap-4 justify-end mt-4 border-t pt-4">
             <button
-              onClick={() => setStep('VERIFICATION')}
+              onClick={() => setStep(activeTokenProcess?.serviceType === 'correction' ? 'CORRECTION_FIELDS' : 'VERIFICATION')}
               className="px-8 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl active:scale-95 transition-transform cursor-pointer"
             >
               Previous Step
@@ -1181,7 +1323,7 @@ export default function CounterOperations() {
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step 3 — Scans & Physical Verification</h3>
+              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step {getStepNumber('SCANNING')} — Scans & Physical Verification</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
                 Scan and upload documents required by government guidelines
               </p>
@@ -1331,7 +1473,7 @@ export default function CounterOperations() {
         <div className="flex flex-col gap-6 font-rajdhani">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step 4 — Checkout & Payment Collection</h3>
+              <h3 className="m-0 text-navy font-bold text-xl uppercase tracking-tight">Step {getStepNumber('PAYMENT')} — Checkout & Payment Collection</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 m-0">
                 Collect flat municipal service fee from citizen
               </p>
@@ -1362,12 +1504,6 @@ export default function CounterOperations() {
                 <div className="flex justify-between text-base">
                   <span>Department Block:</span>
                   <span className="text-navy uppercase">{activeTokenProcess.block}</span>
-                </div>
-                <div className="flex justify-between text-base">
-                  <span>Correction Class:</span>
-                  <span className="text-navy">
-                    {activeTokenProcess.serviceType === 'correction' ? (isMajorCorrection ? 'MAJOR' : 'MINOR') : 'NEW APPLICATION'}
-                  </span>
                 </div>
               </div>
 

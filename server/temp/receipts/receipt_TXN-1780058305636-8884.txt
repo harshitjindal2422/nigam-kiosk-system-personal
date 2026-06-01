@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         29/5/2026, 6:08:29 pm
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-522417
+APPLICANT:    KUNAL
+MOBILE:       9999999999
+CERT TYPE:    BIRTH
+COPIES:       3
+AMOUNT:       ₹60.00
+TXN ID:       TXN-1780058305636-8884
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

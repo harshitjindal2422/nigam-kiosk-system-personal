@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         1/6/2026, 11:57:50 am
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-361784
+APPLICANT:    KARTIK
+MOBILE:       9999999999
+CERT TYPE:    BIRTH
+COPIES:       2
+AMOUNT:       ₹40.00
+TXN ID:       TXN-1780295266773-9663
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

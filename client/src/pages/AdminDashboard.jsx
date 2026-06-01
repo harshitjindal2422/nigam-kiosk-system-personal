@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Activity, Receipt, Printer, Landmark, LayoutDashboard, Users, Database, ShieldAlert } from 'lucide-react';
-import QueueManager from '../components/admin/QueueManager.jsx';
+import { LogOut, Activity, Receipt, Printer, Landmark, LayoutDashboard, Database, ShieldAlert, Users, Maximize2, Minimize2 } from 'lucide-react';
 import DatabaseViewer from '../components/admin/DatabaseViewer.jsx';
 import CounterOperations from '../components/admin/CounterOperations.jsx';
 import OperatorManager from '../components/admin/OperatorManager.jsx';
@@ -18,7 +17,15 @@ export default function AdminDashboard() {
     collectedRevenue: 0,
     systemDiagnostics: 'ONLINE'
   });
+  const [logs, setLogs] = useState([]);
+  const [isMaximized, setIsMaximized] = useState(false);
 
+  const standardLogsContainerRef = useRef(null);
+  const maximizedLogsContainerRef = useRef(null);
+  const isTailingStandardRef = useRef(true);
+  const isTailingMaximizedRef = useRef(true);
+
+  // Fetch metrics data
   useEffect(() => {
     if (activeTab === 'overview') {
       axios.get('http://localhost:5000/api/v1/admin/metrics', { withCredentials: true })
@@ -28,6 +35,69 @@ export default function AdminDashboard() {
         .catch(err => console.error("Error fetching metrics:", err));
     }
   }, [activeTab]);
+
+  // Fetch realtime backend logs
+  useEffect(() => {
+    let intervalId;
+    if (activeTab === 'overview') {
+      const fetchLogs = () => {
+        axios.get('http://localhost:5000/api/v1/admin/logs', { withCredentials: true })
+          .then(res => {
+            if (res.data?.logs) {
+              setLogs(res.data.logs);
+            }
+          })
+          .catch(err => console.error("Error fetching backend logs:", err));
+      };
+
+      fetchLogs();
+      intervalId = setInterval(fetchLogs, 3000); // Poll every 3 seconds
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [activeTab]);
+
+  // Scroll event handlers to detect manual scroll up and toggle tailing
+  const handleStandardScroll = (e) => {
+    const container = e.currentTarget;
+    const threshold = 15; // pixels tolerance
+    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + threshold;
+    isTailingStandardRef.current = isAtBottom;
+  };
+
+  const handleMaximizedScroll = (e) => {
+    const container = e.currentTarget;
+    const threshold = 15; // pixels tolerance
+    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + threshold;
+    isTailingMaximizedRef.current = isAtBottom;
+  };
+
+  // Smart Auto-Scroll Tailing for logs
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      // Standard view smart scroll
+      const stdContainer = standardLogsContainerRef.current;
+      if (stdContainer && isTailingStandardRef.current) {
+        stdContainer.scrollTo({
+          top: stdContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+
+      // Maximized view smart scroll
+      const maxContainer = maximizedLogsContainerRef.current;
+      if (maxContainer && isTailingMaximizedRef.current) {
+        maxContainer.scrollTo({
+          top: maxContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(timerId);
+  }, [logs, isMaximized]);
 
   const handleLogout = () => {
     logout();
@@ -84,12 +154,6 @@ export default function AdminDashboard() {
             <LayoutDashboard className="w-5 h-5" /> Dashboard
           </button>
           <button 
-            onClick={() => setActiveTab('queue')}
-            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-colors ${activeTab === 'queue' ? 'bg-saffron text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
-          >
-            <Users className="w-5 h-5" /> Queue Manager
-          </button>
-          <button 
             onClick={() => setActiveTab('database')}
             className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-colors ${activeTab === 'database' ? 'bg-green-custom text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
           >
@@ -133,20 +197,50 @@ export default function AdminDashboard() {
 
             {/* Custom log outputs preview */}
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4 text-left">
-              <h3 className="text-lg font-bold text-navy border-b pb-2 m-0">Live Diagnostic Logs Stream</h3>
-              <div className="bg-slate-900 text-slate-300 p-4 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed flex flex-col gap-2">
-                <div>[2026-05-19 12:45:01] [system] [INFO]: Connected to PostgreSQL database via Prisma...</div>
-                <div>[2026-05-19 12:45:02] [system] [INFO]: Database connection established successfully!</div>
-                <div>[2026-05-19 12:45:03] [system] [INFO]: Server running in development mode on port 5000</div>
-                <div>[2026-05-19 12:46:12] [sessions] [INFO]: Touch screen active. Session ID: SES-9812-OK</div>
-                <div className="text-green-400">[2026-05-19 12:46:44] [payments] [INFO]: 💳 Simulated payment successful for TKN-001. Amount: ₹20.00</div>
-                <div className="text-blue-400">[2026-05-19 12:46:45] [printers] [INFO]: 🖨️ Thermal printer generated receipt TKN-001 at Counter 1.</div>
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="text-lg font-bold text-navy m-0 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-saffron" />
+                  <span>Live Diagnostic Logs Stream</span>
+                </h3>
+                <button
+                  onClick={() => setIsMaximized(true)}
+                  className="px-3.5 py-1.5 rounded-xl text-slate-500 hover:text-navy hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-sm font-bold active:scale-95 cursor-pointer border border-slate-200 shadow-sm bg-white"
+                >
+                  <Maximize2 className="w-4 h-4 text-saffron" />
+                  <span>Maximize Logs</span>
+                </button>
+              </div>
+              <div 
+                ref={standardLogsContainerRef}
+                onScroll={handleStandardScroll}
+                className="bg-slate-900 text-slate-300 p-4 rounded-xl font-mono text-xs overflow-y-auto max-h-[300px] leading-relaxed flex flex-col gap-2 shadow-inner"
+              >
+                {logs.length > 0 ? (
+                  logs.map((log, idx) => {
+                    let textClass = "text-slate-300";
+                    if (log.level === 'ERROR') {
+                      textClass = "text-red-400 font-bold";
+                    } else if (log.category === 'payments') {
+                      textClass = "text-green-400";
+                    } else if (log.category === 'printers') {
+                      textClass = "text-blue-400";
+                    } else if (log.category === 'sessions') {
+                      textClass = "text-amber-400";
+                    }
+
+                    return (
+                      <div key={idx} className={`${textClass} whitespace-pre-wrap`}>
+                        [{log.timestamp}] [{log.category}] [{log.level}]: {log.message}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-slate-500 italic text-center py-4">No diagnostic logs found for today.</div>
+                )}
               </div>
             </div>
           </>
         )}
-
-        {activeTab === 'queue' && <QueueManager />}
         
         {activeTab === 'database' && <DatabaseViewer />}
 
@@ -155,6 +249,71 @@ export default function AdminDashboard() {
         {activeTab === 'operators' && user?.role === 'SUPER_ADMIN' && <OperatorManager />}
 
       </main>
+
+      {/* Maximized Logs Full Screen Overlay */}
+      {isMaximized && (
+        <div className="fixed inset-0 bg-slate-950 z-[9999] flex flex-col w-screen h-screen overflow-hidden">
+          {/* Header */}
+          <div className="bg-navy p-5 flex justify-between items-center text-white border-b-4 border-saffron select-none">
+            <div className="flex items-center gap-3">
+              <Activity className="w-8 h-8 text-saffron animate-pulse" />
+              <div>
+                <h2 className="text-2xl font-bold m-0 leading-tight">Live Diagnostic Logs Stream (Maximized Console)</h2>
+                <p className="text-xs text-slate-300 font-rajdhani tracking-widest uppercase m-0 leading-none mt-1">
+                  Realtime server activity & hardware events console
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsMaximized(false)} 
+              className="px-4 py-2 rounded-xl border border-slate-700 bg-navy hover:bg-slate-800 active:scale-95 transition-transform cursor-pointer flex items-center gap-1.5 font-bold text-sm text-slate-300 hover:text-white"
+            >
+              <Minimize2 className="w-5 h-5 text-saffron" />
+              <span>Minimize Console</span>
+            </button>
+          </div>
+
+          {/* Console Body */}
+          <div 
+            ref={maximizedLogsContainerRef}
+            onScroll={handleMaximizedScroll}
+            className="flex-1 bg-slate-950 p-8 overflow-y-auto leading-relaxed flex flex-col gap-2 font-mono text-sm text-left shadow-inner select-text"
+          >
+            {logs.length > 0 ? (
+              logs.map((log, idx) => {
+                let textClass = "text-slate-300";
+                if (log.level === 'ERROR') {
+                  textClass = "text-red-400 font-bold";
+                } else if (log.category === 'payments') {
+                  textClass = "text-green-400";
+                } else if (log.category === 'printers') {
+                  textClass = "text-blue-400";
+                } else if (log.category === 'sessions') {
+                  textClass = "text-amber-400";
+                }
+
+                return (
+                  <div key={idx} className={`${textClass} whitespace-pre-wrap`}>
+                    [{log.timestamp}] [{log.category}] [{log.level}]: {log.message}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-slate-500 italic text-center py-20">No diagnostic logs found for today.</div>
+            )}
+          </div>
+          
+          {/* Console Footer */}
+          <div className="bg-slate-900 px-8 py-4 border-t border-slate-800 flex justify-between items-center text-xs font-semibold text-slate-400 select-none">
+            <span className="uppercase tracking-widest font-mono">active connection: server:5000/api/v1/admin/logs</span>
+            <span className="flex items-center gap-1.5 text-emerald-500 font-bold font-mono">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              POLLING ACTIVE
+            </span>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

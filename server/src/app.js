@@ -30,7 +30,7 @@ app.use(
 // 3. API rate limiting (to prevent kiosk attacks)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 requests per window
+  max: 10000, // limit raised to prevent kiosk polling rate exhaust blocking local development/operation
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res, next) => {
@@ -50,7 +50,12 @@ app.use(cookieParser());
 const morganStream = {
   write: (message) => logger.info(message.trim()),
 };
-app.use(morgan(':remote-addr - :method :url :status :res[content-length] - :response-time ms', { stream: morganStream }));
+app.use(
+  morgan(':remote-addr - :method :url :status :res[content-length] - :response-time ms', {
+    stream: morganStream,
+    skip: (req) => req.originalUrl && (req.originalUrl.includes('/admin/logs') || req.originalUrl.includes('/admin/metrics')),
+  })
+);
 
 // ==========================================
 // 📁 Sandbox Directories

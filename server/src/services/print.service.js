@@ -55,7 +55,7 @@ export default class PrintService {
     const ageSeconds = (now - latestTime) / 1000;
 
     if (ageSeconds > 60) {
-      logger.info(`⏳ [SANDBOX]: Found latest file ${latestFile} but age is stale (${Math.round(ageSeconds)}s ago).`);
+      logger.error(`⏳ [SANDBOX ERROR]: Found latest file ${latestFile} but age is stale (${Math.round(ageSeconds)}s ago).`);
       return null;
     }
 

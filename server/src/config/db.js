@@ -3,7 +3,6 @@ import { logger } from './logger.js';
 
 export const prisma = new PrismaClient({
   log: [
-    { emit: 'event', level: 'query' },
     { emit: 'event', level: 'error' },
     { emit: 'event', level: 'info' },
     { emit: 'event', level: 'warn' },
@@ -11,9 +10,9 @@ export const prisma = new PrismaClient({
 });
 
 // Bind prisma queries/errors to our winston system loggers
-prisma.$on('query', (e) => {
-  logger.debug(`Query: ${e.query} | Params: ${e.params} | Duration: ${e.duration}ms`);
-});
+// prisma.$on('query', (e) => {
+//   logger.debug(`Query: ${e.query} | Params: ${e.params} | Duration: ${e.duration}ms`);
+// });
 
 prisma.$on('error', (e) => {
   logger.error(`Prisma Error: ${e.message}`);

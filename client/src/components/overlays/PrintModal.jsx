@@ -212,42 +212,75 @@ export default function PrintModal() {
     }
 
     setStep('HOLD');
-    setKioskState('HOLD'); // Pause the global inactivity timer while citizen downloads certificate
+    setKioskState('HOLD'); // Pause the global inactivity timer while silently polling
     
-    // Speak Hold mode instructions
     if (voiceAssist) {
       const msg = language === 'hi' 
-        ? 'कृपया प्रतीक्षा करें। हम डाउनलोड किए गए फ़ाइल की जांच कर रहे हैं।' 
-        : 'Please wait. We are checking for the downloaded file.';
+        ? 'कृपया प्रतीक्षा करें। हम दस्तावेज़ सत्यापित कर रहे हैं।' 
+        : 'Please wait. We are verifying the document.';
       speak(msg);
     }
 
-    // Initialize 2.5s polling loop to scan sandbox folder for the PDF
     startPolling();
   };
 
-  // 2. Sandboxed PDF File Polling Scanner Loop
+  // 2. Sandboxed PDF File Polling Scanner Loop (real backend verification flow)
   const startPolling = () => {
     if (pollIntervalId) clearInterval(pollIntervalId);
+    let attempts = 0;
+    const maxAttempts = 16; // Timeout after 40 seconds (16 * 2.5s)
 
     const intervalId = setInterval(async () => {
+      attempts++;
       try {
         const response = await axiosInstance.get('/print/check-download');
-        // Standard payload: response = { data: { success, data: { detected, fileName, sizeBytes } } }
         const payload = response.data;
         
         if (payload?.detected) {
           clearInterval(intervalId);
           setDetectedFile(payload);
           triggerPaymentTransition(payload.fileName);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(intervalId);
+          setStep('FORM');
+          setKioskState('ACTIVE');
+          const errMessage = `No fresh downloaded certificate detected for Registration ${form.registrationNumber} (Pehchan print query timed out after 40 seconds).`;
+          setError(
+            language === 'hi' 
+              ? 'पहचान पोर्टल से डाउनलोड किया गया कोई नया दस्तावेज़ नहीं मिला। कृपया पहले पोर्टल पर दस्तावेज़ डाउनलोड करें, फिर यहाँ पुनः प्रयास करें।' 
+              : 'No fresh downloaded document detected from the Pehchan portal. Please download the document on the portal first, then try again here.'
+          );
+          // Log error to server terminal & diagnostic logs stream
+          axiosInstance.post('/print/log-error', { message: errMessage }).catch(e => console.error(e));
+
+          if (voiceAssist) {
+            const msg = language === 'hi'
+              ? 'कोई दस्तावेज़ नहीं मिला। कृपया पहचान पोर्टल से डाउनलोड करने के बाद पुनः प्रयास करें।'
+              : 'No document detected. Please download from the portal and try again.';
+            speak(msg);
+          }
         }
       } catch (err) {
         console.error('File polling check failed:', err);
+        if (attempts >= maxAttempts) {
+          clearInterval(intervalId);
+          setStep('FORM');
+          setKioskState('ACTIVE');
+          const errMessage = `Kiosk polling error during verification check for Registration ${form.registrationNumber}: ${err.message}`;
+          axiosInstance.post('/print/log-error', { message: errMessage }).catch(e => console.error(e));
+          setError(
+            language === 'hi' 
+              ? 'सत्यापन के दौरान त्रुटि हुई। कृपया पुनः प्रयास करें।' 
+              : 'Verification check encountered an error. Please try again.'
+          );
+        }
       }
     }, 2500);
 
     setPollIntervalId(intervalId);
   };
+
+
 
   // Transition helper from HOLD to PAYMENT
   const triggerPaymentTransition = async (fileName) => {
@@ -461,60 +494,45 @@ export default function PrintModal() {
             </motion.form>
           )}
 
-          {/* STEP 2: HOLD MODE PORTAL AUTO DETECTION */}
+
+          {/* STEP 2: SILENT HOLD MODE - RETRIEVING DOCUMENT */}
           {step === 'HOLD' && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="max-w-xl mx-auto w-full text-center flex flex-col items-center gap-6"
+              className="max-w-md mx-auto w-full text-center flex flex-col items-center gap-6 animate-pulse"
             >
-              {/* Spinner */}
+              {/* Premium Certificate Scanner Circle */}
               <div className="relative w-28 h-28 flex items-center justify-center">
-                <div className="absolute inset-0 border-8 border-slate-200 rounded-full" />
+                <div className="absolute inset-0 border-8 border-slate-100 rounded-full" />
                 <div className="absolute inset-0 border-8 border-saffron border-t-transparent rounded-full animate-spin" />
-                <FileText className="w-10 h-10 text-navy" />
+                <div className="w-16 h-16 bg-navy/5 rounded-full flex items-center justify-center shadow-inner">
+                  <FileText className="w-8 h-8 text-navy" />
+                </div>
               </div>
 
               <div>
                 <h3 className="font-hindi text-3xl font-bold text-navy m-0 leading-tight">
-                  {language === 'hi' ? 'पोर्टल विंडो सक्रिय है' : 'Pehchan Portal Window Opened'}
+                  {language === 'hi' ? 'दस्तावेज़ सत्यापित किया जा रहा है' : 'Verifying Document'}
                 </h3>
-                <p className="text-xl text-slate-500 font-semibold font-rajdhani mt-2 leading-snug">
+                <p className="text-lg font-semibold font-rajdhani text-slate-500 mt-2 m-0 uppercase tracking-wider leading-snug">
                   {language === 'hi' 
-                    ? 'एक नया ब्राउज़र टैब खुल गया है। कृपया वहां जाकर अपना प्रमाण-पत्र डाउनलोड करें। मुद्रण फ़ाइल मिलने पर कियोस्क स्वतः आगे बढ़ेगा।' 
-                    : 'A new browser tab has been opened. Please download your certificate there. The kiosk will auto-advance once the file is detected.'}
+                    ? 'कृपया प्रतीक्षा करें। पहचान पोर्टल से डाउनलोड किए गए दस्तावेज़ की सुरक्षित पुष्टि की जा रही है...' 
+                    : 'Please wait. Silently scanning and retrieving secure downloaded document from portal...'}
                 </p>
               </div>
 
-              {/* Warning/Privacy notice banner */}
-              <div className="w-full bg-saffron/10 border-2 border-saffron/30 rounded-2xl p-4 flex gap-3 text-left items-start text-navy">
-                <AlertTriangle className="w-6 h-6 text-saffron flex-shrink-0 mt-0.5" />
-                <div className="text-sm font-semibold font-rajdhani">
-                  <p className="font-bold m-0 leading-none">SECURITY WARNING / सुरक्षा चेतावनी</p>
-                  <p className="m-0 leading-tight mt-1 text-slate-600">
-                    To maintain absolute confidentiality, your downloaded document is processed within a secure local sandbox and is permanently deleted instantly after printing.
-                  </p>
-                </div>
-              </div>
-
-              {/* Testing / demonstration helper buttons */}
-              <div className="flex gap-4 w-full mt-4 justify-between border-t border-slate-200 pt-6">
-                <button
-                  onClick={() => setStep('FORM')}
-                  className="px-6 py-3 bg-slate-200 text-slate-700 font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer font-rajdhani"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                  <span>{language === 'hi' ? 'पीछे जाएं' : 'Go Back'}</span>
-                </button>
-                
-                <button
-                  onClick={triggerMockDownloadSuccess}
-                  className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer font-rajdhani"
-                >
-                  <Check className="w-5 h-5" />
-                  <span>{language === 'hi' ? 'अनुकरण: फ़ाइल डाउनलोड सफल (Simulate)' : 'Simulate Download Success'}</span>
-                </button>
-              </div>
+              {/* Discrete back button in case of typo */}
+              <button
+                onClick={() => {
+                  if (pollIntervalId) clearInterval(pollIntervalId);
+                  setStep('FORM');
+                }}
+                className="mt-2 text-slate-400 hover:text-navy font-bold font-rajdhani text-md active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer underline underline-offset-4"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>{language === 'hi' ? 'विवरण सुधारने के लिए पीछे जाएं' : 'Go Back to Correct Details'}</span>
+              </button>
             </motion.div>
           )}
 

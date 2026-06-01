@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         29/5/2026, 3:49:05 pm
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-128089
+APPLICANT:    HARSHIT
+MOBILE:       9999999999
+CERT TYPE:    DEATH
+COPIES:       2
+AMOUNT:       ₹40.00
+TXN ID:       TXN-1780049940978-6293
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

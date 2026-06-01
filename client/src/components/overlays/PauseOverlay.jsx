@@ -27,10 +27,10 @@ export default function PauseOverlay() {
         const msg = language === 'hi'
           ? (pauseContext === 'BLOCK_1' 
               ? 'प्रमाणपत्र डाउनलोड पोर्टल एक नई विंडो में खोल दिया गया है। अपना प्रमाणपत्र डाउनलोड करने के बाद कृपया इस स्क्रीन पर वापस आएं और प्रिंट के लिए आगे बढ़ें।' 
-              : 'पंजीकरण खोज पोर्टल एक नई विंडो में खोल दिया गया है। खोज पूरी होने के बाद कृपया इस स्क्रीन पर वापस आएं।')
+              : 'पंजीकरण खोज व डाउनलोड पोर्टल एक नई विंडो में खोल दिया गया है। अपना प्रमाणपत्र खोजने और डाउनलोड करने के बाद कृपया इस स्क्रीन पर वापस आएं और प्रिंट के लिए आगे बढ़ें।')
           : (pauseContext === 'BLOCK_1' 
               ? 'The certificate download portal has been opened in a new window. Please download your certificate and return to this screen to proceed with printing.' 
-              : 'The registration search portal has been opened in a new window. Please return to this screen after completing your search.');
+              : 'The registration search and download portal has been opened in a new window. Please find and download your certificate, then return to this screen to proceed with printing.');
         speak(msg);
       }
     }
@@ -58,7 +58,7 @@ export default function PauseOverlay() {
 
   const handleReturn = () => {
     window.speechSynthesis.cancel();
-    if (pauseContext === 'BLOCK_1') {
+    if (pauseContext === 'BLOCK_1' || pauseContext === 'BLOCK_2') {
       setKioskState('ACTIVE');
       useKioskStore.getState().openModal('print');
     } else {
@@ -100,11 +100,11 @@ export default function PauseOverlay() {
             <div className="flex flex-col gap-2">
               <h2 className="font-hindi text-4xl font-bold leading-tight text-white m-0">
                 {language === 'hi' 
-                  ? (pauseContext === 'BLOCK_1' ? 'प्रमाणपत्र डाउनलोड पोर्टल सक्रिय है' : 'खोज पोर्टल सक्रिय है')
-                  : (pauseContext === 'BLOCK_1' ? 'Download Portal Window Active' : 'Search Portal Window Active')}
+                  ? (pauseContext === 'BLOCK_1' ? 'प्रमाणपत्र डाउनलोड पोर्टल सक्रिय है' : 'खोज व प्रिंट पोर्टल सक्रिय है')
+                  : (pauseContext === 'BLOCK_1' ? 'Download Portal Window Active' : 'Search & Print Portal Active')}
               </h2>
               <span className="font-bebas text-2xl tracking-widest text-saffron mt-1">
-                {pauseContext === 'BLOCK_1' ? 'pehchan certificate download' : 'pehchan registry verification'}
+                {pauseContext === 'BLOCK_1' ? 'pehchan certificate download' : 'pehchan certificate search & print'}
               </span>
             </div>
 
@@ -113,10 +113,10 @@ export default function PauseOverlay() {
               {language === 'hi'
                 ? (pauseContext === 'BLOCK_1'
                     ? 'कियोस्क ब्राउज़र में राजस्थान पहचान प्रमाणपत्र डाउनलोड पोर्टल खोल दिया गया है। कृपया अपना प्रमाणपत्र डाउनलोड करें और प्रिंट करने के लिए कियोस्क पर लौटने के लिए नीचे दिए गए बटन पर टैप करें।'
-                    : 'कियोस्क ब्राउज़र में राजस्थान पहचान पंजीकरण संख्या सत्यापन पोर्टल खोल दिया गया है। कृपया वहां अपना विवरण खोजें, पंजीकरण संख्या कॉपी करें और मुख्य कियोस्क पर लौटने के लिए नीचे दिए गए बटन पर टैप करें।')
+                    : 'कियोस्क ब्राउज़र में राजस्थान पहचान पंजीकरण खोज व डाउनलोड पोर्टल खोल दिया गया है। कृपया वहां अपना प्रमाणपत्र खोजकर डाउनलोड करें, फिर मुख्य कियोस्क पर लौटने और प्रिंट करने के लिए नीचे दिए गए बटन पर टैप करें।')
                 : (pauseContext === 'BLOCK_1'
                     ? 'The Rajasthan Pehchan Certificate Download portal is currently active in another window. Please download your certificate there, then close the tab and tap the button below to resume the kiosk and print.'
-                    : 'The Rajasthan Pehchan Registration Verification portal is currently active in another window. Find your details there, copy your registration number, and tap the button below to resume the kiosk.')}
+                    : 'The Rajasthan Pehchan Registration Search and Download portal is currently active in another window. Please search and download your certificate there, then close the tab and tap the button below to resume the kiosk and print.')}
             </p>
 
             {/* Visual Time Progress Indicator */}
@@ -148,8 +148,8 @@ export default function PauseOverlay() {
               <ArrowLeft className="w-6 h-6" />
               <span>
                 {language === 'hi' 
-                  ? (pauseContext === 'BLOCK_1' ? 'प्रिंट करने के लिए आगे बढ़ें' : 'कियोस्क पर वापस लौटें') 
-                  : (pauseContext === 'BLOCK_1' ? 'Proceed to Print Document' : 'Resume Kiosk System')}
+                  ? (pauseContext === 'BLOCK_1' || pauseContext === 'BLOCK_2' ? 'प्रिंट करने के लिए आगे बढ़ें' : 'कियोस्क पर वापस लौटें') 
+                  : (pauseContext === 'BLOCK_1' || pauseContext === 'BLOCK_2' ? 'Proceed to Print Document' : 'Resume Kiosk System')}
               </span>
             </button>
             
