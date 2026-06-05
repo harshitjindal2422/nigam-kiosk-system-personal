@@ -13,10 +13,13 @@ import TokenGeneration from '../pages/TokenGeneration.jsx';
 import AdminLogin from '../pages/AdminLogin.jsx';
 import AdminDashboard from '../pages/AdminDashboard.jsx';
 import CounterDashboard from '../pages/CounterDashboard.jsx';
+import CheckerDashboard from '../pages/CheckerDashboard.jsx';
+import ApprovalDashboard from '../pages/ApprovalDashboard.jsx';
+import CashierDashboard from '../pages/CashierDashboard.jsx';
 
 // 🛡️ Protected Route Guard for Administrative views
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, checkAuth, loading } = useAuthStore();
+function ProtectedRoute({ children, allowedRoles }) {
+  const { isAuthenticated, user, checkAuth, loading } = useAuthStore();
 
   useEffect(() => {
     // Perform session verification checks against backend on mount
@@ -34,6 +37,23 @@ function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  // Enforce role-based checks for administrative routing
+  if (user && allowedRoles && !allowedRoles.includes(user.role)) {
+    if (user.role === 'COUNTER_OPERATOR') {
+      return <Navigate to="/counter/dashboard" replace />;
+    } else if (user.role === 'CASHIER_OPERATOR') {
+      return <Navigate to="/cashier/dashboard" replace />;
+    } else if (user.role === 'CHECKER_OPERATOR') {
+      return <Navigate to="/checker/dashboard" replace />;
+    } else if (user.role === 'APPROVAL_OPERATOR') {
+      return <Navigate to="/approval/dashboard" replace />;
+    } else if (user.role === 'ADMIN') {
+      return <Navigate to="/admin/dashboard" replace />;
+    } else {
+      return <Navigate to="/admin/login" replace />;
+    }
   }
 
   return children;
@@ -60,7 +80,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
               <AdminDashboard />
             </ProtectedRoute>
           }
@@ -68,8 +88,32 @@ export default function AppRoutes() {
         <Route
           path="/counter/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['COUNTER_OPERATOR', 'SUPER_ADMIN']}>
               <CounterDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checker/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['CHECKER_OPERATOR', 'SUPER_ADMIN']}>
+              <CheckerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cashier/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['CASHIER_OPERATOR', 'SUPER_ADMIN']}>
+              <CashierDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/approval/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['APPROVAL_OPERATOR', 'SUPER_ADMIN']}>
+              <ApprovalDashboard />
             </ProtectedRoute>
           }
         />

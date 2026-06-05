@@ -1,182 +1,174 @@
 import { create } from 'zustand';
-
-// Custom helper to generate enrollment IDs
-const generateEnrollmentId = () => {
-  return `ENR-${Math.floor(100000 + Math.random() * 900000)}`;
-};
+import axiosInstance from '../api/axiosInstance.js';
 
 export const useAdminStore = create((set, get) => ({
   // ==========================================
   // 📊 Store States
   // ==========================================
-  
-  // Persistent queues stored in localStorage
-  tokens: JSON.parse(localStorage.getItem('kiosk_all_tokens')) || [],
-  queue: JSON.parse(localStorage.getItem('kiosk_active_queue')) || [],
-  currentServing: localStorage.getItem('kiosk_current_serving') || '---',
-  
-  // Database of submitted correction/registration applications
-  applications: JSON.parse(localStorage.getItem('kiosk_applications')) || [],
-  
-  // Active Counter Process Session State
-  activeTokenProcess: null, // Token object currently being processed in Phase 2
-  
+  tokens: [],
+  queue: [], // List of tokenNumbers in WAITING status
+  currentServing: '---',
+  activeTokenProcess: null, // Token object currently being processed
+  loading: false,
+  error: null,
+
   // ==========================================
   // ⚙️ Admin Actions
   // ==========================================
   
-  // 1. Generate Token (Phase 1 Kiosk side triggers this)
-  generateToken: (block, serviceType) => {
-    const allTokens = get().tokens;
-    const activeQueue = get().queue;
-    
-    // Prefix based on details
-    const blockPrefix = block.substring(0, 3).toUpperCase(); // BIR, DEA, MAR
-    const typePrefix = serviceType === 'correction' ? 'CORR' : 'REG';
-    const serviceNum = allTokens.length + 1001;
-    const tokenNumber = `TKN-${blockPrefix}-${typePrefix}-${serviceNum}`;
-    
-    const newToken = {
-      tokenNumber,
-      block, // birth, death, marriage
-      serviceType, // correction, new_registration
-      createdAt: new Date().toISOString(),
-      status: 'WAITING' // WAITING, SERVING, COMPLETED, NO_SHOW
-    };
-    
-    const updatedTokens = [...allTokens, newToken];
-    const updatedQueue = [...activeQueue, tokenNumber];
-    
-    localStorage.setItem('kiosk_all_tokens', JSON.stringify(updatedTokens));
-    localStorage.setItem('kiosk_active_queue', JSON.stringify(updatedQueue));
-    
-    set({
-      tokens: updatedTokens,
-      queue: updatedQueue
-    });
-    
-    return newToken;
+  // 0. Generate Kiosk Token on Backend
+  generateToken: async (block, serviceType) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axiosInstance.post('/counter-correction/kiosk-token', { block, serviceType });
+      const rawToken = response.data.token;
+      const mappedToken = {
+        tokenNumber: rawToken.token_number,
+        block: block,
+        serviceType: serviceType,
+        createdAt: rawToken.issued_at,
+        status: rawToken.queue_status,
+        counter_number: rawToken.counter_number
+      };
+      set({ loading: false });
+      return mappedToken;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      throw err;
+    }
+  },
+
+  // 1. Fetch active queue tokens from backend
+  fetchActiveQueue: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axiosInstance.get('/applications/active-tokens');
+      const tokens = response.data || [];
+      const waitingTokens = tokens.filter(t => t.queue_status === 'WAITING').map(t => t.token_number);
+      const servingToken = tokens.find(t => t.queue_status === 'SERVING')?.token_number || '---';
+
+      set({
+        tokens,
+        queue: waitingTokens,
+        currentServing: servingToken,
+        loading: false
+      });
+    } catch (err) {
+      set({ error: err.message, loading: false });
+    }
   },
   
-  // 2. Queue Management Interface Actions
+  // 2. Call Next Token in Queue
   callNextToken: () => {
-    const activeQueue = get().queue;
-    if (activeQueue.length === 0) {
-      set({ currentServing: '---' });
-      localStorage.setItem('kiosk_current_serving', '---');
+    const tokens = get().tokens;
+    const waiting = tokens.filter(t => t.queue_status === 'WAITING');
+    if (waiting.length === 0) {
+      set({ currentServing: '---', activeTokenProcess: null });
       return '---';
     }
     
-    const nextTokenNum = activeQueue[0];
-    const updatedQueue = activeQueue.slice(1);
-    
-    // Update token status in the all-tokens list
-    const updatedTokens = get().tokens.map(t => 
-      t.tokenNumber === nextTokenNum ? { ...t, status: 'SERVING' } : t
+    const nextToken = waiting[0];
+    const updatedTokens = tokens.map(t => 
+      t.token_number === nextToken.token_number ? { ...t, queue_status: 'SERVING' } : t
     );
     
-    localStorage.setItem('kiosk_active_queue', JSON.stringify(updatedQueue));
-    localStorage.setItem('kiosk_all_tokens', JSON.stringify(updatedTokens));
-    localStorage.setItem('kiosk_current_serving', nextTokenNum);
-    
+    // Map backend token layout
+    const activeTokenObj = {
+      tokenNumber: nextToken.token_number,
+      // Parse block and serviceType from tokenNumber or defaults
+      block: nextToken.token_number.includes('BIR') ? 'birth' : nextToken.token_number.includes('DEA') ? 'death' : 'marriage',
+      serviceType: nextToken.token_number.includes('CORR') ? 'correction' : 'new_registration',
+      createdAt: nextToken.issued_at,
+      ...nextToken
+    };
+
+    const waitingTokens = updatedTokens.filter(t => t.queue_status === 'WAITING').map(t => t.token_number);
+
     set({
-      queue: updatedQueue,
       tokens: updatedTokens,
-      currentServing: nextTokenNum
+      queue: waitingTokens,
+      currentServing: nextToken.token_number,
+      activeTokenProcess: activeTokenObj
     });
     
-    // Set active process token if we call it from queue
-    const tokenObj = updatedTokens.find(t => t.tokenNumber === nextTokenNum);
-    if (tokenObj) {
-      set({ activeTokenProcess: tokenObj });
-    }
-    
-    return nextTokenNum;
+    return nextToken.token_number;
   },
   
   // 3. Initiate Manual Token Processing
   setProcessingToken: (tokenNumber) => {
-    const tokenObj = get().tokens.find(t => t.tokenNumber === tokenNumber);
-    if (tokenObj) {
-      // If the token is still in the queue, remove it
-      const updatedQueue = get().queue.filter(t => t !== tokenNumber);
-      const updatedTokens = get().tokens.map(t => 
-        t.tokenNumber === tokenNumber ? { ...t, status: 'SERVING' } : t
+    const tokens = get().tokens;
+    const matchedToken = tokens.find(t => t.token_number === tokenNumber);
+    if (matchedToken) {
+      const updatedTokens = tokens.map(t => 
+        t.token_number === tokenNumber ? { ...t, queue_status: 'SERVING' } : t
       );
       
-      localStorage.setItem('kiosk_active_queue', JSON.stringify(updatedQueue));
-      localStorage.setItem('kiosk_all_tokens', JSON.stringify(updatedTokens));
-      localStorage.setItem('kiosk_current_serving', tokenNumber);
-      
+      const activeTokenObj = {
+        tokenNumber: matchedToken.token_number,
+        block: matchedToken.token_number.includes('BIR') ? 'birth' : matchedToken.token_number.includes('DEA') ? 'death' : 'marriage',
+        serviceType: matchedToken.token_number.includes('CORR') ? 'correction' : 'new_registration',
+        createdAt: matchedToken.issued_at,
+        ...matchedToken
+      };
+
+      const waitingTokens = updatedTokens.filter(t => t.queue_status === 'WAITING').map(t => t.token_number);
+
       set({
-        queue: updatedQueue,
         tokens: updatedTokens,
+        queue: waitingTokens,
         currentServing: tokenNumber,
-        activeTokenProcess: tokenObj
+        activeTokenProcess: activeTokenObj
       });
       return true;
     }
     return false;
   },
   
-  // 4. Complete Application Submission (Phase 2 Counter)
-  submitApplication: (applicationData) => {
-    const enrollmentId = generateEnrollmentId();
-    const newApp = {
-      ...applicationData,
-      enrollmentId,
-      submittedAt: new Date().toISOString(),
-      registrarStatus: 'PENDING_APPROVAL' // PENDING_APPROVAL, APPROVED, OBJECTION
-    };
-    
-    const updatedApps = [newApp, ...get().applications];
-    localStorage.setItem('kiosk_applications', JSON.stringify(updatedApps));
-    
-    // Set token as COMPLETED
-    const currentToken = get().activeTokenProcess;
-    if (currentToken) {
-      const updatedTokens = get().tokens.map(t => 
-        t.tokenNumber === currentToken.tokenNumber ? { ...t, status: 'COMPLETED' } : t
-      );
-      localStorage.setItem('kiosk_all_tokens', JSON.stringify(updatedTokens));
-      set({ tokens: updatedTokens });
+  // 4. Complete Application Submission (Counter Operator to backend)
+  submitApplication: async (applicationPayload) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axiosInstance.post('/applications/submit', applicationPayload);
+      
+      // Refresh active queue after submission
+      await get().fetchActiveQueue();
+      
+      set({
+        loading: false
+      });
+      return response.data;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      throw err;
     }
-    
-    // Reset current serving if it was this token
-    if (get().currentServing === currentToken?.tokenNumber) {
-      set({ currentServing: '---' });
-      localStorage.setItem('kiosk_current_serving', '---');
-    }
-    
-    set({
-      applications: updatedApps,
-      activeTokenProcess: null
-    });
-    
-    return newApp;
   },
   
-  // 5. Update Application Registrar Status (Approve / Object)
-  updateApplicationStatus: (enrollmentId, status) => {
-    const updatedApps = get().applications.map(app => 
-      app.enrollmentId === enrollmentId ? { ...app, registrarStatus: status } : app
-    );
-    localStorage.setItem('kiosk_applications', JSON.stringify(updatedApps));
-    set({ applications: updatedApps });
+  // 5. Search existing objection application
+  searchObjectionApplication: async (searchQuery) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axiosInstance.get(`/applications/search?query=${searchQuery}`);
+      set({ loading: false });
+      return response.data;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      throw err;
+    }
+  },
+
+  // Helper action to clear active token process
+  clearActiveTokenProcess: () => {
+    set({ activeTokenProcess: null });
   },
   
-  // 6. Reset System
+  // 6. Reset System (removes active tokens on backend if needed, or simply resets client)
   resetStore: () => {
-    localStorage.removeItem('kiosk_all_tokens');
-    localStorage.removeItem('kiosk_active_queue');
-    localStorage.removeItem('kiosk_current_serving');
-    localStorage.removeItem('kiosk_applications');
     set({
       tokens: [],
       queue: [],
       currentServing: '---',
-      applications: [],
-      activeTokenProcess: null
+      activeTokenProcess: null,
+      error: null
     });
   }
 }));

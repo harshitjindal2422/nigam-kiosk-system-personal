@@ -18,6 +18,12 @@ export default function AdminLogin() {
     if (result.success) {
       if (result.role === 'COUNTER_OPERATOR') {
         navigate('/counter/dashboard');
+      } else if (result.role === 'CASHIER_OPERATOR') {
+        navigate('/cashier/dashboard');
+      } else if (result.role === 'CHECKER_OPERATOR') {
+        navigate('/checker/dashboard');
+      } else if (result.role === 'APPROVAL_OPERATOR') {
+        navigate('/approval/dashboard');
       } else {
         navigate('/admin/dashboard');
       }

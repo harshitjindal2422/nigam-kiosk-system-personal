@@ -11,7 +11,9 @@ export default class AuthService {
     // 2. If not found, try finding Kiosk Admin
     if (!user) {
       user = await AuthRepository.findAdminByEmail(email);
-      role = 'ADMIN';
+      if (user) {
+        role = user.role;
+      }
     }
 
     // 3. Reject if neither exist

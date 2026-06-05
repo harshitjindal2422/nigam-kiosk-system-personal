@@ -15,6 +15,7 @@ export default function CounterOperations() {
     setProcessingToken, 
     submitApplication, 
     callNextToken,
+    clearActiveTokenProcess,
     queue
   } = useAdminStore();
   const { language } = useKioskStore();
@@ -39,9 +40,11 @@ export default function CounterOperations() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Correction selection states (25 Fields)
   const [selectedFields, setSelectedFields] = useState({});
   const [isMajorCorrection, setIsMajorCorrection] = useState(false);
+  const [objectionSearchInput, setObjectionSearchInput] = useState('');
+  const [objectionError, setObjectionError] = useState('');
+  const { searchObjectionApplication } = useAdminStore();
 
   // Form Details
   const [formData, setFormData] = useState({
@@ -210,7 +213,7 @@ export default function CounterOperations() {
 
   // Reset state when active token changes (to load clean data)
   useEffect(() => {
-    if (activeTokenProcess) {
+    if (activeTokenProcess && !activeTokenProcess.isReSubmission) {
       setStep('VERIFICATION');
       setSelfieSrc(null);
       setSelectedFields({});
@@ -262,6 +265,91 @@ export default function CounterOperations() {
     if (nextToken === '---') {
       alert("Active waiting queue is empty!");
     }
+  };
+
+  const handleSearchObjectionApp = () => {
+    if (!objectionSearchInput.trim()) return;
+    setObjectionError('');
+    searchObjectionApplication(objectionSearchInput.toUpperCase().trim())
+      .then(app => {
+        const mockToken = {
+          tokenNumber: app.token_number,
+          block: app.department_block.toLowerCase(),
+          serviceType: app.service_type.toLowerCase(),
+          createdAt: app.created_at,
+          isReSubmission: true,
+          originalApp: app
+        };
+
+        setFormData({
+          applicantName: app.applicant_name,
+          mobileNumber: app.mobile_number,
+          registrationNumber: app.registration_number || '',
+          fatherName: app.father_name || '',
+          motherName: app.mother_name || '',
+          dob: app.dob || '',
+          relationWithApplicant: app.relation_with_applicant || 'Self',
+          fieldValues: {}
+        });
+
+        const savedDocs = app.uploaded_documents || [];
+        const docList = {};
+        savedDocs.forEach((doc) => {
+          docList[doc] = doc;
+        });
+        setScannedFiles(docList);
+
+        if (app.service_type.toLowerCase() === 'correction') {
+          const selected = {};
+          const fieldVals = {};
+          const savedDetails = app.correction_details || [];
+          savedDetails.forEach(detail => {
+            const matchedField = PREDEFINED_FIELDS.find(f => f.label === detail.fieldName);
+            if (matchedField) {
+              selected[matchedField.id] = true;
+              fieldVals[matchedField.id] = {
+                old: detail.oldValue,
+                new: detail.newValue
+              };
+            }
+          });
+          setSelectedFields(selected);
+          setFormData(prev => ({
+            ...prev,
+            fieldValues: fieldVals
+          }));
+        }
+
+        setSelfieSrc(app.selfie_url);
+
+        if (app.service_type.toLowerCase() === 'new_registration') {
+          setNewRegData({
+            childName: app.applicant_name,
+            gender: 'MALE',
+            placeOfBirth: 'HOSPITAL',
+            hospitalName: '',
+            permanentAddress: '',
+            deceasedName: app.applicant_name,
+            ageAtDeath: '',
+            causeOfDeath: '',
+            placeOfDeath: '',
+            placeOfDeathCategory: 'HOSPITAL',
+            groomName: app.applicant_name,
+            groomAge: '',
+            groomFather: app.father_name || '',
+            brideName: '',
+            brideAge: '',
+            brideFather: '',
+            placeOfMarriage: ''
+          });
+        }
+
+        useAdminStore.setState({ activeTokenProcess: mockToken });
+        setStep('VERIFICATION');
+      })
+      .catch(err => {
+        setObjectionError(err.message || 'No application under objection found');
+      });
   };
 
   // Live Camera handlers
@@ -465,42 +553,61 @@ export default function CounterOperations() {
     }
 
     setPaying(true);
-    setTimeout(() => {
-      // Package application
-      const isCorrection = activeTokenProcess.serviceType === 'correction';
-      const applicationPayload = {
-        tokenNumber: activeTokenProcess.tokenNumber,
-        departmentBlock: activeTokenProcess.block,
-        serviceType: activeTokenProcess.serviceType,
-        selfieUrl: selfieSrc || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-        commonDetails: isCorrection ? formData : {
-          applicantName: activeTokenProcess.block === 'marriage' ? newRegData.groomName : newRegData.childName || newRegData.deceasedName,
-          mobileNumber: formData.mobileNumber || "9829XXXXXX",
-          registrationNumber: isCorrection ? formData.registrationNumber : 'NEW-REGISTRATION',
-          fatherName: newRegData.groomFather || newRegData.fatherName || formData.fatherName,
-          motherName: newRegData.motherName || formData.motherName,
-          dob: newRegData.dob || formData.dob,
-        },
-        correctionFields: isCorrection ? Object.keys(selectedFields).filter(k => selectedFields[k]).map(key => ({
-          fieldName: PREDEFINED_FIELDS.find(f => f.id === key)?.label || key,
-          oldValue: formData.fieldValues[key]?.old || '---',
-          newValue: formData.fieldValues[key]?.new || '---'
-        })) : [],
-        correctionType: isCorrection ? (isMajorCorrection ? 'MAJOR' : 'MINOR') : 'NEW_REGISTRATION',
-        uploadedDocuments: Object.values(scannedFiles),
-        paymentDetails: {
-          method: paymentMethod,
-          amount: 20.00,
-          status: 'SUCCESS',
-          transactionId: `TXN-${Math.floor(10000000 + Math.random() * 90000000)}`
-        }
-      };
 
-      const result = submitApplication(applicationPayload);
-      setEnrollmentResult(result);
-      setPaying(false);
-      setStep('COMPLETE');
-    }, 2000);
+    const isCorrection = activeTokenProcess.serviceType === 'correction';
+    const applicationPayload = {
+      tokenNumber: activeTokenProcess.tokenNumber,
+      departmentBlock: activeTokenProcess.block,
+      serviceType: activeTokenProcess.serviceType,
+      selfieUrl: selfieSrc || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+      commonDetails: isCorrection ? formData : {
+        applicantName: activeTokenProcess.block === 'marriage' ? newRegData.groomName : newRegData.childName || newRegData.deceasedName,
+        mobileNumber: formData.mobileNumber || "9829XXXXXX",
+        registrationNumber: isCorrection ? formData.registrationNumber : 'NEW-REGISTRATION',
+        fatherName: newRegData.groomFather || newRegData.fatherName || formData.fatherName,
+        motherName: newRegData.motherName || formData.motherName,
+        dob: newRegData.dob || formData.dob,
+      },
+      correctionFields: isCorrection ? Object.keys(selectedFields).filter(k => selectedFields[k]).map(key => ({
+        fieldName: PREDEFINED_FIELDS.find(f => f.id === key)?.label || key,
+        oldValue: formData.fieldValues[key]?.old || '---',
+        newValue: formData.fieldValues[key]?.new || '---'
+      })) : [],
+      correctionType: isCorrection ? (isMajorCorrection ? 'MAJOR' : 'MINOR') : 'NEW_REGISTRATION',
+      uploadedDocuments: Object.values(scannedFiles),
+      paymentDetails: activeTokenProcess?.isReSubmission ? {
+        method: 'EXEMPT',
+        amount: 0.00,
+        status: 'SUCCESS',
+        transactionId: `EXEMPT-${activeTokenProcess.tokenNumber}`
+      } : {
+        method: paymentMethod,
+        amount: 20.00,
+        status: paymentMethod === 'CASH' ? 'PENDING' : 'SUCCESS',
+        transactionId: `TXN-${Math.floor(10000000 + Math.random() * 90000000)}`
+      }
+    };
+
+    submitApplication(applicationPayload)
+      .then((result) => {
+        setEnrollmentResult({
+          ...result,
+          enrollmentId: result.enrollment_id,
+          tokenNumber: activeTokenProcess.tokenNumber,
+          departmentBlock: activeTokenProcess.block,
+          serviceType: activeTokenProcess.serviceType,
+          commonDetails: applicationPayload.commonDetails,
+          uploadedDocuments: applicationPayload.uploadedDocuments,
+          paymentDetails: applicationPayload.paymentDetails,
+          correctionFields: applicationPayload.correctionFields
+        });
+        setPaying(false);
+        setStep('COMPLETE');
+      })
+      .catch((err) => {
+        setPaying(false);
+        alert(`Error submitting application: ${err.message}`);
+      });
   };
 
   // Reset local wizard wizard state
@@ -539,6 +646,7 @@ export default function CounterOperations() {
     });
     setScannedFiles({});
     setEnrollmentResult(null);
+    clearActiveTokenProcess();
   };
 
   // Physical print enrollment slip spooled trigger
@@ -576,6 +684,7 @@ export default function CounterOperations() {
           
           {/* Active Process / Queue Dispatch Controls */}
           {!activeTokenProcess ? (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
               
               {/* Box A: Manual Token Input */}
@@ -592,7 +701,7 @@ export default function CounterOperations() {
                     type="text"
                     placeholder="e.g. TKN-BIR-CORR-1002"
                     value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
+                    onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
                     className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl text-lg font-bold text-navy focus:border-navy uppercase outline-none"
                   />
                   <button
@@ -624,8 +733,37 @@ export default function CounterOperations() {
                   </button>
                 </div>
               </div>
-
             </div>
+
+            <div className="bg-amber-50/50 border border-amber-200/80 p-6 rounded-2xl flex flex-col justify-between gap-4 mt-6">
+              <div>
+                <h3 className="m-0 text-navy font-bold text-lg">Retrieve Application under Objection (आपत्ति वाली फाइलें)</h3>
+                <p className="text-sm text-slate-500 font-semibold leading-tight mt-1 m-0">
+                  Search and reload an application previously flagged with an objection by the Checker to correct its details/documents.
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter Token Number or Enrollment ID (e.g. ENR-582935)"
+                  value={objectionSearchInput}
+                  onChange={(e) => setObjectionSearchInput(e.target.value.toUpperCase())}
+                  className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl text-lg font-bold text-navy focus:border-navy uppercase outline-none"
+                />
+                <button
+                  onClick={handleSearchObjectionApp}
+                  className="px-6 bg-saffron text-navy hover:bg-amber-500 text-lg font-bold rounded-xl active:scale-95 transition-transform cursor-pointer shadow-md flex items-center gap-2"
+                >
+                  <Search className="w-5 h-5 text-navy" />
+                  <span>Retrieve Application</span>
+                </button>
+              </div>
+              {objectionError && (
+                <p className="text-sm text-red-600 font-bold m-0 mt-1">{objectionError}</p>
+              )}
+            </div>
+            </>
           ) : (
             // Active Token details loaded, start verification and camera capture
             <div className="flex flex-col gap-6 mt-2">
@@ -639,6 +777,13 @@ export default function CounterOperations() {
                       Review active municipal citizen token specifications
                     </p>
                   </div>
+
+                  {activeTokenProcess.isReSubmission && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-semibold leading-relaxed">
+                      <strong className="block uppercase text-xs font-bold text-red-700 mb-1">🚨 Application under Objection</strong>
+                      Objection Remarks: <span className="font-bold text-navy">"{activeTokenProcess.originalApp.objection_remarks}"</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-6 text-sm font-semibold border-y py-5 my-1 leading-relaxed">
                     <div>
@@ -1509,62 +1654,76 @@ export default function CounterOperations() {
 
               <div className="flex justify-between items-baseline">
                 <span className="text-sm font-bold text-slate-400 uppercase">Service Fee Due:</span>
-                <span className="text-4xl font-extrabold text-navy">₹20.00</span>
+                <span className="text-4xl font-extrabold text-navy">
+                  {activeTokenProcess?.isReSubmission ? '₹0.00' : '₹20.00'}
+                </span>
               </div>
             </div>
 
             {/* Box B: Select payment mode */}
-            <div className="border border-slate-200 p-6 rounded-2xl flex flex-col justify-between gap-6 bg-white shadow-sm">
-              <div className="flex flex-col gap-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Choose Payment Method</span>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod('CASH')}
-                    className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ${
-                      paymentMethod === 'CASH' 
-                        ? 'border-navy bg-navy/5 text-navy shadow-sm' 
-                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <CreditCard className="w-6 h-6" />
-                    <span className="font-bold text-sm">Offline Cash</span>
-                  </button>
-
-                  <button
-                    onClick={() => setPaymentMethod('UPI_QR')}
-                    className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ${
-                      paymentMethod === 'UPI_QR' 
-                        ? 'border-navy bg-navy/5 text-navy shadow-sm' 
-                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <Smartphone className="w-6 h-6" />
-                    <span className="font-bold text-sm">Simulate UPI QR</span>
-                  </button>
-                </div>
-              </div>
-
-              {paymentMethod === 'UPI_QR' ? (
-                // Display mock dynamic QR
-                <div className="flex items-center gap-4 bg-slate-50 border p-3 rounded-xl">
-                  <div className="w-20 h-20 bg-white border border-slate-300 rounded-lg p-1.5 flex items-center justify-center shrink-0">
-                    <img 
-                      src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=nagarnigam.kiosk@sbi%26am=20.00%26tn=Counter-Bill" 
-                      alt="Mock QR" 
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="text-left text-xs leading-snug">
-                    <span className="font-bold text-navy uppercase block">dynamic upi code generated</span>
-                    <span className="text-slate-500 block mt-0.5">Point terminal display to citizen, wait for UPI transaction confirmation.</span>
+            <div className="border border-slate-200 p-6 rounded-2xl flex flex-col justify-between gap-6 bg-white shadow-sm font-rajdhani">
+              {activeTokenProcess?.isReSubmission ? (
+                <div className="flex flex-col gap-4 flex-1 justify-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Payment Statement</span>
+                  <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-sm text-emerald-950 font-bold leading-relaxed shadow-sm">
+                    <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>Fees waived for resubmitting an objection application. Previously paid.</span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 bg-amber-50/50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 leading-snug">
-                  <AlertCircle className="w-5 h-5 text-saffron shrink-0" />
-                  <span>Admin verifies cash received of flat ₹20.00 from the citizen before completing registry.</span>
-                </div>
+                <>
+                  <div className="flex flex-col gap-3">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Choose Payment Method</span>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setPaymentMethod('CASH')}
+                        className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ${
+                          paymentMethod === 'CASH' 
+                            ? 'border-navy bg-navy/5 text-navy shadow-sm' 
+                            : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <CreditCard className="w-6 h-6" />
+                        <span className="font-bold text-sm">Offline Cash</span>
+                      </button>
+
+                      <button
+                        onClick={() => setPaymentMethod('UPI_QR')}
+                        className={`p-4 border-2 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ${
+                          paymentMethod === 'UPI_QR' 
+                            ? 'border-navy bg-navy/5 text-navy shadow-sm' 
+                            : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <Smartphone className="w-6 h-6" />
+                        <span className="font-bold text-sm">Simulate UPI QR</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {paymentMethod === 'UPI_QR' ? (
+                    // Display mock dynamic QR
+                    <div className="flex items-center gap-4 bg-slate-50 border p-3 rounded-xl">
+                      <div className="w-20 h-20 bg-white border border-slate-300 rounded-lg p-1.5 flex items-center justify-center shrink-0">
+                        <img 
+                          src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=nagarnigam.kiosk@sbi%26am=20.00%26tn=Counter-Bill" 
+                          alt="Mock QR" 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="text-left text-xs leading-snug">
+                        <span className="font-bold text-navy uppercase block">dynamic upi code generated</span>
+                        <span className="text-slate-500 block mt-0.5">Point terminal display to citizen, wait for UPI transaction confirmation.</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 bg-amber-50/50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 leading-snug">
+                      <AlertCircle className="w-5 h-5 text-saffron shrink-0" />
+                      <span>Admin verifies cash received of flat ₹20.00 from the citizen before completing registry.</span>
+                    </div>
+                  )}
+                </>
               )}
 
               <button
@@ -1687,7 +1846,17 @@ export default function CounterOperations() {
                 </div>
                 <div className="flex justify-between">
                   <span>Service Fee:</span>
-                  <span className="text-emerald-600 font-bold">₹20.00 (PAID)</span>
+                  {enrollmentResult.paymentDetails.method === 'EXEMPT' ? (
+                    <span className="text-emerald-600 font-bold">₹0.00 (EXEMPT)</span>
+                  ) : enrollmentResult.paymentDetails.method === 'CASH' ? (
+                    <span className="text-amber-600 font-bold">₹20.00 (PENDING)</span>
+                  ) : (
+                    <span className="text-emerald-600 font-bold">₹20.00 (PAID)</span>
+                  )}
+                </div>
+                <div className="flex justify-between border-t border-slate-100 pt-2.5 mt-1 font-bold text-navy">
+                  <span>Next Visit:</span>
+                  <span>{enrollmentResult.next_visit_time ? new Date(enrollmentResult.next_visit_time).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
                 </div>
               </div>
 
@@ -1734,15 +1903,25 @@ export default function CounterOperations() {
                 <div>
                   <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
                   <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
-                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt).toLocaleDateString()}</p>
+                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleDateString()}</p>
                   <p className="my-1.5"><strong>Department Block:</strong> {enrollmentResult.departmentBlock.toUpperCase()}</p>
                   <p className="my-1.5"><strong>Application Type:</strong> {enrollmentResult.serviceType.toUpperCase()}</p>
+                  <p className="my-1.5 font-bold" style={{ color: '#1e3a8a' }}><strong>Next Visit Scheduled:</strong> {enrollmentResult.next_visit_time ? new Date(enrollmentResult.next_visit_time).toLocaleString('en-IN') : 'N/A'}</p>
                 </div>
                 <div>
                   <p className="my-1.5"><strong>Applicant Name:</strong> {enrollmentResult.commonDetails.applicantName.toUpperCase()}</p>
                   <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
                   <p className="my-1.5"><strong>Base Reg ID:</strong> {enrollmentResult.commonDetails.registrationNumber}</p>
-                  <p className="my-1.5"><strong>Payment Fee:</strong> ₹20.00 (PAID via {enrollmentResult.paymentDetails.method})</p>
+                  <p className="my-1.5">
+                    <strong>Payment Fee:</strong>{' '}
+                    {enrollmentResult.paymentDetails.method === 'EXEMPT' ? (
+                      <span style={{ color: '#059669', fontWeight: 'bold' }}>₹0.00 (FEE EXEMPT)</span>
+                    ) : enrollmentResult.paymentDetails.method === 'CASH' ? (
+                      <span style={{ color: '#d97706', fontWeight: 'bold' }}>₹20.00 (PENDING via CASH)</span>
+                    ) : (
+                      <span>₹20.00 (PAID via {enrollmentResult.paymentDetails.method})</span>
+                    )}
+                  </p>
                   <p className="my-1.5"><strong>Transaction Reference:</strong> {enrollmentResult.paymentDetails.transactionId}</p>
                 </div>
               </div>

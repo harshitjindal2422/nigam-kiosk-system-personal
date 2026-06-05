@@ -6,7 +6,7 @@ import { prisma } from '../config/db.js';
 export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
     // 1. Retrieve token from secure HTTP-only cookie or Auth Header
-    const token = req.cookies?.token || req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token;
 
     if (!token) {
       throw new ApiError(401, 'Unauthorized access: Token not found');
@@ -26,12 +26,11 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
         user.role = 'SUPER_ADMIN';
         user.id = user.super_admin_id; // Normalize key
       }
-    } else if (decodedToken.role === 'ADMIN') {
+    } else {
       user = await prisma.admin.findUnique({
         where: { admin_id: decodedToken.id },
       });
       if (user) {
-        user.role = 'ADMIN';
         user.id = user.admin_id; // Normalize key
       }
     }

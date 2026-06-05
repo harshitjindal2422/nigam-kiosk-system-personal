@@ -33,13 +33,17 @@ model Admin {
   full_name      String
   email          String   @unique
   password       String
-  role           String   @default("ADMIN") // ADMIN, SUPERADMIN
+  role           String   @default("ADMIN") // ADMIN, SUPER_ADMIN, COUNTER_OPERATOR, CHECKER_OPERATOR, APPROVAL_OPERATOR
   created_at     DateTime @default(now())
 
-  super_admin        SuperAdmin?                 @relation(fields: [super_admin_id], references: [super_admin_id], onDelete: SetNull)
-  certificate_prints CertificatePrintRecord[]
+  super_admin         SuperAdmin?                 @relation(fields: [super_admin_id], references: [super_admin_id], onDelete: SetNull)
+  certificate_prints  CertificatePrintRecord[]
   counter_corrections CounterCorrectionRecord[]
   pehchan_corrections PehchanCorrectionRecord[]
+
+  counter_apps        Application[] @relation("CounterOperatorApps")
+  checker_apps        Application[] @relation("CheckerOperatorApps")
+  approval_apps       Application[] @relation("ApprovalOperatorApps")
 
   @@map("admins")
 }
@@ -145,3 +149,45 @@ model Token {
 
   @@map("tokens")
 }
+
+// ==========================================
+// 8. WORKFLOW APPLICATION MODEL
+// ==========================================
+model Application {
+  application_id       Int       @id @default(autoincrement())
+  enrollment_id        String    @unique
+  token_number         String
+  department_block     String    // BIRTH, DEATH, MARRIAGE
+  service_type         String    // CORRECTION, NEW_REGISTRATION
+  selfie_url           String?
+  applicant_name       String
+  mobile_number        String
+  registration_number  String?
+  father_name          String?
+  mother_name          String?
+  dob                  String?
+  relation_with_applicant String?
+  correction_type      String    // MAJOR, MINOR, NEW_REGISTRATION
+  correction_details   Json?     // Array of: [{fieldName, oldValue, newValue}]
+  uploaded_documents   Json      // Array of filenames: ["doc1.pdf", "doc2.pdf"]
+  status               String    @default("PENDING_CHECKER") // PENDING_CHECKER, APPROVED, OBJECTION, DONE, REVERTED_TO_CHECKER
+  objection_remarks    String?
+  next_visit_time      DateTime?
+  payment_method       String?   // CASH, UPI_QR
+  payment_amount       Decimal   @db.Decimal(10, 2)
+  payment_status       String    @default("SUCCESS")
+  transaction_id       String    @unique
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  counter_operator_id  Int?
+  checker_operator_id  Int?
+  approval_operator_id Int?
+
+  counter_operator     Admin?    @relation("CounterOperatorApps", fields: [counter_operator_id], references: [admin_id], onDelete: SetNull)
+  checker_operator     Admin?    @relation("CheckerOperatorApps", fields: [checker_operator_id], references: [admin_id], onDelete: SetNull)
+  approval_operator    Admin?    @relation("ApprovalOperatorApps", fields: [approval_operator_id], references: [admin_id], onDelete: SetNull)
+
+  @@map("applications")
+}
+

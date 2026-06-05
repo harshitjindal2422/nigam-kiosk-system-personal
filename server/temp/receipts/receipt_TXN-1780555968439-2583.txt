@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         4/6/2026, 12:22:53 pm
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-928359
+APPLICANT:    GAURAV
+MOBILE:       9999999999
+CERT TYPE:    BIRTH
+COPIES:       3
+AMOUNT:       ₹60.00
+TXN ID:       TXN-1780555968439-2583
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

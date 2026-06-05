@@ -46,34 +46,10 @@ export const useAuthStore = create((set, get) => ({
   // ⚙️ Auth Actions
   // ==========================================
   
-  // 1. Unified Login Action (checks local operator list, then falls back to backend for admins)
+  // 1. Unified Login Action (authenticates Kiosk Admins, Operators on the backend)
   login: async (email, password) => {
     set({ loading: true, error: null });
     
-    // Check if matching email/password is found in local operators list first
-    const matchedOperator = get().operators.find(
-      (op) => op.email.toLowerCase() === email.toLowerCase() && op.password === password
-    );
-    
-    if (matchedOperator) {
-      // Simulate successful local JWT generation for counter operators
-      const mockToken = `mock-jwt-token-operator-${matchedOperator.id}-${Date.now()}`;
-      const userProfile = {
-        id: matchedOperator.id,
-        full_name: matchedOperator.full_name,
-        email: matchedOperator.email,
-        role: 'COUNTER_OPERATOR',
-        assignedCounter: matchedOperator.assignedCounter
-      };
-      
-      localStorage.setItem('kiosk_admin_token', mockToken);
-      localStorage.setItem('kiosk_admin_profile', JSON.stringify(userProfile));
-      
-      set({ token: mockToken, user: userProfile, isAuthenticated: true, loading: false });
-      return { success: true, role: 'COUNTER_OPERATOR' };
-    }
-    
-    // Otherwise, attempt authenticating Kiosk Admins and Super Admins on the backend
     try {
       const response = await axiosInstance.post('/auth/login', { email, password });
       const { user, token } = response.data;
@@ -84,7 +60,7 @@ export const useAuthStore = create((set, get) => ({
       set({ token, user, isAuthenticated: true, loading: false });
       return { success: true, role: user.role };
     } catch (err) {
-      const errMsg = err.message || 'Login failed. Please check credentials.';
+      const errMsg = err.response?.data?.message || err.message || 'Login failed. Please check credentials.';
       set({ error: errMsg, loading: false });
       return { success: false, message: errMsg };
     }
@@ -111,10 +87,7 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     set({ loading: true });
     try {
-      // Avoid failing backend call if we logged in as a mock local operator
-      if (!get().token?.includes('mock-jwt')) {
-        await axiosInstance.post('/auth/logout');
-      }
+      await axiosInstance.post('/auth/logout');
     } catch (err) {
       console.error('API logout notification failed:', err);
     } finally {
@@ -125,16 +98,6 @@ export const useAuthStore = create((set, get) => ({
   },
 
   checkAuth: async () => {
-    // If logged in as local mock operator, check is instant
-    const activeToken = get().token;
-    if (activeToken && activeToken.includes('mock-jwt')) {
-      const persistedProfile = JSON.parse(localStorage.getItem('kiosk_admin_profile'));
-      if (persistedProfile) {
-        set({ user: persistedProfile, isAuthenticated: true, loading: false });
-        return;
-      }
-    }
-    
     set({ loading: true, error: null });
     try {
       const response = await axiosInstance.get('/auth/me');

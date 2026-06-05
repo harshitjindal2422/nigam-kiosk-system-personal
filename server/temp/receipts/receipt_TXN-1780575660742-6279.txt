@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         4/6/2026, 5:51:05 pm
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-347695
+APPLICANT:    MOHIT
+MOBILE:       2365987410
+CERT TYPE:    BIRTH
+COPIES:       2
+AMOUNT:       ₹40.00
+TXN ID:       TXN-1780575660742-6279
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

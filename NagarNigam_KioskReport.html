@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nagar Nigam Kiosk System – Project Progress Report</title>
+  <style>
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── PRINT PAGE SETUP ─── */
+    @page {
+      size: A4;
+      margin: 20mm 20mm 22mm 20mm;
+    }
+    @media print {
+      body { font-size: 10.5pt; }
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
+      section { page-break-inside: avoid; }
+      table { page-break-inside: auto; }
+      tr    { page-break-inside: avoid; page-break-after: auto; }
+    }
+
+    /* ─── BASE ─── */
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11pt;
+      color: #1a1a1a;
+      background: #f0f0f0;
+    }
+
+    /* ─── PAPER WRAPPER ─── */
+    .paper {
+      background: #ffffff;
+      width: 210mm;
+      min-height: 297mm;
+      margin: 30px auto;
+      padding: 20mm 20mm 22mm 20mm;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    }
+    @media print { .paper { margin: 0; box-shadow: none; padding: 0; width: 100%; } }
+
+    /* ─── HEADER / LETTERHEAD ─── */
+    .letterhead {
+      display: flex;
+      align-items: center;
+      border-bottom: 3px double #003580;
+      padding-bottom: 12px;
+      margin-bottom: 8px;
+      gap: 16px;
+    }
+    .letterhead .emblem {
+      width: 72px; height: 72px;
+      border: 2px solid #003580;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: #e8edf7;
+      font-size: 30px;
+      flex-shrink: 0;
+    }
+    .letterhead .org-info { flex: 1; text-align: center; }
+    .letterhead .org-hindi {
+      font-size: 16pt;
+      font-weight: bold;
+      color: #003580;
+      letter-spacing: 0.5px;
+    }
+    .letterhead .org-english {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #003580;
+    }
+    .letterhead .org-sub {
+      font-size: 9.5pt;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    /* ─── DOCUMENT TITLE BOX ─── */
+    .doc-title-box {
+      text-align: center;
+      border: 1.5px solid #003580;
+      background: #eef2fb;
+      padding: 10px 0 8px;
+      margin: 14px 0 10px;
+    }
+    .doc-title-box .doc-title {
+      font-size: 13pt;
+      font-weight: bold;
+      color: #003580;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .doc-title-box .doc-sub {
+      font-size: 9.5pt;
+      color: #444;
+      margin-top: 2px;
+    }
+
+    /* ─── META LINE ─── */
+    .meta-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9pt;
+      color: #555;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+    }
+
+    /* ─── SECTION HEADINGS ─── */
+    h2 {
+      font-size: 11.5pt;
+      font-weight: bold;
+      color: #003580;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border-left: 4px solid #003580;
+      padding-left: 8px;
+      margin: 20px 0 10px;
+    }
+    h3 {
+      font-size: 10.5pt;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin: 14px 0 6px;
+    }
+
+    /* ─── PARAGRAPHS ─── */
+    p {
+      text-align: justify;
+      line-height: 1.7;
+      margin-bottom: 8px;
+    }
+
+    /* ─── TABLES ─── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10pt;
+      margin: 10px 0 16px;
+    }
+    thead tr {
+      background: #003580;
+      color: #ffffff;
+    }
+    thead th {
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: bold;
+      border: 1px solid #003580;
+    }
+    tbody tr:nth-child(even) { background: #f0f4fb; }
+    tbody tr:nth-child(odd)  { background: #ffffff; }
+    tbody td {
+      padding: 7px 10px;
+      border: 1px solid #c8d0e0;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .status-done {
+      color: #1a7a1a;
+      font-weight: bold;
+    }
+    .status-progress {
+      color: #b55a00;
+      font-weight: bold;
+    }
+    .status-planned {
+      color: #888;
+      font-style: italic;
+    }
+
+    /* ─── NUMBERED LIST ─── */
+    ol, ul { padding-left: 20px; margin-bottom: 8px; }
+    li { line-height: 1.7; margin-bottom: 2px; }
+
+    /* ─── HIGHLIGHT BOX ─── */
+    .highlight-box {
+      border: 1px solid #003580;
+      background: #eef2fb;
+      padding: 10px 14px;
+      margin: 12px 0;
+      border-radius: 2px;
+    }
+    .highlight-box p { margin-bottom: 0; }
+
+    /* ─── SIGNATURE AREA ─── */
+    .signature-section {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .sig-block {
+      text-align: center;
+      width: 38%;
+    }
+    .sig-line {
+      border-top: 1px solid #1a1a1a;
+      margin-top: 40px;
+      padding-top: 4px;
+      font-size: 9.5pt;
+    }
+
+    /* ─── FOOTER ─── */
+    .doc-footer {
+      margin-top: 30px;
+      border-top: 2px solid #003580;
+      padding-top: 6px;
+      font-size: 8.5pt;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ─── PRINT BUTTON ─── */
+    .print-btn {
+      display: block;
+      width: 210mm;
+      margin: 0 auto 16px;
+      text-align: right;
+    }
+    .print-btn button {
+      background: #003580;
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      font-size: 11pt;
+      cursor: pointer;
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+    }
+    .print-btn button:hover { background: #0053cc; }
+    @media print { .print-btn { display: none; } }
+  </style>
+</head>
+<body>
+
+<!-- PRINT BUTTON -->
+<div class="print-btn no-print">
+  <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+</div>
+
+<!-- ════════════════ PAPER ════════════════ -->
+<div class="paper">
+
+  <!-- ── LETTERHEAD ── -->
+  <div class="letterhead">
+    <div class="emblem">🏛️</div>
+    <div class="org-info">
+      <div class="org-hindi">नगर निगम – स्मार्ट सिटिज़न सेवा केंद्र</div>
+      <div class="org-english">Nagar Nigam – Smart Citizen Service Centre</div>
+      <div class="org-sub">Digital India Initiative &nbsp;|&nbsp; Municipal Corporation</div>
+    </div>
+    <div class="emblem">🇮🇳</div>
+  </div>
+
+  <!-- ── DOCUMENT TITLE ── -->
+  <div class="doc-title-box">
+    <div class="doc-title">Project Progress &amp; Workflow Report</div>
+    <div class="doc-sub">Self-Service Citizen Kiosk System — Development Status</div>
+  </div>
+
+  <!-- ── META ── -->
+  <div class="meta-line">
+    <span><strong>Report Date:</strong> June 03, 2026</span>
+    <span><strong>Prepared For:</strong> Nagar Nigam Aayukt (IAS)</span>
+    <span><strong>Classification:</strong> Official / Internal</span>
+  </div>
+
+  <!-- ════ SECTION 1: EXECUTIVE SUMMARY ════ -->
+  <h2>1. Executive Summary</h2>
+  <p>
+    The Nagar Nigam Self-Service Kiosk System is a <strong>Digital India Initiative</strong>
+    designed to bring essential municipal services directly to citizens through
+    easy-to-use, touch-screen kiosk machines placed at public locations. The system
+    eliminates the need for citizens to visit the municipal office for routine services
+    such as downloading birth/death certificates, searching registration records, and
+    submitting correction requests.
+  </p>
+  <p>
+    The project is currently in <strong>active development</strong>, with six of the twelve
+    planned phases fully operational and the remaining phases either in progress or
+    scheduled for delivery shortly.
+  </p>
+
+  <div class="highlight-box">
+    <p>
+      <strong>Key Benefit:</strong> Every interaction a citizen completes on the kiosk
+      saves an average of <em>one counter visit</em>, reducing waiting time, operational
+      burden, and paper-based record-keeping for the municipal corporation.
+    </p>
+  </div>
+
+  <!-- ════ SECTION 2: PROJECT OBJECTIVE ════ -->
+  <h2>2. Project Objective</h2>
+  <p>The kiosk system is designed to provide the following four core services to citizens:</p>
+  <ol>
+    <li><strong>Certificate Download &amp; Print</strong> — Citizens can download their birth/death certificates from the Pehchan Portal, pay the applicable fee, and receive a printed copy instantly.</li>
+    <li><strong>Registration Search</strong> — Citizens can search for their registration details through the Pehchan Portal without any staff assistance.</li>
+    <li><strong>Certificate Correction (Counter Token)</strong> — Citizens who need to correct details on a certificate can fill a form, pay the fee, and receive a queue token to be attended to at the counter.</li>
+    <li><strong>Certificate Correction (Online Portal)</strong> — For corrections that can be done digitally, citizens are guided through the Pehchan Portal directly on the kiosk.</li>
+  </ol>
+
+  <!-- ════ SECTION 3: HOW THE KIOSK WORKS ════ -->
+  <h2>3. How the Kiosk Works — Citizen Journey</h2>
+  <p>
+    The following steps describe a typical citizen interaction from start to finish:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:5%">#</th>
+        <th style="width:25%">Step</th>
+        <th>What Happens</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Approach &amp; Wake</td>
+        <td>The citizen taps the screen. A welcome screen appears in Hindi or English (selectable).</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Select Service</td>
+        <td>Four large service buttons are displayed. The citizen taps the one they need.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Enter Details</td>
+        <td>The kiosk asks for basic information (name, mobile number, registration number).</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Make Payment</td>
+        <td>A UPI QR code is displayed on-screen. The citizen scans and pays from their mobile phone.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Receive Output</td>
+        <td>The kiosk prints the certificate or queue token immediately after successful payment.</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Auto Reset</td>
+        <td>The session is automatically cleared so no personal data remains for the next user.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ════ SECTION 4: DEVELOPMENT PROGRESS ════ -->
+  <h2>4. Development Progress — Phase-Wise Status</h2>
+  <p>
+    The project follows a structured twelve-phase delivery plan. The table below
+    summarises the current completion status of each phase in simple terms.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:5%">Sr.</th>
+        <th style="width:30%">Phase / Module</th>
+        <th style="width:45%">What Was Built</th>
+        <th style="width:20%">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Foundation &amp; Infrastructure</td>
+        <td>Core web application, database, server, security middleware, and logging system.</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Authentication &amp; Access Control</td>
+        <td>Secure login for Admins and Super-Admins with role-based access; session management.</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Kiosk Home Screen &amp; UX</td>
+        <td>Full-screen touch interface with Hindi/English toggle, voice guidance, idle timeout, and accessibility features (magnifier, contrast, font size).</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Certificate Download &amp; Print (Block 1)</td>
+        <td>Pehchan Portal integration, 60-second file-freshness validation, QR payment, thermal printing, automatic file deletion for privacy, and receipt backup.</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Registration Search (Block 2)</td>
+        <td>Secure redirect to Pehchan Portal search flow with session pause, inactivity cleanup, and auto-reset.</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Counter Correction Token (Block 3)</td>
+        <td>Guided wizards for Birth &amp; Death correction, document checklist, legal disclaimer, QR payment, and automatic queue token printing (e.g., B-101, D-203).</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Online Correction via Portal (Block 4)</td>
+        <td>Payment-first workflow followed by Pehchan Portal redirection and correction activity logging.</td>
+        <td class="status-progress">🔄 In Progress</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Physical Thermal Printer Integration</td>
+        <td>Direct hardware communication with USB/Network thermal printers using ESC/POS protocol; paper-low and offline detection.</td>
+        <td class="status-progress">🔄 In Progress</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Live UPI Payment Integration</td>
+        <td>Connecting to production banking APIs (e.g., SBI Merchant, Razorpay) with webhook signatures and duplicate-payment prevention.</td>
+        <td class="status-planned">📋 Planned</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>Security &amp; Session Hardening</td>
+        <td>Session isolation, browser history clearance, latest-file-only access restriction, and kiosk hold/pause/sleep modes.</td>
+        <td class="status-done">✅ Complete</td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td>Admin &amp; Analytics Dashboard</td>
+        <td>Real-time monitoring of daily transactions, fee collections, token counts, certificate prints, and printer health.</td>
+        <td class="status-planned">📋 Planned</td>
+      </tr>
+      <tr>
+        <td>12</td>
+        <td>Production Deployment &amp; Optimisation</td>
+        <td>Performance tuning, database optimisation, single-app kiosk browser lock, security hardening, and backup strategy.</td>
+        <td class="status-planned">📋 Planned</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ════ SECTION 5: KEY FEATURES ════ -->
+  <h2>5. Key Features of the System</h2>
+  <ul>
+    <li><strong>Bilingual Interface:</strong> Citizens can switch between Hindi and English at any time. Voice guidance is also provided.</li>
+    <li><strong>Privacy by Design:</strong> All downloaded documents are automatically deleted from the kiosk server immediately after printing. No personal data is retained between sessions.</li>
+    <li><strong>UPI Payment:</strong> Citizens pay directly from their mobile phone by scanning a QR code — no cash handling required at the kiosk.</li>
+    <li><strong>Accessibility:</strong> Screen magnifier, font-size controls, high-contrast mode, and wheelchair-friendly layout adjustments are built into the kiosk.</li>
+    <li><strong>Auto-Reset:</strong> If a citizen walks away without completing the transaction, the kiosk detects inactivity and automatically resets within 60 seconds.</li>
+    <li><strong>Thermal Printing:</strong> Certificates and queue tokens are printed on thermal paper — fast, durable, and ink-free.</li>
+    <li><strong>Admin Oversight:</strong> Authorised staff can monitor all transactions, payments, and printer status from a dedicated admin panel.</li>
+    <li><strong>Security Hardening:</strong> The kiosk browser is restricted to only authorised URLs, preventing misuse by citizens.</li>
+  </ul>
+
+  <!-- ════ SECTION 6: UPCOMING MILESTONES ════ -->
+  <h2>6. Upcoming Milestones</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:5%">Sr.</th>
+        <th style="width:40%">Milestone</th>
+        <th>Expected Outcome</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Complete Online Correction Workflow (Block 4)</td>
+        <td>Full end-to-end correction via Pehchan Portal with database logging.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Physical Printer Driver Integration</td>
+        <td>Real printed outputs from a connected thermal printer.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Live Payment Gateway Integration</td>
+        <td>Actual fee collection through official banking channels.</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Admin Dashboard &amp; Analytics</td>
+        <td>Daily reports, revenue summaries, and operational insights for management.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Production Deployment</td>
+        <td>Kiosk ready for physical installation and public use.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ════ SECTION 7: CONCLUSION ════ -->
+  <h2>7. Conclusion</h2>
+  <p>
+    The Nagar Nigam Kiosk System represents a significant step forward in delivering
+    efficient, transparent, and citizen-friendly municipal services. Six of the twelve
+    planned phases are fully complete, with the remaining phases on a clear and
+    time-bound delivery path.
+  </p>
+  <p>
+    Upon full deployment, the system will reduce citizen footfall at the municipal
+    counter, cut processing time for certificates and corrections, ensure
+    end-to-end payment traceability, and provide management with real-time
+    operational data — all in alignment with the <strong>Digital India</strong> and
+    <strong>Smart City</strong> mandates.
+  </p>
+  <p>
+    The development team remains committed to delivering a production-ready,
+    secure, and scalable platform for the Nagar Nigam's citizen services.
+  </p>
+
+  <!-- ── SIGNATURE AREA ── -->
+  <div class="signature-section">
+    <div class="sig-block">
+      <div class="sig-line">
+        <strong>Prepared By</strong><br/>
+        Project Development Team<br/>
+        Nagar Nigam – IT Cell
+      </div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line">
+        <strong>Reviewed &amp; Submitted To</strong><br/>
+        Nagar Nigam Aayukt (IAS)<br/>
+        Municipal Corporation
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <div class="doc-footer">
+    <span>Nagar Nigam – Smart Citizen Service Kiosk Project</span>
+    <span>Report Date: June 03, 2026</span>
+    <span>Page 1 of 1 &nbsp;|&nbsp; Confidential / Official Use Only</span>
+  </div>
+
+</div><!-- end .paper -->
+</body>
+</html>

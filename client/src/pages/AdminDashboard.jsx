@@ -101,7 +101,7 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/admin/login');
   };
 
   const metrics = [

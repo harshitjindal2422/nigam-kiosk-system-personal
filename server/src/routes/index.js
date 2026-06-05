@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRouter from './auth.routes.js';
 import paymentRouter from './payment.routes.js';
 import printRouter from './print.routes.js';
+import applicationRouter from './application.routes.js';
 import { router as adminRouter } from './admin.routes.js';
 
 const router = Router();
@@ -19,6 +20,9 @@ router.use('/payment', paymentRouter);
 
 // Print Routes mounted in Phase 4
 router.use('/print', printRouter);
+
+// Application workflow routes
+router.use('/applications', applicationRouter);
 
 // Correction Routes
 import correctionRouter from './correction.routes.js';

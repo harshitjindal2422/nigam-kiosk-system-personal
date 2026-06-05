@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuthStore } from '../store/authStore.js';
 import { useAdminStore } from '../store/adminStore.js';
 import { useNavigate } from 'react-router-dom';
@@ -7,12 +7,25 @@ import CounterOperations from '../components/admin/CounterOperations.jsx';
 
 export default function CounterDashboard() {
   const { user, logout } = useAuthStore();
-  const { queue } = useAdminStore();
+  const { queue, fetchActiveQueue, setProcessingToken, activeTokenProcess } = useAdminStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchActiveQueue();
+    // Poll the waiting queue every 10 seconds for real-time list updates
+    const timer = setInterval(() => {
+      fetchActiveQueue();
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [fetchActiveQueue]);
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/admin/login');
+  };
+
+  const handleSelectToken = (tokenNum) => {
+    setProcessingToken(tokenNum);
   };
 
   return (
@@ -76,11 +89,17 @@ export default function CounterDashboard() {
                 const isBirth = tokenNum.includes('BIR');
                 const isDeath = tokenNum.includes('DEA');
                 const deptColor = isBirth ? 'bg-orange-50 border-orange-200 text-orange-700' : isDeath ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-purple-50 border-purple-200 text-purple-700';
-                
+                const isServing = activeTokenProcess?.tokenNumber === tokenNum;
+
                 return (
                   <div 
                     key={idx} 
-                    className="p-3 border rounded-xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow bg-white"
+                    onClick={() => handleSelectToken(tokenNum)}
+                    className={`p-3 border rounded-xl flex items-center justify-between shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-98 ${
+                      isServing
+                        ? 'border-navy bg-navy/[0.03] ring-2 ring-navy/10'
+                        : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                    }`}
                   >
                     <div className="flex flex-col text-left gap-0.5">
                       <span className="font-bold text-navy text-base font-mono">{tokenNum}</span>
