@@ -37,7 +37,7 @@ export const dictionary = {
     // V2.0 Token Generation Page
     token_gen_title: "टोकन सफलतापूर्वक जनरेट हुआ!",
     token_number_label: "टोकन नंबर",
-    token_block_label: "विभाग",
+    token_block_label: "शाखा",
     token_service_label: "सेवा प्रकार",
     token_print_receipt: "टोकन रसीद प्रिंट करें",
     token_instructions: "कृपया प्रिंट की गई रसीद को लें और नगर निगम प्रशासनिक काउंटर पर जाएँ। काउंटर अधिकारी आपका आवेदन संसाधित करेंगे।",
@@ -159,7 +159,7 @@ export const dictionary = {
     // V2.0 Token Generation Page
     token_gen_title: "Token Successfully Generated!",
     token_number_label: "Token Number",
-    token_block_label: "Department",
+    token_block_label: "Shakha",
     token_service_label: "Service Type",
     token_print_receipt: "Print Token Receipt",
     token_instructions: "Please collect the printed token receipt and proceed to the Nagar Nigam Admin Counter. The counter executive will process your request.",

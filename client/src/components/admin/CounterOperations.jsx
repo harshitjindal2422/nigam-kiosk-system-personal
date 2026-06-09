@@ -1071,7 +1071,7 @@ export default function CounterOperations() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Father's Name (पिता)</label>
+                    <label className="text-slate-600">Father's Name (प्रमाण पत्र धारक के पिता)</label>
                     <input
                       type="text"
                       placeholder="Father's name"
@@ -1081,7 +1081,7 @@ export default function CounterOperations() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Mother's Name (माता)</label>
+                    <label className="text-slate-600">Mother's Name (प्रमाण पत्र धारक की माता)</label>
                     <input
                       type="text"
                       placeholder="Mother's name"
@@ -1094,7 +1094,7 @@ export default function CounterOperations() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Relation with Applicant</label>
+                    <label className="text-slate-600">Relation with Certificate Holder (प्रमाण पत्र धारक से आपका संबंध)</label>
                     <select
                       value={formData.relationWithApplicant}
                       onChange={(e) => setFormData({ ...formData, relationWithApplicant: e.target.value })}
@@ -1525,6 +1525,52 @@ export default function CounterOperations() {
                       )}
                     </div>
                   ))}
+
+                  {/* Additional/Other Document (Optional Scan Option) */}
+                  <div 
+                    className={`flex items-center justify-between p-4 border rounded-xl transition-all shadow-sm ${
+                      scannedFiles["Other Document (अन्य दस्तावेज)"] 
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
+                        : 'bg-white border-slate-200 text-slate-700 border-dashed'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                        scannedFiles["Other Document (अन्य दस्तावेज)"] ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-450'
+                      }`}>
+                        {scannedFiles["Other Document (अन्य दस्तावेज)"] ? <Check className="w-4 h-4" /> : "+"}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-[0.95rem]">Other Document (अन्य दस्तावेज)</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Optional / अतिरिक्त दस्तावेज</span>
+                      </div>
+                    </div>
+                    
+                    {scannedFiles["Other Document (अन्य दस्तावेज)"] ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-emerald-600 font-bold bg-white px-2 py-1 rounded border border-emerald-200/50">
+                          {scannedFiles["Other Document (अन्य दस्तावेज)"]}
+                        </span>
+                        <button
+                          onClick={() => setScannedFiles(prev => {
+                            const copy = { ...prev };
+                            delete copy["Other Document (अन्य दस्तावेज)"];
+                            return copy;
+                          })}
+                          className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold rounded active:scale-95 transition-transform cursor-pointer border border-red-200/30"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => triggerScanFile("Other Document (अन्य दस्तावेज)")}
+                        className="px-3.5 py-1.5 bg-slate-500 hover:bg-slate-600 text-white font-bold text-xs rounded-lg active:scale-95 transition-transform cursor-pointer"
+                      >
+                        Scan & Upload
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1959,16 +2005,22 @@ export default function CounterOperations() {
                 </ul>
               </div>
 
-              <div className="mt-12 flex justify-between text-xs font-semibold pt-12 border-t border-dashed">
-                <div className="text-center">
-                  <div className="w-32 border-b border-black mb-2 mx-auto" />
-                  <span>Applicant's Signature</span>
+              {enrollmentResult.paymentDetails.method === 'CASH' ? (
+                <div className="mt-12 flex justify-between text-xs font-semibold pt-12 border-t border-dashed">
+                  <div className="text-center">
+                    <div className="w-32 border-b border-black mb-2 mx-auto" />
+                    <span>Applicant's Signature</span>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-32 border-b border-black mb-2 mx-auto" />
+                    <span>Cashier Signature & Stamp</span>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="w-32 border-b border-black mb-2 mx-auto" />
-                  <span>Counter Officer stamp</span>
+              ) : (
+                <div className="mt-8 text-center text-xs font-semibold pt-4 border-t border-dashed text-slate-500 italic">
+                  * This is a digitally generated acknowledgement. No signature or stamp is required.
                 </div>
-              </div>
+              )}
             </div>,
             document.body
           )}

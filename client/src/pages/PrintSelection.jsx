@@ -76,8 +76,8 @@ export default function PrintSelection() {
     setShowDisclaimer(true);
     if (voiceAssist) {
       speak(language === 'hi'
-        ? 'घोषणा: हमारे कियोस्क सिस्टम के माध्यम से गैर जयपुर प्रमाण पत्र प्रिंट करना अवैध है। आगे बढ़ने के लिए मैं घोषणा करता हूँ पर क्लिक करें।'
-        : 'Disclaimer: It is illegal to print non Jaipur certificate through our kiosk system. Please click I declare to proceed.');
+        ? 'घोषणा: हमारे कियोस्क सिस्टम के माध्यम से नगर निगम जयपुर के बाहर के प्रमाण पत्र प्रिंट करना अवैध है। आगे बढ़ने के लिए मैं घोषणा करता हूँ पर क्लिक करें।'
+        : 'Disclaimer: It is illegal to print certificates outside of Jaipur Municipal Corporation through our kiosk system. Please click I declare to proceed.');
     }
   };
 
@@ -253,7 +253,7 @@ export default function PrintSelection() {
                   <div className="flex flex-col">
                     <span className="text-[12px] font-bold text-amber-600 uppercase tracking-wider font-rajdhani font-semibold">सूचना (Notice)</span>
                     <p className="m-0 text-navy font-bold font-hindi text-[18px] leading-relaxed mt-0.5">
-                      "हमारे कियोस्क सिस्टम के माध्यम से गैर-जयपुर प्रमाण पत्र प्रिंट करना अवैध है।"
+                      "हमारे कियोस्क सिस्टम के माध्यम से नगर निगम जयपुर के बाहर के प्रमाण पत्र प्रिंट करना अवैध है।"
                     </p>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export default function PrintSelection() {
                   <div className="flex flex-col">
                     <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider font-rajdhani font-semibold">English Advisory</span>
                     <p className="m-0 text-slate-700 font-semibold font-rajdhani text-[16px] leading-relaxed mt-0.5">
-                      "It is illegal to print non-Jaipur certificates through our kiosk system."
+                      "It is illegal to print certificates outside of Jaipur Municipal Corporation through our kiosk system."
                     </p>
                   </div>
                 </div>

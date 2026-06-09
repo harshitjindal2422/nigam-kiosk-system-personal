@@ -133,8 +133,8 @@ export default function TokenGeneration() {
 
   // Formatting strings for screen display
   const blockNameDisplay = language === 'hi'
-    ? (block === 'birth' ? 'जन्म प्रमाण-पत्र विभाग' : block === 'death' ? 'मृत्यु प्रमाण-पत्र विभाग' : 'विवाह प्रमाण-पत्र विभाग')
-    : `${block.toUpperCase()} CERTIFICATE DEPT`;
+    ? ((block === 'birth' || block === 'death') ? 'जन्म-मृत्यु शाखा' : 'विवाह शाखा')
+    : ((block === 'birth' || block === 'death') ? 'JANM MARTYU SHAKHA' : 'VIVHA SHAKHA');
 
   const serviceNameDisplay = language === 'hi'
     ? (type === 'correction' ? 'संशोधन अनुरोध (Correction)' : 'नवीन पंजीकरण (New Registration)')
@@ -189,7 +189,7 @@ export default function TokenGeneration() {
           <div className="flex flex-col gap-3.5 bg-slate-50/80 border border-slate-100 rounded-2xl p-4 z-10">
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
               <span className="text-slate-400 font-bold text-xs uppercase tracking-wider">
-                {language === 'hi' ? 'विभाग (Department)' : 'Department'}
+                {language === 'hi' ? 'शाखा (Shakha)' : 'Shakha'}
               </span>
               <span className="text-navy uppercase font-extrabold text-sm text-right">
                 {blockNameDisplay}
@@ -353,7 +353,7 @@ export default function TokenGeneration() {
 
           <div className="flex flex-col gap-1 border-b border-dashed border-black pb-2 mb-2">
             <div><strong>DATE:</strong> {new Date(tokenObj.createdAt).toLocaleString()}</div>
-            <div><strong>DEPARTMENT:</strong> {blockNameDisplay}</div>
+            <div><strong>SHAKHA:</strong> {blockNameDisplay}</div>
             <div><strong>SERVICE:</strong> {serviceNameDisplay}</div>
             <div><strong>STATUS:</strong> QUEUED AT COUNTER</div>
           </div>
