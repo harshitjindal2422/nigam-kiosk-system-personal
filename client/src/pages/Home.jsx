@@ -17,7 +17,11 @@ export default function Home() {
   }, [language, voiceAssist, speak, setKioskState]);
 
   const handleSelectBlock = (blockName) => {
-    navigate(`/services?block=${blockName}`);
+    if (blockName === 'marriage') {
+      navigate(`/print?block=marriage`);
+    } else {
+      navigate(`/services?block=${blockName}`);
+    }
   };
 
   return (

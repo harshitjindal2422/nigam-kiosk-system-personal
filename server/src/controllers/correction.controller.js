@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { logger } from '../config/logger.js';
+import { generateUniversalToken } from '../utils/tokenGenerator.js';
 
 const prisma = new PrismaClient();
 
@@ -48,9 +49,8 @@ export const generateToken = asyncHandler(async (req, res) => {
       }
     });
 
-    // 2. Determine Next Token Number
-    const tokenCount = await tx.token.count();
-    const tokenNumber = `TKN-${String(tokenCount + 101).padStart(3, '0')}`;
+    // 2. Determine Next Token Number using universal format: TKN-BIR/DEA/MAR-CORR-DDMM-NNN
+    const tokenNumber = await generateUniversalToken(certificateType, 'correction');
 
     // 3. Create Counter Correction Record
     const correctionRecord = await tx.counterCorrectionRecord.create({
@@ -105,19 +105,16 @@ export const generateToken = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const generateKioskToken = asyncHandler(async (req, res) => {
-  const { block, serviceType } = req.body;
+  const { block, serviceType, copies } = req.body;
 
   if (!block || !serviceType) {
     throw new ApiError(400, "Block and service type are required");
   }
 
-  // 1. Determine Next Token Number
-  const tokenCount = await prisma.token.count();
-  
-  // Format token like: TKN-BIR-REG-1002 or TKN-DEA-CORR-1003
-  const blockPrefix = block.substring(0, 3).toUpperCase();
-  const typePrefix = serviceType === 'correction' ? 'CORR' : 'REG';
-  const tokenNumber = `TKN-${blockPrefix}-${typePrefix}-${tokenCount + 1001}`;
+  const numCopies = parseInt(copies) || 1;
+
+  // 1. Determine Next Token Number using universal format: TKN-BIR/DEA/MAR-REG/CORR-DDMM-NNN
+  const tokenNumber = await generateUniversalToken(block, serviceType);
 
   // 2. Create Counter Correction Record with empty payment or details
   const result = await prisma.$transaction(async (tx) => {
@@ -138,7 +135,8 @@ export const generateKioskToken = asyncHandler(async (req, res) => {
         registration_number: 'KIOSK-TICKET',
         certificate_type: block.toUpperCase(),
         correction_type: serviceType === 'correction' ? 'MULTI' : 'NEW_REGISTRATION',
-        token_number: tokenNumber
+        token_number: tokenNumber,
+        remarks: `COPIES: ${numCopies}`
       }
     });
 
@@ -148,6 +146,9 @@ export const generateKioskToken = asyncHandler(async (req, res) => {
         token_number: tokenNumber,
         counter_number: 'Counter 1',
         queue_status: 'WAITING'
+      },
+      include: {
+        correction_record: true
       }
     });
 

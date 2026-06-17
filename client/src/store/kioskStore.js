@@ -54,7 +54,11 @@ export const useKioskStore = create((set, get) => ({
 
   // 3. Kiosk Session Lifecycle States
   setKioskState: (state, context = null) => {
-    set({ kioskState: state, pauseContext: context });
+    let nextContext = context;
+    if ((state === 'ACTIVE' || state === 'HOLD' || state === 'PAUSE') && context === null) {
+      nextContext = get().pauseContext;
+    }
+    set({ kioskState: state, pauseContext: nextContext });
     get().resetIdle();
     
     if (state === 'HOME' && get().voiceAssist) {

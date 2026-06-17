@@ -366,6 +366,55 @@ Added a mandatory fee collection step (₹20) when the user clicks the "Search i
 ## Pehchan Portal Print Disclaimer Modal
 
 ### Overview
+
 Added a mandatory legal disclaimer popup when the user clicks the "Print Documents" option from the Citizen Kiosk.
 1. **Interactive Warning Popup**: Displays a warning modal telling the user: *"It is illegal to print non-Jaipur certificate through our kiosk system."* (in both Hindi and English).
 2. **User Declaration Consent**: Includes a green **"I Declare"** button and a **"Cancel"** button. The kiosk will only launch the Pehchan download portal once the user explicitly clicks "I Declare".
+
+---
+
+## Dedicated Marriage Operator Dashboard
+
+### Overview
+Segregated the Marriage Operator workflow entirely from the general Counter Operator dashboard, providing a dedicated interface, routing, and role for Marriage counter operations.
+
+### Key Changes:
+1. **Database & Role Configuration**:
+   - Added a new administrative role `MARRIAGE_OPERATOR` in the database.
+   - Seeded a dedicated marriage operator account `marriage@nagarnigam.gov.in` (password: `Operator@123`) under the `MARRIAGE_OPERATOR` role in [seed.js](file:///d:/nagar-nigan-org/server/prisma/seed.js).
+2. **Backend Route Protection**:
+   - Updated [application.routes.js](file:///d:/nagar-nigan-org/server/src/routes/application.routes.js) to authorize `MARRIAGE_OPERATOR` to load active tokens, search applications, and submit new enrollments.
+3. **Frontend Dashboard & Operations Component**:
+   - Created [MarriageDashboard.jsx](file:///d:/nagar-nigan-org/client/src/pages/MarriageDashboard.jsx) which filters the active queue to show only Marriage tokens (`MAR`) in the sidebar.
+   - Created [MarriageOperations.jsx](file:///d:/nagar-nigan-org/client/src/components/admin/MarriageOperations.jsx), a high-fidelity step-by-step registration wizard handling:
+     - **Counter-First Workflow**: Bypasses initial kiosk token validation since couples go straight to the Marriage Operator counter with their files. On submission, the backend dynamically generates the official `TKN-MAR-REG-DDMM-NNN` token number and returns it.
+     - **Webcam Portrait Verification**: Takes a joint photograph of both the Groom and Bride and injects it as `combinedPhoto` in the payload.
+     - **Information Form**: Gathers Groom and Bride bio-data, Marriage Date, and Solemnization location.
+     - **Government Document Scan Checklist**: Verifies and simulates scans for Groom age proof, Bride age proof, joint photo, wedding invitation, and 2 witness IDs.
+     - **Slab-Based Fees**: Computes ₹110 for ≤30 days, ₹200 for >30 days, or ₹120 for marriages solemnized prior to 22.05.2006.
+     - **Voucher Receipts**: Generates a physical dashed print layout enrollment slip on successful cash or QR payments showing the generated token number.
+4. **Login Redirection & App Routing**:
+   - Registered the dashboard route and handled redirects for the `MARRIAGE_OPERATOR` role in [AppRoutes.jsx](file:///d:/nagar-nigan-org/client/src/routes/AppRoutes.jsx) and [AdminLogin.jsx](file:///d:/nagar-nigan-org/client/src/pages/AdminLogin.jsx).
+
+---
+
+## Birth & Death Correction Fields Clean-up & Cash Payment Finalization
+
+### Overview
+Refactored the Birth and Death Certificate Correction fields on the Counter Operator dashboard to match the official Pehchan Update Request form instructions (retaining only checkmarked fields and separating spelling/surname changes from full name changes). Furthermore, ensured that offline cash payments collected by the Counter Operator immediately finalize payment status as `SUCCESS` for both corrections and new registrations.
+
+### Key Modifications:
+1. **Pehchan Form Alignment**:
+   - Updated predefined fields in `CounterOperations.jsx` for Birth and Death certificates.
+   - Removed: Hospital/Place of Birth, Date of Information, Date of Registration, Informant details, child's Aadhaar, remarks, and affidavit corrections.
+   - Added spelling change vs full name change distinctions for mother's name, father's name, and spouse's name.
+2. **Bilingual Pairing UI**:
+   - Toggling a checkbox for Child/Mother/Father/Spouse name or Address corrections dynamically updates both corresponding English and Hindi fields.
+   - Grouped bilingual fields to render side-by-side inputs (Old and New) in the details registry screen.
+   - Integrated translate-on-blur trigger calling `POST /api/v1/applications/translate` to automatically populate the Hindi input from the English input.
+3. **Dynamic Documents Checklist**:
+   - Configured specific document requirements per modified correction field: Mother Voter ID for mother name corrections, parents' marriage certificate for father name corrections, etc.
+   - Standardized simulated scan filenames to match official documents (e.g. `Gazette_Notification_for_name_change.pdf`).
+4. **Immediate Offline Cash Success**:
+   - Configured `handleSubmission()` inside `CounterOperations.jsx` to immediately finalize the payment status as `SUCCESS` upon submitting cash or simulated UPI QR payments at the counter.
+   - Invoiced dynamic late registration fee calculations (₹50 base fee, late fees up to ₹390 depending on delay from DOB/DOD) on the payment statement screen.

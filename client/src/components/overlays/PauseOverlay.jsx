@@ -16,13 +16,13 @@ export default function PauseOverlay() {
 
   const isPaused = kioskState === 'PAUSE';
 
-  // 60-second countdown for PAUSE state inactivity reset
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  // 120-second countdown for PAUSE state inactivity reset
+  const [secondsLeft, setSecondsLeft] = useState(120);
 
   // Trigger TTS voice guide once when pause mode initializes
   useEffect(() => {
     if (isPaused) {
-      setSecondsLeft(60); // reset countdown
+      setSecondsLeft(120); // reset countdown
       if (voiceAssist) {
         const msg = language === 'hi'
           ? (pauseContext === 'BLOCK_1' 
@@ -59,7 +59,7 @@ export default function PauseOverlay() {
   const handleReturn = () => {
     window.speechSynthesis.cancel();
     if (pauseContext === 'BLOCK_1' || pauseContext === 'BLOCK_2') {
-      setKioskState('ACTIVE');
+      setKioskState('ACTIVE', pauseContext);
       useKioskStore.getState().openModal('print');
     } else {
       setKioskState('HOME');
@@ -133,7 +133,7 @@ export default function PauseOverlay() {
               <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: '100%' }}
-                  animate={{ width: `${(secondsLeft / 60) * 100}%` }}
+                  animate={{ width: `${(secondsLeft / 120) * 100}%` }}
                   transition={{ duration: 1, ease: 'linear' }}
                   className="h-full bg-gradient-to-r from-saffron to-emerald-500"
                 />

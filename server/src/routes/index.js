@@ -32,4 +32,8 @@ router.use('/counter-correction', correctionRouter);
 // Admin / Database routes
 router.use('/admin', adminRouter);
 
+// Printer operator dashboard routes
+import printerRouter from './printer.routes.js';
+router.use('/printer', printerRouter);
+
 export { router };

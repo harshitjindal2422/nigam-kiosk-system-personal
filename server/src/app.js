@@ -28,16 +28,20 @@ app.use(
 );
 
 // 3. API rate limiting (to prevent kiosk attacks)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10000, // limit raised to prevent kiosk polling rate exhaust blocking local development/operation
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res, next) => {
-    next(new ApiError(429, 'Too many requests from this IP, please try again later'));
-  },
-});
-app.use('/api/', limiter);
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10000, // limit raised to prevent kiosk polling rate exhaust blocking local development/operation
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res, next) => {
+      next(new ApiError(429, 'Too many requests from this IP, please try again later'));
+    },
+  });
+  app.use('/api/', limiter);
+} else {
+  logger.info('Rate limiting is disabled in development mode');
+}
 
 // ==========================================
 // 📦 Parsing & Logging Middlewares

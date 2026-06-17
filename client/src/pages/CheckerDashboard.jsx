@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance.js';
-import { LogOut, Search, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, HelpCircle } from 'lucide-react';
+import { LogOut, Search, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, HelpCircle, RefreshCw } from 'lucide-react';
 
 export default function CheckerDashboard() {
   const { user, logout } = useAuthStore();
@@ -15,17 +15,120 @@ export default function CheckerDashboard() {
   const [showObjectionForm, setShowObjectionForm] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const selectedAppRef = useRef(selectedApp);
+  useEffect(() => {
+    selectedAppRef.current = selectedApp;
+  }, [selectedApp]);
+
+  const [editForm, setEditForm] = useState({
+    applicant_name: '',
+    mobile_number: '',
+    father_name: '',
+    mother_name: '',
+    registration_number: '',
+    dob: '',
+    correction_details: [],
+    uploaded_documents: []
+  });
+
+  const [scanningDocIdx, setScanningDocIdx] = useState(null);
+
+  const prevAppIdRef = useRef(null);
+
+  useEffect(() => {
+    const currentId = selectedApp ? selectedApp.application_id : null;
+    if (selectedApp && prevAppIdRef.current !== currentId) {
+      setEditForm({
+        applicant_name: selectedApp.applicant_name || '',
+        mobile_number: selectedApp.mobile_number || '',
+        father_name: selectedApp.father_name || '',
+        mother_name: selectedApp.mother_name || '',
+        registration_number: selectedApp.registration_number || '',
+        dob: selectedApp.dob || '',
+        correction_details: selectedApp.correction_details ? JSON.parse(JSON.stringify(selectedApp.correction_details)) : [],
+        uploaded_documents: selectedApp.uploaded_documents ? [...selectedApp.uploaded_documents] : []
+      });
+      prevAppIdRef.current = currentId;
+    } else if (!selectedApp) {
+      prevAppIdRef.current = null;
+    }
+  }, [selectedApp]);
+
+  const handleRescanDoc = (idx) => {
+    setScanningDocIdx(idx);
+    setTimeout(() => {
+      setEditForm(prev => {
+        const docs = [...prev.uploaded_documents];
+        const oldName = docs[idx];
+        const baseName = oldName.replace(/\.pdf$/i, '').replace(/_Rescanned_\d+$/, '');
+        docs[idx] = `${baseName}_Rescanned_${Math.floor(1000 + Math.random() * 9000)}.pdf`;
+        return {
+          ...prev,
+          uploaded_documents: docs
+        };
+      });
+      setScanningDocIdx(null);
+    }, 2000);
+  };
+
+  const handleCorrectionDetailChange = (idx, newValue) => {
+    setEditForm(prev => {
+      const details = [...prev.correction_details];
+      details[idx] = { ...details[idx], newValue };
+      return { ...prev, correction_details: details };
+    });
+  };
+
+  const handleSubmitCorrection = async () => {
+    setActionLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await axiosInstance.post(`/applications/${selectedApp.application_id}/checker-review`, {
+        action: 'APPROVE',
+        correctedData: editForm
+      });
+
+      setSuccessMsg(`Application ${selectedApp.enrollment_id} corrected and submitted for final DSC approval successfully.`);
+      setSelectedApp(null);
+      await fetchQueue();
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to submit corrected file');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const fetchQueue = async () => {
     setLoading(true);
     try {
       const res = await axiosInstance.get('/applications/checker-queue');
-      setApplications(res.data || []);
+      const queueData = res.data || [];
+      setApplications(queueData);
+      
+      const currentSelected = selectedAppRef.current;
+      if (currentSelected) {
+        const freshApp = queueData.find(app => app.application_id === currentSelected.application_id);
+        if (freshApp) {
+          setSelectedApp(freshApp);
+        }
+      }
       setLoading(false);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to fetch checker queue');
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchQueue();
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 600);
   };
 
   useEffect(() => {
@@ -96,6 +199,15 @@ export default function CheckerDashboard() {
             <span className="text-[10px] font-bold text-slate-400 uppercase block">Terminal: CHK-01</span>
           </div>
           <button
+            onClick={handleRefresh}
+            disabled={loading || isRefreshing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer font-bold disabled:opacity-50"
+            title="Refresh Data"
+          >
+            <RefreshCw className={`w-4 h-4 text-saffron ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+          <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95 transition-transform cursor-pointer font-bold"
           >
@@ -140,7 +252,7 @@ export default function CheckerDashboard() {
                   <div
                     key={app.application_id}
                     onClick={() => handleSelectApp(app)}
-                    className={`p-4 border rounded-2xl flex flex-col gap-2 cursor-pointer transition-all shadow-sm relative overflow-hidden ${
+                    className={`p-4 border rounded-2xl flex flex-col gap-2 cursor-pointer transition-all shadow-sm relative overflow-hidden shrink-0 ${
                       selectedApp?.application_id === app.application_id
                         ? 'border-navy bg-navy/[0.02] ring-2 ring-navy/20'
                         : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -151,8 +263,28 @@ export default function CheckerDashboard() {
                         REVERTED
                       </div>
                     )}
+                    {app.status === 'OBJECTION' && (
+                      <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-bl-xl font-bold uppercase tracking-widest">
+                        OBJECTION
+                      </div>
+                    )}
                     <div className="flex justify-between items-start">
-                      <span className="font-bold text-navy text-base font-mono">{app.enrollment_id}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-navy text-sm font-mono">{app.token_number}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(app.token_number);
+                            alert(`Copied token: ${app.token_number}`);
+                          }}
+                          className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-navy active:scale-95 transition-all cursor-pointer shrink-0"
+                          title="Copy Token Number"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                        </button>
+                      </div>
                       <span className={`text-[9px] uppercase font-extrabold tracking-widest px-2 py-0.5 rounded-md border ${
                         isCorrection ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-green-50 border-green-200 text-green-700'
                       }`}>
@@ -160,9 +292,12 @@ export default function CheckerDashboard() {
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs font-semibold text-slate-500 mt-1">
-                      <span>Applicant: <strong className="text-navy">{app.applicant_name}</strong></span>
-                      <span className="font-mono text-[10px] text-slate-400">{new Date(app.created_at).toLocaleDateString()}</span>
+                    <div className="text-xs font-semibold text-slate-500 mt-1 flex flex-col gap-1 text-left leading-tight">
+                      <div>ENR: <span className="font-mono text-navy font-bold">{app.enrollment_id}</span></div>
+                      <div className="flex justify-between items-center mt-0.5">
+                        <span>Applicant: <strong className="text-navy">{app.applicant_name}</strong></span>
+                        <span className="font-mono text-[10px] text-slate-400">{new Date(app.created_at).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -202,36 +337,137 @@ export default function CheckerDashboard() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm font-semibold text-slate-600">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                      <User className="w-3.5 h-3.5" /> Deceased/Child/Groom Name
-                    </span>
-                    <span className="text-base text-navy font-bold">{selectedApp.applicant_name}</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                      <Smartphone className="w-3.5 h-3.5" /> Mobile Number
-                    </span>
-                    <span className="text-base text-navy font-bold">{selectedApp.mobile_number}</span>
-                  </div>
-                  {selectedApp.registration_number && (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                        <Tag className="w-3.5 h-3.5" /> Base Registration ID
-                      </span>
-                      <span className="text-base text-navy font-bold font-mono">{selectedApp.registration_number}</span>
+                {(() => {
+                  const combinedPhotoObj = (selectedApp.correction_details || []).find(d => d.fieldName === 'combinedPhoto');
+                  const combinedPhotoSrc = combinedPhotoObj ? combinedPhotoObj.newValue : null;
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+                      {/* Photo column */}
+                      <div className="flex flex-col gap-2 bg-slate-50 border border-slate-200 p-4 rounded-xl items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {combinedPhotoSrc ? "Combined Marriage Photo" : "Selfie Verification"}
+                        </span>
+                        <div className="w-44 h-32 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center shadow-inner">
+                          {combinedPhotoSrc ? (
+                            <img src={combinedPhotoSrc} alt="Groom & Bride" className="w-full h-full object-cover" />
+                          ) : selectedApp.selfie_url ? (
+                            <img src={selectedApp.selfie_url} alt="Applicant Selfie" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs text-slate-500 italic">No Photo Available</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Info fields column */}
+                      <div className="md:col-span-3 grid grid-cols-2 gap-4 text-sm font-semibold text-slate-600">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                            <User className="w-3.5 h-3.5" /> Deceased/Child/Groom Name
+                          </span>
+                          {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                            <input
+                              type="text"
+                              value={editForm.applicant_name}
+                              onChange={(e) => setEditForm({ ...editForm, applicant_name: e.target.value })}
+                              className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                            />
+                          ) : (
+                            <span className="text-base text-navy font-bold">{selectedApp.applicant_name}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                            <Smartphone className="w-3.5 h-3.5" /> Mobile Number
+                          </span>
+                          {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                            <input
+                              type="text"
+                              value={editForm.mobile_number}
+                              onChange={(e) => setEditForm({ ...editForm, mobile_number: e.target.value })}
+                              className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                            />
+                          ) : (
+                            <span className="text-base text-navy font-bold">{selectedApp.mobile_number}</span>
+                          )}
+                        </div>
+                        {(selectedApp.father_name || selectedApp.status === 'REVERTED_TO_CHECKER') && (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <User className="w-3.5 h-3.5" /> Father's Name
+                            </span>
+                            {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                              <input
+                                type="text"
+                                value={editForm.father_name}
+                                onChange={(e) => setEditForm({ ...editForm, father_name: e.target.value })}
+                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                              />
+                            ) : (
+                              <span className="text-base text-navy font-bold">{selectedApp.father_name}</span>
+                            )}
+                          </div>
+                        )}
+                        {(selectedApp.mother_name || selectedApp.status === 'REVERTED_TO_CHECKER') && (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <User className="w-3.5 h-3.5" /> Mother's Name
+                            </span>
+                            {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                              <input
+                                type="text"
+                                value={editForm.mother_name}
+                                onChange={(e) => setEditForm({ ...editForm, mother_name: e.target.value })}
+                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                              />
+                            ) : (
+                              <span className="text-base text-navy font-bold">{selectedApp.mother_name}</span>
+                            )}
+                          </div>
+                        )}
+                        {(selectedApp.registration_number || selectedApp.status === 'REVERTED_TO_CHECKER') && (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <Tag className="w-3.5 h-3.5" /> Base Registration ID
+                            </span>
+                            {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                              <input
+                                type="text"
+                                value={editForm.registration_number}
+                                onChange={(e) => setEditForm({ ...editForm, registration_number: e.target.value })}
+                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                              />
+                            ) : (
+                              <span className="text-base text-navy font-bold font-mono">{selectedApp.registration_number}</span>
+                            )}
+                          </div>
+                        )}
+                        {(selectedApp.dob || selectedApp.status === 'REVERTED_TO_CHECKER') && (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5" /> Birth/Event/Marriage Date
+                            </span>
+                            {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                              <input
+                                type="text"
+                                value={editForm.dob}
+                                onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
+                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                              />
+                            ) : (
+                              <span className="text-base text-navy font-bold">{selectedApp.dob}</span>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-1 col-span-2 border-t pt-2 mt-1">
+                          <span className="text-slate-400 uppercase text-[10px] tracking-wider">Fee Registry Details</span>
+                          <span className="text-sm font-bold text-navy">
+                            ₹{selectedApp.payment_amount} ({selectedApp.payment_status} via {selectedApp.payment_method || 'CASH'})
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  {selectedApp.dob && (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" /> Birth/Event Date
-                      </span>
-                      <span className="text-base text-navy font-bold">{selectedApp.dob}</span>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {selectedApp.status === 'REVERTED_TO_CHECKER' && (
                   <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mt-6 text-sm font-semibold leading-relaxed">
@@ -241,8 +477,8 @@ export default function CheckerDashboard() {
                 )}
               </div>
 
-              {/* Correction Fields Table (if correction flow) */}
-              {selectedApp.service_type === 'CORRECTION' && (
+              {/* Dynamic Details Section for CORRECTION vs NEW_REGISTRATION */}
+              {selectedApp.service_type === 'CORRECTION' ? (
                 <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
                   <h4 className="m-0 text-navy font-bold border-b pb-3 text-base flex items-center gap-1.5 uppercase">
                     <Tag className="w-5 h-5 text-saffron" />
@@ -259,15 +495,69 @@ export default function CheckerDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(selectedApp.correction_details || []).map((field, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50 font-semibold">
-                            <td className="border border-slate-200 p-2.5 text-navy font-bold">{field.fieldName}</td>
-                            <td className="border border-slate-200 p-2.5 text-slate-400 font-mono">{field.oldValue}</td>
-                            <td className="border border-slate-200 p-2.5 text-emerald-600 font-bold font-mono">{field.newValue}</td>
-                          </tr>
-                        ))}
+                        {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                          (editForm.correction_details || []).map((field, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50 font-semibold">
+                              <td className="border border-slate-200 p-2.5 text-navy font-bold">{field.fieldName}</td>
+                              <td className="border border-slate-200 p-2.5 text-slate-400 font-mono">{field.oldValue}</td>
+                              <td className="border border-slate-200 p-2.5">
+                                <input
+                                  type="text"
+                                  value={field.newValue}
+                                  onChange={(e) => handleCorrectionDetailChange(idx, e.target.value)}
+                                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm font-bold text-navy focus:border-navy outline-none bg-white font-mono"
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          (selectedApp.correction_details || []).map((field, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50 font-semibold">
+                              <td className="border border-slate-200 p-2.5 text-navy font-bold">{field.fieldName}</td>
+                              <td className="border border-slate-200 p-2.5 text-slate-400 font-mono">{field.oldValue}</td>
+                              <td className="border border-slate-200 p-2.5 text-emerald-600 font-bold font-mono">{field.newValue}</td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
+                  <h4 className="m-0 text-navy font-bold border-b pb-3 text-base flex items-center gap-1.5 uppercase">
+                    <FileText className="w-5 h-5 text-saffron" />
+                    New Registration Details Grid
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 font-semibold text-slate-600">
+                    {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                      (editForm.correction_details || [])
+                        .filter(field => field.fieldName !== 'combinedPhoto')
+                        .map((field, idx) => {
+                          const originalIdx = editForm.correction_details.findIndex(f => f.fieldName === field.fieldName);
+                          return (
+                            <div key={idx} className="border border-slate-100 rounded-xl p-3 bg-slate-50 flex flex-col gap-1">
+                              <span className="text-xs text-slate-400 uppercase tracking-wider">{field.fieldName}</span>
+                              <input
+                                type="text"
+                                value={field.newValue}
+                                onChange={(e) => handleCorrectionDetailChange(originalIdx, e.target.value)}
+                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-navy bg-white focus:border-navy outline-none"
+                              />
+                            </div>
+                          );
+                        })
+                    ) : (
+                      (selectedApp.correction_details || [])
+                        .filter(field => field.fieldName !== 'combinedPhoto')
+                        .map((field, idx) => (
+                          <div key={idx} className="border border-slate-100 rounded-xl p-3 bg-slate-50 flex flex-col gap-1">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider">{field.fieldName}</span>
+                            <span className="text-sm text-navy font-bold">{field.newValue}</span>
+                          </div>
+                        ))
+                    )}
                   </div>
                 </div>
               )}
@@ -281,27 +571,60 @@ export default function CheckerDashboard() {
                   </h4>
 
                   <div className="flex flex-col gap-3">
-                    {(selectedApp.uploaded_documents || []).map((doc, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 font-semibold text-navy text-sm">
-                          <FileText className="w-4 h-4 text-slate-400" />
-                          <span>{doc}</span>
-                        </div>
-                        <a
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            alert(`Opening mock document: ${doc}`);
-                          }}
-                          className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
+                    {selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                      (editForm.uploaded_documents || []).map((doc, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
                         >
-                          View Document
-                        </a>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2.5 font-semibold text-navy text-sm truncate max-w-[50%]">
+                            <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span className="truncate" title={doc}>{doc}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              disabled={scanningDocIdx !== null}
+                              onClick={() => handleRescanDoc(idx)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-transform active:scale-95 cursor-pointer shadow-sm disabled:opacity-50"
+                            >
+                              {scanningDocIdx === idx ? 'Scanning...' : 'Rescan / Upload'}
+                            </button>
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                alert(`Opening mock document: ${doc}`);
+                              }}
+                              className="px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
+                            >
+                              View
+                            </a>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      (selectedApp.uploaded_documents || []).map((doc, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 font-semibold text-navy text-sm truncate max-w-[60%]">
+                            <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span className="truncate" title={doc}>{doc}</span>
+                          </div>
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              alert(`Opening mock document: ${doc}`);
+                            }}
+                            className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
+                          >
+                            View Document
+                          </a>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -317,7 +640,31 @@ export default function CheckerDashboard() {
                     </p>
                   </div>
 
-                  {showObjectionForm ? (
+                  {selectedApp.status === 'OBJECTION' ? (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm font-semibold leading-relaxed shadow-sm">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                        <strong className="uppercase text-xs font-bold text-amber-700">Objection Active</strong>
+                      </div>
+                      This application has an active objection. Waiting for the counter operator to edit and resubmit details.
+                      {selectedApp.objection_remarks && (
+                        <div className="mt-2 pt-2 border-t border-amber-200/50 text-xs">
+                          Objection Remarks: <span className="font-bold">"{selectedApp.objection_remarks}"</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : selectedApp.status === 'REVERTED_TO_CHECKER' ? (
+                    <div className="flex flex-col gap-3">
+                      <button
+                        disabled={actionLoading || scanningDocIdx !== null}
+                        onClick={handleSubmitCorrection}
+                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        <Check className="w-5 h-5" />
+                        <span>Submit Corrected File & Send for Approval</span>
+                      </button>
+                    </div>
+                  ) : showObjectionForm ? (
                     <div className="flex flex-col gap-3 font-semibold text-sm">
                       <label className="text-navy">Objection Remarks / Reason (आपत्ति का कारण)</label>
                       <textarea

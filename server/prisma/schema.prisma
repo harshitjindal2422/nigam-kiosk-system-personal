@@ -33,17 +33,19 @@ model Admin {
   full_name      String
   email          String   @unique
   password       String
-  role           String   @default("ADMIN") // ADMIN, SUPER_ADMIN, COUNTER_OPERATOR, CHECKER_OPERATOR, APPROVAL_OPERATOR
+  role           String   @default("ADMIN") // ADMIN, SUPER_ADMIN, COUNTER_OPERATOR, CHECKER_OPERATOR, APPROVAL_OPERATOR, PRINTER_OPERATOR
   created_at     DateTime @default(now())
 
   super_admin         SuperAdmin?                 @relation(fields: [super_admin_id], references: [super_admin_id], onDelete: SetNull)
   certificate_prints  CertificatePrintRecord[]
   counter_corrections CounterCorrectionRecord[]
   pehchan_corrections PehchanCorrectionRecord[]
+  print_tokens        PrintToken[]
 
   counter_apps        Application[] @relation("CounterOperatorApps")
   checker_apps        Application[] @relation("CheckerOperatorApps")
   approval_apps       Application[] @relation("ApprovalOperatorApps")
+  printer_audit_logs  PrinterAuditLog[]
 
   @@map("admins")
 }
@@ -72,19 +74,22 @@ model Payment {
 // 4. CERTIFICATE PRINT RECORD MODEL
 // ==========================================
 model CertificatePrintRecord {
-  print_record_id      Int      @id @default(autoincrement())
-  payment_id           Int      @unique
+  print_record_id      Int       @id @default(autoincrement())
+  payment_id           Int?      @unique
   admin_id             Int?
   applicant_name       String
   mobile_number        String
   registration_number  String
-  certificate_type     String   // BIRTH, DEATH, MARRIAGE
-  total_copies         Int      @default(1)
+  certificate_type     String    // BIRTH, DEATH, MARRIAGE
+  total_copies         Int       @default(1)
   downloaded_file_name String
-  printed_at           DateTime @default(now())
+  token_number         String?   @unique
+  downloaded_at        DateTime?
+  print_status         String    @default("PENDING")
+  printed_at           DateTime?
 
-  payment Payment @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
-  admin   Admin?  @relation(fields: [admin_id], references: [admin_id], onDelete: SetNull)
+  payment Payment? @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+  admin   Admin?   @relation(fields: [admin_id], references: [admin_id], onDelete: SetNull)
 
   @@map("certificate_print_records")
 }
@@ -170,6 +175,7 @@ model Application {
   correction_type      String    // MAJOR, MINOR, NEW_REGISTRATION
   correction_details   Json?     // Array of: [{fieldName, oldValue, newValue}]
   uploaded_documents   Json      // Array of filenames: ["doc1.pdf", "doc2.pdf"]
+  downloaded_certificate_url String?
   status               String    @default("PENDING_CHECKER") // PENDING_CHECKER, APPROVED, OBJECTION, DONE, REVERTED_TO_CHECKER
   objection_remarks    String?
   next_visit_time      DateTime?
@@ -190,4 +196,45 @@ model Application {
 
   @@map("applications")
 }
+
+// ==========================================
+// 9. PRINT TOKEN MODEL (Universal Print Operator Queue)
+// ==========================================
+model PrintToken {
+  print_token_id       Int      @id @default(autoincrement())
+  token_number         String   @unique
+  applicant_name       String
+  mobile_number        String
+  certificate_type     String   // BIRTH, DEATH, MARRIAGE
+  service_type         String   // REG, CORR, PRI
+  total_copies         Int      @default(1)
+  downloaded_file_name String?  // Filename on cloud/sandbox
+  fee_status           String   @default("PENDING") // PENDING, FULFILLED, ALREADY_DEPOSITED
+  fee_amount           Decimal  @db.Decimal(10, 2)
+  print_status         String   @default("PENDING") // PENDING, PRINTED
+  created_at           DateTime @default(now())
+  printed_at           DateTime?
+  admin_id             Int?     // Printer operator who printed it
+
+  admin   Admin?  @relation(fields: [admin_id], references: [admin_id], onDelete: SetNull)
+
+  @@map("print_tokens")
+}
+
+// ==========================================
+// 10. PRINTER AUDIT LOG MODEL
+// ==========================================
+model PrinterAuditLog {
+  log_id       Int      @id @default(autoincrement())
+  admin_id     Int
+  action       String   // e.g. "LOGIN", "CASH_COLLECTION", "PRINT_CERTIFICATE"
+  token_number String?
+  details      String?
+  created_at   DateTime @default(now())
+
+  admin        Admin    @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade)
+
+  @@map("printer_audit_logs")
+}
+
 

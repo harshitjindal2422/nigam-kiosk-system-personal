@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/db.js';
-import { verifyJWT } from '../middlewares/auth.middleware.js';
+import { verifyJWT, authorizeRoles } from '../middlewares/auth.middleware.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,6 +8,7 @@ const router = Router();
 
 // Use verifyJWT middleware for all admin routes
 router.use(verifyJWT);
+router.use(authorizeRoles('ADMIN', 'SUPER_ADMIN'));
 
 // Allowed models to prevent arbitrary access
 const ALLOWED_MODELS = [
@@ -17,7 +18,8 @@ const ALLOWED_MODELS = [
   'certificatePrintRecord',
   'counterCorrectionRecord',
   'pehchanCorrectionRecord',
-  'token'
+  'token',
+  'printerAuditLog'
 ];
 
 router.get('/metrics', async (req, res, next) => {
@@ -170,6 +172,27 @@ router.get('/db/:model', async (req, res, next) => {
     });
 
     res.status(200).json({ records });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/admin/printer-audit-logs
+router.get('/printer-audit-logs', async (req, res, next) => {
+  try {
+    const logs = await prisma.printerAuditLog.findMany({
+      orderBy: { created_at: 'desc' },
+      include: {
+        admin: {
+          select: {
+            full_name: true,
+            email: true,
+            role: true
+          }
+        }
+      }
+    });
+    res.status(200).json({ logs });
   } catch (error) {
     next(error);
   }

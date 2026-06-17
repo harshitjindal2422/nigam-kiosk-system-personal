@@ -1,0 +1,20 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         18/6/2026, 4:07:56 am
+TOKEN NO:     TKN-BIR-PRI-1806-003
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-978672
+APPLICANT:    YUKTI
+MOBILE:       5647893210
+CERT TYPE:    BIRTH
+COPIES:       2
+AMOUNT:       ₹100.00
+TXN ID:       TXN-1781735874427-3435
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+FEE STATUS:   FULFILLED
+=========================================
+Please take this token receipt to the Printing Counter to collect your certificate.
+Thank you for using civic services!

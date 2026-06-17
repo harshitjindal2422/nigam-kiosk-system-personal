@@ -38,6 +38,7 @@ export const executePrint = asyncHandler(async (req, res) => {
     downloadedFileName,
     amount,
     transactionId,
+    paymentMode,
   } = req.body;
 
   // Validate required input properties
@@ -63,6 +64,7 @@ export const executePrint = asyncHandler(async (req, res) => {
     downloadedFileName,
     amount,
     transactionId,
+    paymentMode,
     adminId: req.user?.id || null, // Associates active admin context if logged in
   });
 

@@ -47,56 +47,37 @@ export const verifyStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Transaction ID parameter is required.');
   }
 
-  const provider = process.env.PAYMENT_GATEWAY_PROVIDER || 'MOCK';
+  // Look up payment transaction status in PostgreSQL
+  const payment = await prisma.payment.findUnique({
+    where: { transaction_id: transactionId }
+  });
 
-  if (provider === 'PRODUCTION') {
-    // Look up real payment transaction status in PostgreSQL
-    const payment = await prisma.payment.findUnique({
-      where: { transaction_id: transactionId }
-    });
-
-    if (payment && payment.payment_status === 'SUCCESS') {
-      logger.info(`💳 [PAYMENT]: Payment verified as SUCCESS in database for Transaction: ${transactionId}`);
-      return res.status(200).json(
-        new ApiResponse(
-          200,
-          {
-            transactionId,
-            status: 'SUCCESS',
-            verifiedAt: payment.paid_at || new Date(),
-          },
-          'Transaction verified successfully!'
-        )
-      );
-    } else {
-      logger.info(`💳 [PAYMENT]: Payment status checked: PENDING for Transaction: ${transactionId}`);
-      return res.status(200).json(
-        new ApiResponse(
-          200,
-          {
-            transactionId,
-            status: 'PENDING',
-          },
-          'Transaction payment is still pending.'
-        )
-      );
-    }
+  if (payment && payment.payment_status === 'SUCCESS') {
+    logger.info(`💳 [PAYMENT]: Payment verified as SUCCESS in database for Transaction: ${transactionId}`);
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          transactionId,
+          status: 'SUCCESS',
+          verifiedAt: payment.paid_at || new Date(),
+        },
+        'Transaction verified successfully!'
+      )
+    );
+  } else {
+    logger.info(`💳 [PAYMENT]: Payment status checked: PENDING for Transaction: ${transactionId}`);
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          transactionId,
+          status: 'PENDING',
+        },
+        'Transaction payment is still pending.'
+      )
+    );
   }
-
-  // Simulate payment confirmation immediately in MOCK mode
-  logger.info(`💳 [PAYMENT - MOCK]: Auto-confirming Payment verification success callback for Transaction: ${transactionId}`);
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        transactionId,
-        status: 'SUCCESS',
-        verifiedAt: new Date(),
-      },
-      'Transaction verified successfully (Simulated)!'
-    )
-  );
 });
 
 /**

@@ -5,6 +5,9 @@ import { PDFDocument } from 'pdf-lib';
 import { logger } from '../config/logger.js';
 import PrintRepository from '../repositories/print.repository.js';
 import { ApiError } from '../utils/ApiError.js';
+import { prisma } from '../config/db.js';
+import { generateUniversalToken } from '../utils/tokenGenerator.js';
+import { getISTDate } from '../utils/dateHelper.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOWNLOAD_DIR = path.resolve(__dirname, '../../temp/downloads');
@@ -69,88 +72,88 @@ export default class PrintService {
   }
 
   /**
-   * Simulates thermal printing, logs audit entries to Winston, logs record in DB, and purges the file.
+   * Generates a Print Token queue record, links it to payment, and saves it in database.
    */
   static async executePrint(data) {
-    const { downloadedFileName, totalCopies } = data;
-    const filePath = path.join(DOWNLOAD_DIR, downloadedFileName);
-    const isMock = downloadedFileName && downloadedFileName.startsWith('mock_download_');
+    const { 
+      applicantName, 
+      mobileNumber, 
+      registrationNumber, 
+      certificateType, 
+      totalCopies, 
+      downloadedFileName, 
+      amount, 
+      transactionId,
+      paymentMode
+    } = data;
 
-    // 1. Double-check that the file exists before printing
-    if (!isMock && !fs.existsSync(filePath)) {
-      throw new ApiError(404, 'Sandboxed certificate file not found. File may have been purged.');
-    }
+    const isOffline = paymentMode === 'OFFLINE';
 
-    logger.info(`🖨️ [PRINTER]: Initializing hardware queue for sandboxed file ${downloadedFileName}`);
-    logger.info(`🖨️ [PRINTER]: Spooling and printing ${totalCopies} copies...`);
+    // 1. Generate Universal Print Token number
+    const tokenNumber = await generateUniversalToken(certificateType, 'PRI');
 
-    // 2. Mock a physical printer feed delay (1.5 seconds)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // 3. Log a high-fidelity visual layout simulation to the winston console logs
-    logger.info(`
-=========================================
-          MUNICIPAL THERMAL PRINTER
-           NAGAR NIGAM KIOSK SYSTEM
-=========================================
-  Record ID:    ${data.registrationNumber}
-  Type:         ${data.certificateType.toUpperCase()}
-  Applicant:    ${data.applicantName}
-  Mobile:       ${data.mobileNumber}
-  Copies:       ${totalCopies}
-  Status:       SUCCESSFULLY PRINTED
-=========================================
-`);
-
-    logger.info(`🖨️ [PRINTER]: Print spool completed. Triggering absolute sandbox purge...`);
-
-    // 4. Read the file, duplicate pages based on totalCopies, and save to secure privacy
-    let base64Pdf = null;
-    try {
-      let existingPdfBytes = null;
-      if (!isMock) {
-        if (fs.existsSync(filePath)) {
-          existingPdfBytes = fs.readFileSync(filePath);
+    // 2. Perform atomic database operations
+    const result = await prisma.$transaction(async (tx) => {
+      // 2a. Upsert payment record
+      const payment = await tx.payment.upsert({
+        where: { transaction_id: transactionId },
+        update: {
+          registration_number: registrationNumber,
+          amount,
+          payment_status: isOffline ? 'PENDING' : 'SUCCESS',
+          payment_mode: isOffline ? 'CASH' : 'UPI',
+          paid_at: isOffline ? null : getISTDate()
+        },
+        create: {
+          registration_number: registrationNumber,
+          amount,
+          payment_mode: isOffline ? 'CASH' : 'UPI',
+          transaction_id: transactionId,
+          payment_status: isOffline ? 'PENDING' : 'SUCCESS',
+          paid_at: isOffline ? null : getISTDate()
         }
-      } else {
-        const mockBase64 = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
-        existingPdfBytes = Buffer.from(mockBase64, 'base64');
-      }
+      });
 
-      if (existingPdfBytes) {
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
-        const outputPdf = await PDFDocument.create();
-        const copiesToMake = Math.max(1, parseInt(totalCopies) || 1);
-
-        for (let i = 0; i < copiesToMake; i++) {
-          const copiedPages = await outputPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
-          copiedPages.forEach((page) => {
-            outputPdf.addPage(page);
-          });
+      // 2b. Create PrintToken queue record
+      const printToken = await tx.printToken.create({
+        data: {
+          token_number: tokenNumber,
+          applicant_name: applicantName,
+          mobile_number: mobileNumber,
+          certificate_type: certificateType.toUpperCase(),
+          service_type: 'PRI',
+          total_copies: parseInt(totalCopies) || 1,
+          downloaded_file_name: downloadedFileName,
+          fee_status: isOffline ? 'PENDING' : 'FULFILLED',
+          fee_amount: amount,
+          print_status: 'PENDING',
+          created_at: getISTDate()
         }
+      });
 
-        const pdfBytes = await outputPdf.save();
-        base64Pdf = Buffer.from(pdfBytes).toString('base64');
-
-        if (!isMock) {
-          PRINTED_FILES.add(downloadedFileName);
-          logger.info(`💾 [SANDBOX]: File ${downloadedFileName} marked as printed in memory. Will be permanently deleted after 3 days.`);
-        } else {
-          logger.info(`🗑️ [SANDBOX]: Bypassed file actions for simulated mock file ${downloadedFileName}.`);
+      // 2c. Create a standard CertificatePrintRecord for legacy tracking
+      await tx.certificatePrintRecord.create({
+        data: {
+          payment_id: payment.payment_id,
+          applicant_name: applicantName,
+          mobile_number: mobileNumber,
+          registration_number: registrationNumber,
+          certificate_type: certificateType.toUpperCase(),
+          total_copies: parseInt(totalCopies) || 1,
+          downloaded_file_name: downloadedFileName || 'certificate.pdf',
+          token_number: tokenNumber,
+          downloaded_at: getISTDate(),
+          print_status: 'PENDING',
+          printed_at: null
         }
-      }
-    } catch (err) {
-      logger.error(`⚠️ [SANDBOX]: Failed to process file ${downloadedFileName} using pdf-lib: ${err.message}`);
-      throw new ApiError(500, `Failed to process PDF for printing: ${err.message}`);
-    }
+      });
 
-    // 5. Commit atomic transaction logs to PostgreSQL via Prisma
-    const result = await PrintRepository.createPrintRecord({
-      ...data,
-      paymentStatus: 'SUCCESS',
+      return { printToken, payment };
     });
 
-    // 6. Automatically save a backup copy of the thermal receipt to the dedicated receipts folder
+    logger.info(`✨ [KIOSK PRINT QUEUE]: Generated Print Token ${tokenNumber} (Fee Status: ${result.printToken.fee_status})`);
+
+    // 3. Automatically save a backup copy of the thermal receipt
     try {
       if (!fs.existsSync(RECEIPTS_DIR)) {
         fs.mkdirSync(RECEIPTS_DIR, { recursive: true });
@@ -160,32 +163,41 @@ export default class PrintService {
         CITIZEN SERVICE CENTER
 =========================================
 DATE:         ${new Date().toLocaleString()}
+TOKEN NO:     ${tokenNumber}
 SERVICE:      CERTIFICATE PRINT
-REG NO:       ${data.registrationNumber.toUpperCase()}
-APPLICANT:    ${data.applicantName.toUpperCase()}
-MOBILE:       ${data.mobileNumber}
-CERT TYPE:    ${data.certificateType.toUpperCase()}
+REG NO:       ${registrationNumber.toUpperCase()}
+APPLICANT:    ${applicantName.toUpperCase()}
+MOBILE:       ${mobileNumber}
+CERT TYPE:    ${certificateType.toUpperCase()}
 COPIES:       ${totalCopies}
-AMOUNT:       ₹${totalCopies * 20}.00
-TXN ID:       ${data.transactionId}
+AMOUNT:       ₹${amount}.00
+TXN ID:       ${transactionId}
 -----------------------------------------
-PAYMENT:      SUCCESSFUL
-SANDBOX:      FILE PURGED SECURELY
+PAYMENT:      ${isOffline ? 'OFFLINE (PENDING)' : 'SUCCESSFUL'}
+FEE STATUS:   ${result.printToken.fee_status}
 =========================================
-Please collect your copies.
+Please take this token receipt to the Printing Counter to collect your certificate.
 Thank you for using civic services!
 `;
-      const receiptPath = path.join(RECEIPTS_DIR, `receipt_${data.transactionId}.txt`);
+      const receiptPath = path.join(RECEIPTS_DIR, `receipt_${transactionId}.txt`);
       fs.writeFileSync(receiptPath, receiptContent, 'utf8');
       logger.info(`💾 [RECEIPT]: Thermal receipt backup successfully saved to: ${receiptPath}`);
     } catch (receiptErr) {
       logger.error(`⚠️ [RECEIPT]: Failed to save thermal receipt backup: ${receiptErr.message}`);
     }
 
-    if (base64Pdf) {
-      result.base64Pdf = base64Pdf;
-    }
-
-    return result;
+    return {
+      tokenNumber: result.printToken.token_number,
+      applicantName: applicantName,
+      mobileNumber: mobileNumber,
+      registrationNumber: registrationNumber,
+      certificateType: certificateType,
+      totalCopies: totalCopies,
+      amount: amount,
+      transactionId: transactionId,
+      feeStatus: result.printToken.fee_status,
+      base64Pdf: null // Ensure direct kiosk printing is disabled
+    };
   }
 }
+

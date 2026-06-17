@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Database, Search, Eye, EyeOff } from 'lucide-react';
+import axiosInstance from '../../api/axiosInstance.js';
+import { Database, Search, Eye, EyeOff, RefreshCw } from 'lucide-react';
 
 const PasswordCell = ({ value }) => {
   const [show, setShow] = useState(false);
@@ -20,33 +20,34 @@ const PasswordCell = ({ value }) => {
   );
 };
 
-export default function DatabaseViewer() {
+export default function DatabaseViewer({ refreshTrigger }) {
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState('');
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     // Fetch available tables
-    axios.get('http://localhost:5000/api/v1/admin/tables', { withCredentials: true })
+    axiosInstance.get('/admin/tables')
       .then(res => {
-        if (res.data.tables) {
-          setTables(res.data.tables);
-          if (res.data.tables.length > 0) {
-            setSelectedTable(res.data.tables[0]);
+        if (res.tables) {
+          setTables(res.tables);
+          if (res.tables.length > 0) {
+            setSelectedTable(res.tables[0]);
           }
         }
       })
       .catch(err => setError(err.message));
   }, []);
 
-  useEffect(() => {
+  const fetchRecords = () => {
     if (!selectedTable) return;
     setLoading(true);
-    axios.get(`http://localhost:5000/api/v1/admin/db/${selectedTable}`, { withCredentials: true })
+    axiosInstance.get(`/admin/db/${selectedTable}`)
       .then(res => {
-        setRecords(res.data.records || []);
+        setRecords(res.records || []);
         setError(null);
       })
       .catch(err => {
@@ -54,7 +55,19 @@ export default function DatabaseViewer() {
         setRecords([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedTable]);
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, [selectedTable, refreshTrigger]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchRecords();
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 600);
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 h-full flex flex-col font-rajdhani">
@@ -64,21 +77,33 @@ export default function DatabaseViewer() {
           <h2 className="text-xl font-bold m-0">Database Viewer</h2>
         </div>
         
-        <select 
-          className="border border-slate-200 rounded-lg px-4 py-2 bg-slate-50 text-navy font-semibold outline-none focus:ring-2 focus:ring-saffron"
-          value={selectedTable}
-          onChange={(e) => setSelectedTable(e.target.value)}
-        >
-          {tables.map(table => (
-            <option key={table} value={table}>{table}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRefresh}
+            disabled={loading || isRefreshing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer font-bold disabled:opacity-50 text-sm"
+            title="Refresh Table Records"
+          >
+            <RefreshCw className={`w-4 h-4 text-saffron ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
+          <select 
+            className="border border-slate-200 rounded-lg px-4 py-2 bg-slate-50 text-navy font-semibold outline-none focus:ring-2 focus:ring-saffron"
+            value={selectedTable}
+            onChange={(e) => setSelectedTable(e.target.value)}
+          >
+            {tables.map(table => (
+              <option key={table} value={table}>{table}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && <div className="text-red-500 mb-4 font-bold">{error}</div>}
 
       <div className="flex-1 overflow-auto rounded-xl border border-slate-200 bg-slate-50">
-        {loading ? (
+        {loading && records.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-8 h-8 border-4 border-saffron border-t-transparent rounded-full animate-spin" />
           </div>

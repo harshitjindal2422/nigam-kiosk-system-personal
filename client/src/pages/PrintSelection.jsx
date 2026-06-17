@@ -92,50 +92,14 @@ export default function PrintSelection() {
     );
   };
 
-  // Block 2: Registration Search on Pehchan Portal with Payment Initiation
-  const handleSearchPortalClick = async () => {
-    try {
-      setPaymentLoading(true);
-      const res = await axiosInstance.post('/payment/qr', {
-        amount: 20,
-        registrationNumber: `PEHCHAN-SRCH-${Date.now()}`
-      });
-      setPaymentSession(res.data);
-      setStep('PAYMENT');
-      setKioskState('ACTIVE');
-
-      if (voiceAssist) {
-        speak(language === 'hi' 
-          ? 'कृपया बीस रुपये का भुगतान करने के लिए क्यू आर कोड स्कैन करें।' 
-          : 'Please scan the QR code to pay twenty rupees fee.');
-      }
-    } catch (err) {
-      console.error("Payment initiation failed:", err);
-      alert(language === 'hi' 
-        ? 'भुगतान शुरू करने में विफल। कृपया पुन: प्रयास करें।' 
-        : 'Failed to initiate payment. Please try again.');
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const handleSimulatePayment = async () => {
-    if (!paymentSession) return;
-    try {
-      setPaymentLoading(true);
-      // Call mock verification endpoint
-      await axiosInstance.get(`/payment/verify/${paymentSession.transactionId}`);
-      handlePaymentSuccess();
-    } catch (err) {
-      console.error("Simulated payment verification failed:", err);
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const handleBackToSelect = () => {
-    setStep('SELECT');
-    setPaymentSession(null);
+  // Block 2: Registration Search on Pehchan Portal (Payment is collected AFTER download)
+  const handleSearchPortalClick = () => {
+    setKioskState('PAUSE', 'BLOCK_2');
+    localStorage.setItem('kiosk_active_block', block);
+    window.open(
+      'https://pehchan.rajasthan.gov.in/VerifyRegisNum.aspx?PehRed=MmRkYzZkZWY=OGRlYjRmY2NlZWQwOTcwZGJmOGZjMWE=',
+      '_blank'
+    );
   };
 
   return (

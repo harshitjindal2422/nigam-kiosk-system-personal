@@ -18,12 +18,14 @@ export default function AdminLogin() {
     if (result.success) {
       if (result.role === 'COUNTER_OPERATOR') {
         navigate('/counter/dashboard');
-      } else if (result.role === 'CASHIER_OPERATOR') {
-        navigate('/cashier/dashboard');
+      } else if (result.role === 'MARRIAGE_OPERATOR') {
+        navigate('/marriage/dashboard');
       } else if (result.role === 'CHECKER_OPERATOR') {
         navigate('/checker/dashboard');
       } else if (result.role === 'APPROVAL_OPERATOR') {
         navigate('/approval/dashboard');
+      } else if (result.role === 'PRINTER_OPERATOR') {
+        navigate('/printer/dashboard');
       } else {
         navigate('/admin/dashboard');
       }

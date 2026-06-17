@@ -14,7 +14,8 @@ export default function PrintModal() {
     closeModal, 
     setKioskState,
     voiceAssist,
-    speak
+    speak,
+    pauseContext
   } = useKioskStore();
 
   // Guard against non-print modal triggers moved to bottom to comply with React Rules of Hooks
@@ -41,6 +42,7 @@ export default function PrintModal() {
   // Payment states
   const [paymentSession, setPaymentSession] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentMode, setPaymentMode] = useState('ONLINE'); // ONLINE, OFFLINE
 
   // Spooling states
   const [spooledRecord, setSpooledRecord] = useState(null);
@@ -69,6 +71,9 @@ export default function PrintModal() {
             }
 
             try {
+              const isSearchAndPrint = pauseContext === 'BLOCK_2';
+              const amountVal = isSearchAndPrint ? 20 + (form.totalCopies * 50) : form.totalCopies * 50;
+
               // Trigger spooled printer execution & privacy purge on server
               const response = await axiosInstance.post('/print/execute', {
                 applicantName: form.applicantName,
@@ -77,7 +82,7 @@ export default function PrintModal() {
                 certificateType: form.certificateType,
                 totalCopies: form.totalCopies,
                 downloadedFileName: detectedFile?.fileName || 'certificate_download.pdf',
-                amount: form.totalCopies * 20,
+                amount: amountVal,
                 transactionId: paymentSession.transactionId
               });
 
@@ -166,6 +171,26 @@ export default function PrintModal() {
     }
   }, [step, spooledRecord, base64Pdf]);
 
+  // Synchronize certificateType and reset form states when PrintModal opens
+  useEffect(() => {
+    if (activeModal === 'print') {
+      const activeBlock = (localStorage.getItem('kiosk_active_block') || 'birth').toUpperCase();
+      setForm({
+        applicantName: '',
+        mobileNumber: '',
+        registrationNumber: `REG-${Math.floor(100000 + Math.random() * 900000)}`,
+        certificateType: activeBlock,
+        totalCopies: 1
+      });
+      setError('');
+      setDetectedFile(null);
+      setPaymentSession(null);
+      setSpooledRecord(null);
+      setBase64Pdf(null);
+      setStep('FORM');
+    }
+  }, [activeModal]);
+
   // Clear states on close/unmount
   const handleClose = () => {
     if (pollIntervalId) {
@@ -212,7 +237,7 @@ export default function PrintModal() {
     }
 
     setStep('HOLD');
-    setKioskState('HOLD'); // Pause the global inactivity timer while silently polling
+    setKioskState('HOLD', pauseContext); // Pause the global inactivity timer while silently polling
     
     if (voiceAssist) {
       const msg = language === 'hi' 
@@ -228,7 +253,7 @@ export default function PrintModal() {
   const startPolling = () => {
     if (pollIntervalId) clearInterval(pollIntervalId);
     let attempts = 0;
-    const maxAttempts = 16; // Timeout after 40 seconds (16 * 2.5s)
+    const maxAttempts = 48; // Timeout after 120 seconds (48 * 2.5s)
 
     const intervalId = setInterval(async () => {
       attempts++;
@@ -243,7 +268,7 @@ export default function PrintModal() {
         } else if (attempts >= maxAttempts) {
           clearInterval(intervalId);
           setStep('FORM');
-          setKioskState('ACTIVE');
+          setKioskState('ACTIVE', pauseContext);
           const errMessage = `No fresh downloaded certificate detected for Registration ${form.registrationNumber} (Pehchan print query timed out after 40 seconds).`;
           setError(
             language === 'hi' 
@@ -265,7 +290,7 @@ export default function PrintModal() {
         if (attempts >= maxAttempts) {
           clearInterval(intervalId);
           setStep('FORM');
-          setKioskState('ACTIVE');
+          setKioskState('ACTIVE', pauseContext);
           const errMessage = `Kiosk polling error during verification check for Registration ${form.registrationNumber}: ${err.message}`;
           axiosInstance.post('/print/log-error', { message: errMessage }).catch(e => console.error(e));
           setError(
@@ -286,22 +311,23 @@ export default function PrintModal() {
   const triggerPaymentTransition = async (fileName) => {
     if (pollIntervalId) clearInterval(pollIntervalId);
     setStep('PAYMENT');
-    setKioskState('ACTIVE'); // Resume global inactivity timeout for the checkout phase
+    setKioskState('ACTIVE', pauseContext); // Resume global inactivity timeout for the checkout phase
 
     // Speech synthesis cue
     if (voiceAssist) {
       const msg = language === 'hi' 
-        ? 'दस्तावेज़ मिल गया है। कृपया प्रिंटिंग शुल्क का भुगतान करने के लिए क्यू आर कोड स्कैन करें।' 
-        : 'Document detected. Please scan the QR code to pay your printing fee.';
+        ? 'दस्तावेज़ मिल गया है। कृपया प्रिंटिंग शुल्क का भुगतान करने के लिए क्यू आर कोड स्कैन करें या नकद भुगतान का चयन करें।' 
+        : 'Document detected. Please scan the QR code to pay your printing fee or select cash payment.';
       speak(msg);
     }
 
     // Generate UPI QR Code session
     setPaymentLoading(true);
     try {
-      const amount = form.totalCopies * 20; // Flat ₹20 per printed copy
+      const isSearchAndPrint = pauseContext === 'BLOCK_2';
+      const amountVal = isSearchAndPrint ? 20 + (form.totalCopies * 50) : form.totalCopies * 50;
       const response = await axiosInstance.post('/payment/qr', {
-        amount,
+        amount: amountVal,
         registrationNumber: form.registrationNumber
       });
       setPaymentSession(response.data);
@@ -312,7 +338,7 @@ export default function PrintModal() {
     }
   };
 
-  // 3. Simulated QR Scan Success Handler
+  // 3. Simulated QR Scan Success Handler (Online)
   const handlePaymentSuccess = async () => {
     if (!paymentSession) return;
     setStep('PRINTING');
@@ -320,13 +346,15 @@ export default function PrintModal() {
     // Speech trigger
     if (voiceAssist) {
       const msg = language === 'hi'
-        ? 'भुगतान सफल रहा। कृपया प्रतीक्षा करें, हम आपका प्रमाण-पत्र प्रिंट कर रहे हैं।'
-        : 'Payment successful. Please wait while we print your certificate.';
+        ? 'भुगतान सफल रहा। कृपया प्रतीक्षा करें, हम आपकी टोकन रसीद तैयार कर रहे हैं।'
+        : 'Payment successful. Please wait while we generate your token receipt.';
       speak(msg);
     }
 
     // Trigger spooled printer execution & privacy purge on server
     try {
+      const isSearchAndPrint = pauseContext === 'BLOCK_2';
+      const amountVal = isSearchAndPrint ? 20 + (form.totalCopies * 50) : form.totalCopies * 50;
       const response = await axiosInstance.post('/print/execute', {
         applicantName: form.applicantName,
         mobileNumber: form.mobileNumber,
@@ -334,8 +362,9 @@ export default function PrintModal() {
         certificateType: form.certificateType,
         totalCopies: form.totalCopies,
         downloadedFileName: detectedFile?.fileName || 'certificate_download.pdf',
-        amount: form.totalCopies * 20,
-        transactionId: paymentSession.transactionId
+        amount: amountVal,
+        transactionId: paymentSession.transactionId,
+        paymentMode: 'ONLINE'
       });
 
       setSpooledRecord(response.data);
@@ -347,14 +376,51 @@ export default function PrintModal() {
       // Play final thank you synthesized cue
       if (voiceAssist) {
         const msg = language === 'hi'
-          ? 'आपका प्रमाण-पत्र प्रिंट हो गया है। नागर निगम सेवा का उपयोग करने के लिए धन्यवाद।'
-          : 'Your certificate is successfully printed. Thank you for using Nagar Nigam citizen services.';
+          ? 'आपकी टोकन रसीद प्रिंट हो गई है। कृपया इसे प्रिंटिंग काउंटर पर ले जाएं।'
+          : 'Your token receipt is successfully printed. Please take it to the printing counter.';
         setTimeout(() => speak(msg), 1000);
       }
 
     } catch (err) {
       setStep('FORM');
       setError(err.message || 'Printing execution failed.');
+    }
+  };
+
+  // 4. Offline Cash Payment Handler
+  const handleOfflinePaymentSubmit = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const isSearchAndPrint = pauseContext === 'BLOCK_2';
+      const amountVal = isSearchAndPrint ? 20 + (form.totalCopies * 50) : form.totalCopies * 50;
+      const transactionId = `TXN-OFFLINE-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const response = await axiosInstance.post('/print/execute', {
+        applicantName: form.applicantName,
+        mobileNumber: form.mobileNumber,
+        registrationNumber: form.registrationNumber,
+        certificateType: form.certificateType,
+        totalCopies: form.totalCopies,
+        downloadedFileName: detectedFile?.fileName || 'certificate_download.pdf',
+        amount: amountVal,
+        transactionId,
+        paymentMode: 'OFFLINE'
+      });
+
+      setSpooledRecord(response.data);
+      setStep('SUCCESS');
+
+      if (voiceAssist) {
+        const msg = language === 'hi'
+          ? 'ऑफ़लाइन टोकन रसीद सफलतापूर्वक जनरेट हो गई है। कृपया इसे काउंटर पर ले जाएं और भुगतान करें।'
+          : 'Offline token receipt successfully generated. Please take it to the counter and pay.';
+        speak(msg);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to generate offline print token');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -541,72 +607,162 @@ export default function PrintModal() {
             <motion.div 
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-xl mx-auto w-full flex flex-col md:flex-row gap-8 items-center bg-white p-8 rounded-3xl shadow-lg border border-slate-100"
+              className="max-w-xl mx-auto w-full flex flex-col gap-6 bg-white p-8 rounded-3xl shadow-lg border border-slate-100"
             >
-              {/* Left Column: QR Card */}
-              <div className="flex-1 flex flex-col items-center gap-4 text-center">
-                <div className="relative w-64 h-64 bg-slate-50 border-3 border-navy rounded-2xl flex items-center justify-center p-4">
-                  {paymentLoading ? (
-                    <div className="w-12 h-12 border-4 border-navy border-t-transparent rounded-full animate-spin" />
-                  ) : paymentSession?.qrCodeUrl ? (
-                    <img 
-                      src={paymentSession.qrCodeUrl} 
-                      alt="UPI QR Code" 
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <QrCode className="w-20 h-20 text-slate-300 animate-pulse" />
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2 text-slate-500 font-semibold font-rajdhani text-sm">
-                  <CreditCard className="w-4 h-4" />
-                  <span>UPI ID: nagarnigam.kiosk@sbi</span>
-                </div>
-              </div>
-
-              {/* Right Column: Statement Details */}
-              <div className="flex-1 w-full flex flex-col justify-between gap-5 text-navy">
-                <div>
-                  <span className="font-bebas text-lg tracking-widest text-saffron uppercase">invoice summary</span>
-                  <h3 className="font-hindi text-3xl font-bold leading-none mt-1">
-                    {language === 'hi' ? 'भुगतान विवरण' : 'Payment Details'}
-                  </h3>
-                </div>
-
-                <div className="flex flex-col gap-2 font-rajdhani border-y border-slate-100 py-4">
-                  <div className="flex justify-between font-semibold text-slate-600 text-lg">
-                    <span>{language === 'hi' ? 'सेवा का प्रकार' : 'Service Type'}:</span>
-                    <span className="text-navy uppercase">{form.certificateType} PRINT</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-slate-600 text-lg">
-                    <span>{language === 'hi' ? 'मुद्रण प्रतियां' : 'Number of Copies'}:</span>
-                    <span className="text-navy">{form.totalCopies}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-slate-600 text-lg">
-                    <span>{language === 'hi' ? 'शुल्क प्रति प्रति' : 'Rate per Copy'}:</span>
-                    <span className="text-navy">₹20.00</span>
-                  </div>
-                </div>
-
-                {/* Total amount due */}
-                <div className="flex justify-between items-baseline font-rajdhani">
-                  <span className="text-lg font-bold text-slate-500">{language === 'hi' ? 'कुल देय राशि' : 'Total Due'}:</span>
-                  <span className="text-5xl font-extrabold text-navy leading-none">
-                    ₹{form.totalCopies * 20}.00
-                  </span>
-                </div>
-
-                {/* Simulated Success buttons */}
+              {/* Payment Mode Selector Tabs */}
+              <div className="flex gap-3 border-b pb-4 w-full">
                 <button
-                  onClick={handlePaymentSuccess}
-                  disabled={paymentLoading || !paymentSession}
-                  className="w-full p-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xl rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-3 cursor-pointer shadow-md font-rajdhani disabled:opacity-50"
+                  type="button"
+                  onClick={() => setPaymentMode('ONLINE')}
+                  className={`flex-1 py-3 px-4 rounded-2xl font-bold font-rajdhani text-lg border-2 transition-all cursor-pointer active:scale-95 ${
+                    paymentMode === 'ONLINE'
+                      ? 'bg-navy text-white border-saffron'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  <Check className="w-6 h-6" />
-                  <span>{language === 'hi' ? 'अनुकरण: भुगतान सफल (Simulate)' : 'Simulate Payment Success'}</span>
+                  {language === 'hi' ? 'ऑनलाइन यूपीआई (Online)' : 'Online UPI QR'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode('OFFLINE')}
+                  className={`flex-1 py-3 px-4 rounded-2xl font-bold font-rajdhani text-lg border-2 transition-all cursor-pointer active:scale-95 ${
+                    paymentMode === 'OFFLINE'
+                      ? 'bg-navy text-white border-saffron'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {language === 'hi' ? 'काउंटर नकद (Offline)' : 'Offline Counter Cash'}
                 </button>
               </div>
+
+              {/* Dynamic Inner Layout based on Mode */}
+              {paymentMode === 'ONLINE' ? (
+                <div className="flex flex-col md:flex-row gap-8 items-center w-full">
+                  {/* Left Column: QR Card */}
+                  <div className="flex-1 flex flex-col items-center gap-4 text-center">
+                    <div className="relative w-52 h-52 bg-slate-50 border-3 border-navy rounded-2xl flex items-center justify-center p-3">
+                      {paymentLoading ? (
+                        <div className="w-10 h-10 border-4 border-navy border-t-transparent rounded-full animate-spin" />
+                      ) : paymentSession?.qrCodeUrl ? (
+                        <img 
+                          src={paymentSession.qrCodeUrl} 
+                          alt="UPI QR Code" 
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <QrCode className="w-16 h-16 text-slate-300 animate-pulse" />
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-slate-500 font-semibold font-rajdhani text-xs">
+                      <CreditCard className="w-4 h-4" />
+                      <span>UPI ID: nagarnigam.kiosk@sbi</span>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Statement Details */}
+                  <div className="flex-1 w-full flex flex-col justify-between gap-4 text-navy">
+                    <div>
+                      <span className="font-bebas text-sm tracking-widest text-saffron uppercase">invoice summary</span>
+                      <h3 className="font-hindi text-2xl font-bold leading-none mt-1">
+                        {language === 'hi' ? 'भुगतान विवरण' : 'Payment Details'}
+                      </h3>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 font-rajdhani border-y border-slate-100 py-3 text-sm">
+                      <div className="flex justify-between font-semibold text-slate-600">
+                        <span>{language === 'hi' ? 'सेवा का प्रकार' : 'Service Type'}:</span>
+                        <span className="text-navy uppercase">{form.certificateType} PRINT</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-slate-600">
+                        <span>{language === 'hi' ? 'खोज शुल्क' : 'Search Fee'}:</span>
+                        <span className="text-navy">₹{pauseContext === 'BLOCK_2' ? '20.00' : '0.00'}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-slate-600">
+                        <span>{language === 'hi' ? 'मुद्रण प्रतियां' : 'Number of Copies'}:</span>
+                        <span className="text-navy">{form.totalCopies}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-slate-600">
+                        <span>{language === 'hi' ? 'प्रिंटिंग शुल्क' : 'Rate per Copy'}:</span>
+                        <span className="text-navy">₹50.00</span>
+                      </div>
+                    </div>
+
+                    {/* Total amount due */}
+                    <div className="flex justify-between items-baseline font-rajdhani">
+                      <span className="text-sm font-bold text-slate-500">{language === 'hi' ? 'कुल देय राशि' : 'Total Due'}:</span>
+                      <span className="text-4xl font-extrabold text-navy leading-none">
+                        ₹{pauseContext === 'BLOCK_2' ? 20 + (form.totalCopies * 50) : form.totalCopies * 50}.00
+                      </span>
+                    </div>
+
+                    {/* Disclaimer */}
+                    <div className="text-[11px] font-bold text-red-600 text-center font-hindi">
+                      {language === 'hi' ? '* यह फीस किसी भी परिस्थिति में Refundable नहीं है।' : '* This fee is non-refundable under any circumstances.'}
+                    </div>
+
+                    {/* Simulated Success buttons */}
+                    <button
+                      type="button"
+                      onClick={handlePaymentSuccess}
+                      disabled={paymentLoading || !paymentSession}
+                      className="w-full p-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md font-rajdhani disabled:opacity-50"
+                    >
+                      <Check className="w-5 h-5" />
+                      <span>{language === 'hi' ? 'अनुकरण: भुगतान सफल' : 'Simulate Payment Success'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6 items-center text-navy w-full">
+                  <div className="text-center">
+                    <span className="font-bebas text-sm tracking-widest text-saffron uppercase">offline cash counter</span>
+                    <h3 className="font-hindi text-2xl font-bold leading-none mt-1">
+                      {language === 'hi' ? 'ऑफ़लाइन टोकन रसीद' : 'Offline Token Receipt'}
+                    </h3>
+                    <p className="text-slate-500 font-semibold font-rajdhani text-sm mt-2 max-w-[400px]">
+                      {language === 'hi' 
+                        ? 'ऑफ़लाइन प्रिंट रसीद जनरेट करने के लिए नीचे बटन पर क्लिक करें, फिर रसीद को प्रिंटिंग ऑपरेटर के पास ले जाकर नकद भुगतान करें।'
+                        : 'Click the button below to generate an offline print receipt, then take it to the printer operator counter and pay in cash.'}
+                    </p>
+                  </div>
+
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-2 font-rajdhani text-sm">
+                    <div className="flex justify-between font-semibold text-slate-600">
+                      <span>{language === 'hi' ? 'सेवा का प्रकार' : 'Service Type'}:</span>
+                      <span className="text-navy uppercase">{form.certificateType} PRINT</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-slate-600">
+                      <span>{language === 'hi' ? 'खोज शुल्क' : 'Search Fee'}:</span>
+                      <span className="text-navy">₹{pauseContext === 'BLOCK_2' ? '20.00' : '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-slate-600">
+                      <span>{language === 'hi' ? 'मुद्रण प्रतियां' : 'Number of Copies'}:</span>
+                      <span className="text-navy">{form.totalCopies}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-slate-200 pt-2 mt-1 font-bold text-base">
+                      <span>{language === 'hi' ? 'नकद देय राशि' : 'Total Cash to Pay'}:</span>
+                      <span className="text-navy">₹{pauseContext === 'BLOCK_2' ? 20 + (form.totalCopies * 50) : form.totalCopies * 50}.00</span>
+                    </div>
+                  </div>
+
+                  {/* Disclaimer */}
+                  <div className="text-[11px] font-bold text-red-600 text-center font-hindi">
+                    {language === 'hi' ? '* यह फीस किसी भी परिस्थिति में Refundable नहीं है।' : '* This fee is non-refundable under any circumstances.'}
+                  </div>
+
+                  {/* Generate offline ticket button */}
+                  <button
+                    type="button"
+                    onClick={handleOfflinePaymentSubmit}
+                    disabled={loading}
+                    className="w-full p-4 bg-navy text-white font-bold text-lg rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md font-rajdhani disabled:opacity-50"
+                  >
+                    <FileText className="w-5 h-5 text-saffron" />
+                    <span>{language === 'hi' ? 'ऑफ़लाइन टोकन रसीद जनरेट करें' : 'Generate Offline Token Receipt'}</span>
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -654,12 +810,14 @@ export default function PrintModal() {
                 <Check className="w-10 h-10 text-emerald-600" />
               </div>
 
-              <div>
+              <div className="text-center">
                 <h3 className="font-hindi text-3xl font-bold text-emerald-600 m-0 leading-tight">
-                  {language === 'hi' ? 'मुद्रण सफलतापूर्वक संपन्न!' : 'Printed Successfully!'}
+                  {language === 'hi' ? 'टोकन रसीद तैयार!' : 'Token Receipt Spooled!'}
                 </h3>
-                <p className="text-slate-500 font-semibold font-rajdhani text-lg mt-1 m-0">
-                  Your printed copies are ready at the feed tray!
+                <p className="text-slate-500 font-semibold font-rajdhani text-base mt-2 m-0 leading-normal">
+                  {language === 'hi' 
+                    ? 'आपकी कतार टोकन रसीद प्रिंट हो रही है। कृपया इसे प्रिंटिंग काउंटर पर ले जाएं।' 
+                    : 'Your queue token receipt is printing. Please take it to the printer operator counter.'}
                 </p>
               </div>
 
@@ -671,9 +829,13 @@ export default function PrintModal() {
                 </div>
 
                 <div className="flex flex-col gap-1.5 font-rajdhani font-semibold text-slate-700">
+                  <div className="flex justify-between text-lg text-saffron-dark font-extrabold border-b pb-2 mb-2">
+                    <span>{language === 'hi' ? 'टोकन संख्या:' : 'Token Number:'}</span>
+                    <span className="text-navy font-mono font-bold">{spooledRecord.tokenNumber}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span>Tx Reference ID:</span>
-                    <span className="text-navy font-bold font-mono">{paymentSession?.transactionId.substring(0, 15)}...</span>
+                    <span className="text-navy font-bold font-mono">{spooledRecord.transactionId.substring(0, 15)}...</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Reg Number:</span>
@@ -691,14 +853,20 @@ export default function PrintModal() {
                     <span>Printed Copies:</span>
                     <span className="text-navy font-bold">{form.totalCopies}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Fee Status:</span>
+                    <span className={`font-bold ${spooledRecord.feeStatus === 'FULFILLED' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {spooledRecord.feeStatus === 'FULFILLED' ? 'ONLINE FEE -> FULFILLED' : 'OFFLINE -> PENDING'}
+                    </span>
+                  </div>
                   <div className="flex justify-between border-t border-slate-200 pt-2 mt-2 font-bold text-base text-navy">
-                    <span>Total Amount Paid:</span>
-                    <span>₹{form.totalCopies * 20}.00</span>
+                    <span>{spooledRecord.feeStatus === 'FULFILLED' ? 'Total Amount Paid:' : 'Total Cash to Pay:'}</span>
+                    <span>₹{spooledRecord.amount}.00</span>
                   </div>
                 </div>
 
-                <div className="text-center border-t-2 border-dashed border-slate-200 pt-3 mt-4 text-xs text-emerald-600 font-bold uppercase font-rajdhani">
-                  sandbox pdf purged successfully
+                <div className="text-center border-t-2 border-dashed border-slate-200 pt-3 mt-4 text-[10px] text-slate-400 font-bold uppercase font-rajdhani">
+                  please collect printed receipt below
                 </div>
               </div>
 
@@ -718,30 +886,34 @@ export default function PrintModal() {
         <div className="bg-slate-100 p-4 text-center border-t border-slate-200 text-slate-500 font-rajdhani text-sm font-semibold flex justify-center gap-2">
           <span>{language === 'hi' ? 'मदद के लिए डायल करें: 1800-XXX-XXXX' : 'Need assistance? Dial helpline: 1800-XXX-XXXX'}</span>
         </div>
-      {/* 🖨️ PHYSICAL THERMAL RECEIPT PRINT AREA */}
+      {/* 🖨   PHYSICAL THERMAL RECEIPT PRINT AREA */}
       {spooledRecord && createPortal(
         <div className="hidden print:block w-[80mm] p-[10px] text-black font-mono text-[12px] leading-relaxed">
           <div className="text-center border-b border-dashed border-black pb-2 mb-2">
             <h3 className="font-bold text-[16px] uppercase m-0">NAGAR NIGAM KIOSK</h3>
             <p className="text-[10px] m-0 uppercase mt-0.5">CITIZEN SERVICE CENTER</p>
           </div>
-          <div className="flex flex-col gap-1 border-b border-dashed border-black pb-2 mb-2">
+          <div className="flex flex-col gap-1 border-b border-dashed border-black pb-2 mb-2 text-[11px]">
             <div><strong>DATE:</strong> {new Date().toLocaleString()}</div>
+            <div><strong>TOKEN NO:</strong> {spooledRecord.tokenNumber}</div>
             <div><strong>SERVICE:</strong> CERTIFICATE PRINT</div>
             <div><strong>REG NO:</strong> {form.registrationNumber.toUpperCase()}</div>
             <div><strong>APPLICANT:</strong> {form.applicantName.toUpperCase()}</div>
             <div><strong>MOBILE:</strong> {form.mobileNumber}</div>
             <div><strong>CERT TYPE:</strong> {form.certificateType.toUpperCase()}</div>
             <div><strong>COPIES:</strong> {form.totalCopies}</div>
-            <div><strong>AMOUNT:</strong> ₹{form.totalCopies * 20}.00</div>
-            <div><strong>TXN ID:</strong> {paymentSession?.transactionId}</div>
+            <div><strong>FEE STATUS:</strong> {spooledRecord.feeStatus === 'FULFILLED' ? 'ONLINE FEE -> FULFILLED' : 'OFFLINE -> PENDING'}</div>
+            <div><strong>AMOUNT:</strong> ₹{spooledRecord.amount}.00</div>
+            <div><strong>TXN ID:</strong> {spooledRecord.transactionId}</div>
           </div>
           <div className="text-center py-4 border-b border-dashed border-black mb-2">
-            <span className="text-[12px] font-bold block uppercase font-bold">PAYMENT SUCCESSFUL</span>
-            <span className="text-[10px] block mt-1 uppercase font-bold">SANDBOX FILE PURGED SECURELY</span>
+            <span className="text-[12px] font-bold block uppercase">
+              {spooledRecord.feeStatus === 'FULFILLED' ? 'PAYMENT SUCCESSFUL' : 'PAY AT PRINT COUNTER'}
+            </span>
+            <span className="text-[10px] block mt-1 uppercase font-bold">PRESENT THIS SLIP FOR PRINT</span>
           </div>
           <div className="text-center text-[10px] uppercase font-bold pt-2">
-            Please collect your copies.<br/>Thank you for using civic services!
+            Please collect your printed certificate at the print counter.<br/>Thank you!
           </div>
         </div>,
         document.body

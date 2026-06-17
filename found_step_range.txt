@@ -1,0 +1,269 @@
+﻿<USER_REQUEST>
+there is only 22 tasks in tracker.. they seems less so break them and make a 50 task tracker list (prompt)
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-11T10:18:16+05:30.
+
+The user's current state is as follows:
+Active Document: d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Cursor is on line: 90
+Other open documents:
+- d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Browser State:
+  Page BBC618D487585F6BC4EDF55750BF5D3D (Vantage widget) - https://vantage.csw.lenovo.com/v1/web/containerwidget/default/ [ACTIVE]
+    Viewport: 16x16, Page Height: 16
+</ADDITIONAL_METADATA>
+I will update the implementation plan and task checklist artifacts to break down the tasks into 50 distinct, highly detailed steps. I will also provide the final 50-task prompt for Google Sheets.
+Created At: 2026-06-11T04:48:41Z
+Completed At: 2026-06-11T04:48:42Z
+Created file file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/implementation_plan.md with requested content.
+If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+I will update `task.md` to represent the final 50-task checklist, ensuring the tracking file is granular.
+Created At: 2026-06-11T04:48:56Z
+Completed At: 2026-06-11T04:48:56Z
+Created file file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/task.md with requested content.
+If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+I have successfully updated the plan and progress checklist, breaking the requirements down into exactly **50 granular tasks**. 
+
+Below is the **final, comprehensive 50-task prompt** for your Google Sheets tracker.
+
+---
+
+### ðŸ“Š Final 50-Task Google Sheets AI Prompt
+Copy and paste this into Google Sheets AI to generate your detailed tracking spreadsheet:
+
+```text
+Create a project tracking table for "Nagar Nigam Kiosk Upgrades - 50 Tasks" with the columns: Task ID, Module, Feature Description, Target Component (Frontend/Backend/Database), Priority (High/Medium/Low), Estimated Effort (Days), Status (Not Started/In Progress/Pending Review/Completed), and Notes.
+
+Populate the rows with these 50 detailed tasks:
+1. [Kiosk] Skip continue button transition; immediately route to Home Screen on language tap.
+2. [Kiosk] Modify inactivity timer to suspend or extend hold mode timeout when Pehchan portal download is open.
+3. [Kiosk] Remove physical printing trigger from Marriage card (routing exclusively to print counter).
+4. [Kiosk] Add bilingual non-refundable fee disclaimer text in dictionary translations.
+5. [Kiosk] Add non-refundable disclaimer block on kiosk fee checkouts.
+6. [Kiosk] Add bilingual Jaipur municipal stationery disclaimer text in dictionary.
+7. [Kiosk] Add stationery disclaimer block on kiosk printing instructions view.
+8. [Kiosk] Consolidate checkout logic on Search & Print module to collect Rs 70 (Rs 20 search + Rs 50 base print).
+9. [Kiosk] Build Payment Method Selector (Online QR vs Offline Cashier) radio elements on checkout.
+10. [Kiosk] Implement sandboxed PDF interceptor to catch downloaded file blobs from Pehchan iframe.
+11. [Kiosk/Server] Build API endpoint to stream captured PDF blob from kiosk to cloud storage.
+12. [Kiosk] Update Kiosk receipt template to print token receipt with fee status ("online fee -> fulfilled" or "offline -> pending").
+13. [Database] Add combined photo URL and spouse verification details fields to Application schema.
+14. [Database] Add fields for Birth registration (infor
+<truncated 2437 bytes>
+ [Operator Desk] Build New Death Registration Form 1-30 days: witness inputs & hospital seal checks.
+39. [Operator Desk] Build New Death Registration Form 30d-1yr with Commissioner approval.
+40. [Operator Desk] Build New Death Registration Form >1yr with Magistrate Rs 100 late fee checkout.
+41. [Operator Desk] Implement Death Major Corrections checklist (Gazette, Death summary registry).
+42. [Operator Desk] Implement Death Minor Corrections checklist (Deceased/Spouse Aadhaar copies).
+43. [Operator Desk] Build Marriage Operator registration screen: Husband and Wife credentials.
+44. [Operator Desk] Integrate operator webcam capture layout to take combined photo of husband and wife.
+45. [Operator Desk] Implement Marriage slab fee calculator (Before 2006 = Rs 120, Within 1m = Rs 110, After 1m = Rs 200).
+46. [Operator Desk] Integrate English-to-Hindi translation API helper on form input blur.
+47. [Operator Desk] Configure Hindi editable text fields to allow manual correction overrides of AI translations.
+48. [Operator Desk] Revise Enrollment Slip: remove next visit schedule, add "proceeded with in 7 working days" text, and add timestamp.
+49. [Checker Panel] Update Checker UI to show side-by-side Old vs Proposed New Value comparison tables.
+50. [Communications] Build SMS triggers (strict 160-char limit) for: Submission (reference ID), Objections, and Approval links.
+```
+
+---
+
+### ðŸ—ºï¸ Verification of Final Artifacts
+The technical reference plans and checklists are fully updated:
+* ðŸ—ºï¸ [implementation_plan.md](file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/implementation_plan.md) â€” Contains the exact details of registration pathways, major/minor corrections, and the official fee schedules.
+* ðŸ“‹ [task.md](file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/task.md) â€” The active list of 50 tasks for coding tracker execution.
+
+Please let me know when you are ready to start coding, and guide me on which task we should tackle first!
+<USER_REQUEST>
+there is only 22 tasks in tracker.. they seems less so break them and make a 50 task tracker list (prompt)
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-11T10:18:16+05:30.
+
+The user's current state is as follows:
+Active Document: d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Cursor is on line: 90
+Other open documents:
+- d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Browser State:
+  Page BBC618D487585F6BC4EDF55750BF5D3D (Vantage widget) - https://vantage.csw.lenovo.com/v1/web/containerwidget/default/ [ACTIVE]
+    Viewport: 16x16, Page Height: 16
+</ADDITIONAL_METADATA>
+I will update the implementation plan and task checklist artifacts to break down the tasks into 50 distinct, highly detailed steps. I will also provide the final 50-task prompt for Google Sheets.
+Created At: 2026-06-11T04:48:41Z
+Completed At: 2026-06-11T04:48:42Z
+Created file file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/implementation_plan.md with requested content.
+If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+I will update `task.md` to represent the final 50-task checklist, ensuring the tracking file is granular.
+Created At: 2026-06-11T04:48:56Z
+Completed At: 2026-06-11T04:48:56Z
+Created file file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/task.md with requested content.
+If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+I have successfully updated the plan and progress checklist, breaking the requirements down into exactly **50 granular tasks**. 
+
+Below is the **final, comprehensive 50-task prompt** for your Google Sheets tracker.
+
+---
+
+### ðŸ“Š Final 50-Task Google Sheets AI Prompt
+Copy and paste this into Google Sheets AI to generate your detailed tracking spreadsheet:
+
+```text
+Create a project tracking table for "Nagar Nigam Kiosk Upgrades - 50 Tasks" with the columns: Task ID, Module, Feature Description, Target Component (Frontend/Backend/Database), Priority (High/Medium/Low), Estimated Effort (Days), Status (Not Started/In Progress/Pending Review/Completed), and Notes.
+
+Populate the rows with these 50 detailed tasks:
+1. [Kiosk] Skip continue button transition; immediately route to Home Screen on language tap.
+2. [Kiosk] Modify inactivity timer to suspend or extend hold mode timeout when Pehchan portal download is open.
+3. [Kiosk] Remove physical printing trigger from Marriage card (routing exclusively to print counter).
+4. [Kiosk] Add bilingual non-refundable fee disclaimer text in dictionary translations.
+5. [Kiosk] Add non-refundable disclaimer block on kiosk fee checkouts.
+6. [Kiosk] Add bilingual Jaipur municipal stationery disclaimer text in dictionary.
+7. [Kiosk] Add stationery disclaimer block on kiosk printing instructions view.
+8. [Kiosk] Consolidate checkout logic on Search & Print module to collect Rs 70 (Rs 20 search + Rs 50 base print).
+9. [Kiosk] Build Payment Method Selector (Online QR vs Offline Cashier) radio elements on checkout.
+10. [Kiosk] Implement sandboxed PDF interceptor to catch downloaded file blobs from Pehchan iframe.
+11. [Kiosk/Server] Build API endpoint to stream captured PDF blob from kiosk to cloud storage.
+12. [Kiosk] Update Kiosk receipt template to print token receipt with fee status ("online fee -> fulfilled" or "offline -> pending").
+13. [Database] Add combined photo URL and spouse verification details fields to Application schema.
+14. [Database] Add fields for Birth registration (infor
+<truncated 2437 bytes>
+ [Operator Desk] Build New Death Registration Form 1-30 days: witness inputs & hospital seal checks.
+39. [Operator Desk] Build New Death Registration Form 30d-1yr with Commissioner approval.
+40. [Operator Desk] Build New Death Registration Form >1yr with Magistrate Rs 100 late fee checkout.
+41. [Operator Desk] Implement Death Major Corrections checklist (Gazette, Death summary registry).
+42. [Operator Desk] Implement Death Minor Corrections checklist (Deceased/Spouse Aadhaar copies).
+43. [Operator Desk] Build Marriage Operator registration screen: Husband and Wife credentials.
+44. [Operator Desk] Integrate operator webcam capture layout to take combined photo of husband and wife.
+45. [Operator Desk] Implement Marriage slab fee calculator (Before 2006 = Rs 120, Within 1m = Rs 110, After 1m = Rs 200).
+46. [Operator Desk] Integrate English-to-Hindi translation API helper on form input blur.
+47. [Operator Desk] Configure Hindi editable text fields to allow manual correction overrides of AI translations.
+48. [Operator Desk] Revise Enrollment Slip: remove next visit schedule, add "proceeded with in 7 working days" text, and add timestamp.
+49. [Checker Panel] Update Checker UI to show side-by-side Old vs Proposed New Value comparison tables.
+50. [Communications] Build SMS triggers (strict 160-char limit) for: Submission (reference ID), Objections, and Approval links.
+```
+
+---
+
+### ðŸ—ºï¸ Verification of Final Artifacts
+The technical reference plans and checklists are fully updated:
+* ðŸ—ºï¸ [implementation_plan.md](file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/implementation_plan.md) â€” Contains the exact details of registration pathways, major/minor corrections, and the official fee schedules.
+* ðŸ“‹ [task.md](file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/task.md) â€” The active list of 50 tasks for coding tracker execution.
+
+Please let me know when you are ready to start coding, and guide me on which task we should tackle first!
+The following is a <SYSTEM_MESSAGE> not actually sent by the user. It is provided by the system as important information to pay attention to.
+
+<SYSTEM_MESSAGE>
+stop hook blocked termination due to reason: The user has automatically approved the artifact through their review policy. Proceed to execution.
+</SYSTEM_MESSAGE>
+The 50-task implementation plan has been approved by your review policy. 
+
+The master checklist is ready in:
+* ðŸ“‹ [task.md](file:///C:/Users/gaura/.gemini/antigravity-ide/brain/1c0f58dc-e018-4257-8f1c-36e9f5887c0b/task.md)
+
+I am waiting for your developer instructions to begin code changes for the first component!
+<USER_REQUEST>
+@[code_block] affidavit is on Notary pie paper, and point 32 remove re 20 before affidavite
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-11T10:34:14+05:30.
+
+The user's current state is as follows:
+Active Document: d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Cursor is on line: 90
+Other open documents:
+- d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Browser State:
+  Page BBC618D487585F6BC4EDF55750BF5D3D (Vantage widget) - https://vantage.csw.lenovo.com/v1/web/containerwidget/default/ [ACTIVE]
+    Viewport: 16x16, Page Height: 16
+
+The user has mentioned some items in the form @[ITEM]. Here is extra information about the items that were mentioned by the user, in the order that they appear:
+
+@[code_block] is a [Text Block]:
+Create a project tracking table for "Nagar Nigam Kiosk Upgrades - 50 Tasks" with the columns: Task ID, Module, Feature Description, Target Component (Frontend/Backend/Database), Priority (High/Medium/Low), Estimated Effort (Days), Status (Not Started/In Progress/Pending Review/Completed), and Notes.
+
+Populate the rows with these 50 detailed tasks:
+1. [Kiosk] Skip continue button transition; immediately route to Home Screen on language tap.
+2. [Kiosk] Modify inactivity timer to suspend or extend hold mode timeout when Pehchan portal download is open.
+3. [Kiosk] Remove physical printing trigger from Marriage card (routing exclusively to print counter).
+4. [Kiosk] Add bilingual non-refundable fee disclaimer text in dictionary translations.
+5. [Kiosk] Add non-refundable disclaimer block on kiosk fee checkouts.
+6. [Kiosk] Add bilingual Jaipur municipal stationery disclaimer text in dictionary.
+7. [Kiosk] Add stationery disclaimer block on kiosk printing instructions view.
+8. [Kiosk] Consolidate checkout logic on Search & Print module to collect Rs 70 (Rs 20 search + Rs 50 base print).
+9. [Kiosk] Build Payment Method Selector (Online QR vs Offline Cashier) radio elements on checkout.
+10. [Kiosk] Implement sandboxed PDF interceptor
+<truncated 2232 bytes>
+2. [Operator Desk] Build New Birth Registration Form >1yr with Magistrate Rs 20 affidavit upload.
+33. [Operator Desk] Build Birth Name Addition Form: 0-1yr (free) and >1yr (Rs 5.00 checkout).
+34. [Operator Desk] Build Hospital delayed birth verification form (after 21 days verification check).
+35. [Operator Desk] Implement Birth Major Corrections document checklist (Gazette, Marriage certificate, discharge slip).
+36. [Operator Desk] Implement Birth Minor Corrections document checklist (Parents IDs, Plain paper affidavit).
+37. [Operator Desk] Implement repeatable fields checklist (E-sign, mobile, and email repeatable toggle flags).
+38. [Operator Desk] Build New Death Registration Form 1-30 days: witness inputs & hospital seal checks.
+39. [Operator Desk] Build New Death Registration Form 30d-1yr with Commissioner approval.
+40. [Operator Desk] Build New Death Registration Form >1yr with Magistrate Rs 100 late fee checkout.
+41. [Operator Desk] Implement Death Major Corrections checklist (Gazette, Death summary registry).
+42. [Operator Desk] Implement Death Minor Corrections checklist (Deceased/Spouse Aadhaar copies).
+43. [Operator Desk] Build Marriage Operator registration screen: Husband and Wife credentials.
+44. [Operator Desk] Integrate operator webcam capture layout to take combined photo of husband and wife.
+45. [Operator Desk] Implement Marriage slab fee calculator (Before 2006 = Rs 120, Within 1m = Rs 110, After 1m = Rs 200).
+46. [Operator Desk] Integrate English-to-Hindi translation API helper on form input blur.
+47. [Operator Desk] Configure Hindi editable text fields to allow manual correction overrides of AI translations.
+48. [Operator Desk] Revise Enrollment Slip: remove next visit schedule, add "proceeded with in 7 working days" text, and add timestamp.
+49. [Checker Panel] Update Checker UI to show side-by-side Old vs Proposed New Value comparison tables.
+50. [Communications] Build SMS triggers (strict 160-char limit) for: Submission (reference ID), Objections, and Approval links.
+
+</ADDITIONAL_METADATA>
+<USER_REQUEST>
+@[code_block] affidavit is on Notary pie paper, and point 32 remove re 20 before affidavite
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-11T10:34:14+05:30.
+
+The user's current state is as follows:
+Active Document: d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Cursor is on line: 90
+Other open documents:
+- d:\nagar-nigan-org\server\src\index.js (LANGUAGE_JAVASCRIPT)
+Browser State:
+  Page BBC618D487585F6BC4EDF55750BF5D3D (Vantage widget) - https://vantage.csw.lenovo.com/v1/web/containerwidget/default/ [ACTIVE]
+    Viewport: 16x16, Page Height: 16
+
+The user has mentioned some items in the form @[ITEM]. Here is extra information about the items that were mentioned by the user, in the order that they appear:
+
+@[code_block] is a [Text Block]:
+Create a project tracking table for "Nagar Nigam Kiosk Upgrades - 50 Tasks" with the columns: Task ID, Module, Feature Description, Target Component (Frontend/Backend/Database), Priority (High/Medium/Low), Estimated Effort (Days), Status (Not Started/In Progress/Pending Review/Completed), and Notes.
+
+Populate the rows with these 50 detailed tasks:
+1. [Kiosk] Skip continue button transition; immediately route to Home Screen on language tap.
+2. [Kiosk] Modify inactivity timer to suspend or extend hold mode timeout when Pehchan portal download is open.
+3. [Kiosk] Remove physical printing trigger from Marriage card (routing exclusively to print counter).
+4. [Kiosk] Add bilingual non-refundable fee disclaimer text in dictionary translations.
+5. [Kiosk] Add non-refundable disclaimer block on kiosk fee checkouts.
+6. [Kiosk] Add bilingual Jaipur municipal stationery disclaimer text in dictionary.
+7. [Kiosk] Add stationery disclaimer block on kiosk printing instructions view.
+8. [Kiosk] Consolidate checkout logic on Search & Print module to collect Rs 70 (Rs 20 search + Rs 50 base print).
+9. [Kiosk] Build Payment Method Selector (Online QR vs Offline Cashier) radio elements on checkout.
+10. [Kiosk] Implement sandboxed PDF interceptor
+<truncated 2232 bytes>
+2. [Operator Desk] Build New Birth Registration Form >1yr with Magistrate Rs 20 affidavit upload.
+33. [Operator Desk] Build Birth Name Addition Form: 0-1yr (free) and >1yr (Rs 5.00 checkout).
+34. [Operator Desk] Build Hospital delayed birth verification form (after 21 days verification check).
+35. [Operator Desk] Implement Birth Major Corrections document checklist (Gazette, Marriage certificate, discharge slip).
+36. [Operator Desk] Implement Birth Minor Corrections document checklist (Parents IDs, Plain paper affidavit).
+37. [Operator Desk] Implement repeatable fields checklist (E-sign, mobile, and email repeatable toggle flags).
+38. [Operator Desk] Build New Death Registration Form 1-30 days: witness inputs & hospital seal checks.
+39. [Operator Desk] Build New Death Registration Form 30d-1yr with Commissioner approval.
+40. [Operator Desk] Build New Death Registration Form >1yr with Magistrate Rs 100 late fee checkout.
+41. [Operator Desk] Implement Death Major Corrections checklist (Gazette, Death summary registry).
+42. [Operator Desk] Implement Death Minor Corrections checklist (Deceased/Spouse Aadhaar copies).
+43. [Operator Desk] Build Marriage Operator registration screen: Husband and Wife credentials.
+44. [Operator Desk] Integrate operator webcam capture layout to take combined photo of husband and wife.
+45. [Operator Desk] Implement Marriage slab fee calculator (Before 2006 = Rs 120, Within 1m = Rs 110, After 1m = Rs 200).
+46. [Operator Desk] Integrate English-to-Hindi translation API helper on form input blur.
+47. [Operator Desk] Configure Hindi editable text fields to allow manual correction overrides of AI translations.
+48. [Operator Desk] Revise Enrollment Slip: remove next visit schedule, add "proceeded with in 7 working days" text, and add timestamp.
+49. [Checker Panel] Update Checker UI to show side-by-side Old vs Proposed New Value comparison tables.
+50. [Communications] Build SMS triggers (strict 160-char limit) for: Submission (reference ID), Objections, and Approval links.
+
+</ADDITIONAL_METADATA>

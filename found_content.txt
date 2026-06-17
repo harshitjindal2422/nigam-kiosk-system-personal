@@ -1,0 +1,87 @@
+﻿Created At: 2026-06-14T09:50:22Z
+Completed At: 2026-06-14T09:50:22Z
+File Path: `file:///d:/nagar-nigan-org/client/src/pages/Home.jsx`
+Total Lines: 78
+Total Bytes: 3135
+Showing lines 1 to 78
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import React, { useEffect } from 'react';
+2: import { useNavigate } from 'react-router-dom';
+3: import { useKioskStore } from '../store/kioskStore.js';
+4: import { dictionary } from '../translations/dictionary.js';
+5: import ServiceCard from '../components/kiosk/ServiceCard.jsx';
+6: 
+7: export default function Home() {
+8:   const { language, setKioskState, speak, voiceAssist } = useKioskStore();
+9:   const navigate = useNavigate();
+10: 
+11:   useEffect(() => {
+12:     // Announce home navigation in voice assistant
+13:     if (voiceAssist) {
+14:       speak(dictionary[language].welcome_msg);
+15:     }
+16:     setKioskState('ACTIVE');
+17:   }, [language, voiceAssist, speak, setKioskState]);
+18: 
+19:   const handleSelectBlock = (blockName) => {
+20:     if (blockName === 'marriage') {
+21:       navigate(`/print?block=marriage`);
+22:     } else {
+23:       navigate(`/services?block=${blockName}`);
+24:     }
+25:   };
+26: 
+27:   return (
+28:     <div className="w-full flex-1 max-w-[1200px] mx-auto flex flex-col items-center justify-center p-4 gap-8">
+29:       
+30:       {/* Page Header Header */}
+31:       <div className="text-center flex flex-col gap-2 mb-4">
+32:         <h2 className="font-hindi text-4xl text-navy font-bold m-0 drop-shadow-sm">
+33:           {language === 'hi' ? 'à¤•à¤¿à¤¯à¥‹à¤¸à¥à¤• à¤¨à¤¾à¤—à¤°à¤¿à¤• à¤¸à¥‡à¤µà¤¾ à¤šà¤¯à¤¨' : 'Kiosk Citizen Services'}
+34:         </h2>
+35:         <span className="font-bebas text-2xl tracking-widest text-saffron-dark uppercase">
+36:           Select Department Block
+37:         </span>
+38:       </div>
+39: 
+40:       {/* ðŸ§© 3 Service Blocks Grid Panel */}
+41:       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 w-full px-4 md:px-8">
+42:         
+43:         {/* Block 1 â€” Birth Certificate */}
+44:         <ServiceCard
+45:           title={dictionary[language].block_birth_title}
+46:           description={dictionary[language].block_birth_desc}
+47:           color="saffron"
+48:           // Footprints / Cradle SVG
+49:           svgPath="M12 6c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm10 5h-4.2l-2.4-4.8C15.12 5.44 14.34 5 13.5 5H6v2h6.75l2 4H5c-1.66 0-3 1.34-3 3v2h20v-2c0-1.66-1.34-3-3-3z"
+50:           onClick={() => handleSelectBlock('birth')}
+51:         />
+52: 
+53:         {/* Block 2 â€” Death Certificate */}
+54:         <ServiceCard
+55:           title={dictionary[language].block_death_title}
+56:           description={dictionary[language].block_death_desc}
+57:           color="blue"
+58:           // Candle SVG
+59:           svgPath="M12 2c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1s1-.45 1-1V3c0-.55-.45-1-1-1zm6 8H6c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-6 10c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"
+60:           onClick={() => handleSelectBlock('death')}
+61:         />
+62: 
+63:         {/* Block 3 â€” Marriage Certificate */}
+64:         <ServiceCard
+65:           title={dictionary[language].block_marriage_title}
+66:           description={dictionary[language].block_marriage_desc}
+67:           color="purple"
+68:           // Heart SVG
+69:           svgPath="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+70:           onClick={() => handleSelectBlock('marriage')}
+71:         />
+72: 
+73:       </div>
+74: 
+75:     </div>
+76:   );
+77: }
+78: 
+The above content shows the entire, complete file contents of the requested file.
+

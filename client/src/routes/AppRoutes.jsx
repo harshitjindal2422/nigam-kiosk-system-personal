@@ -13,18 +13,18 @@ import TokenGeneration from '../pages/TokenGeneration.jsx';
 import AdminLogin from '../pages/AdminLogin.jsx';
 import AdminDashboard from '../pages/AdminDashboard.jsx';
 import CounterDashboard from '../pages/CounterDashboard.jsx';
+import MarriageDashboard from '../pages/MarriageDashboard.jsx';
 import CheckerDashboard from '../pages/CheckerDashboard.jsx';
 import ApprovalDashboard from '../pages/ApprovalDashboard.jsx';
-import CashierDashboard from '../pages/CashierDashboard.jsx';
+import PrinterDashboard from '../pages/PrinterDashboard.jsx';
 
 // 🛡️ Protected Route Guard for Administrative views
 function ProtectedRoute({ children, allowedRoles }) {
   const { isAuthenticated, user, checkAuth, loading } = useAuthStore();
 
   useEffect(() => {
-    // Perform session verification checks against backend on mount
     checkAuth();
-  }, [checkAuth]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -43,12 +43,14 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (user && allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === 'COUNTER_OPERATOR') {
       return <Navigate to="/counter/dashboard" replace />;
-    } else if (user.role === 'CASHIER_OPERATOR') {
-      return <Navigate to="/cashier/dashboard" replace />;
+    } else if (user.role === 'MARRIAGE_OPERATOR') {
+      return <Navigate to="/marriage/dashboard" replace />;
     } else if (user.role === 'CHECKER_OPERATOR') {
       return <Navigate to="/checker/dashboard" replace />;
     } else if (user.role === 'APPROVAL_OPERATOR') {
       return <Navigate to="/approval/dashboard" replace />;
+    } else if (user.role === 'PRINTER_OPERATOR') {
+      return <Navigate to="/printer/dashboard" replace />;
     } else if (user.role === 'ADMIN') {
       return <Navigate to="/admin/dashboard" replace />;
     } else {
@@ -94,6 +96,14 @@ export default function AppRoutes() {
           }
         />
         <Route
+          path="/marriage/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['MARRIAGE_OPERATOR', 'SUPER_ADMIN']}>
+              <MarriageDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/checker/dashboard"
           element={
             <ProtectedRoute allowedRoles={['CHECKER_OPERATOR', 'SUPER_ADMIN']}>
@@ -102,18 +112,18 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/cashier/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['CASHIER_OPERATOR', 'SUPER_ADMIN']}>
-              <CashierDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/approval/dashboard"
           element={
             <ProtectedRoute allowedRoles={['APPROVAL_OPERATOR', 'SUPER_ADMIN']}>
               <ApprovalDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/printer/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['PRINTER_OPERATOR', 'SUPER_ADMIN']}>
+              <PrinterDashboard />
             </ProtectedRoute>
           }
         />

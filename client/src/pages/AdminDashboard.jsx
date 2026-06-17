@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance.js';
 import { useAuthStore } from '../store/authStore.js';
+import { useAdminStore } from '../store/adminStore.js';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Activity, Receipt, Printer, Landmark, LayoutDashboard, Database, ShieldAlert, Users, Maximize2, Minimize2 } from 'lucide-react';
+import { LogOut, Activity, Receipt, Printer, Landmark, LayoutDashboard, Database, ShieldAlert, Users, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import DatabaseViewer from '../components/admin/DatabaseViewer.jsx';
 import CounterOperations from '../components/admin/CounterOperations.jsx';
 import OperatorManager from '../components/admin/OperatorManager.jsx';
@@ -19,6 +20,9 @@ export default function AdminDashboard() {
   });
   const [logs, setLogs] = useState([]);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [printerAuditLogs, setPrinterAuditLogs] = useState([]);
 
   const standardLogsContainerRef = useRef(null);
   const maximizedLogsContainerRef = useRef(null);
@@ -28,9 +32,9 @@ export default function AdminDashboard() {
   // Fetch metrics data
   useEffect(() => {
     if (activeTab === 'overview') {
-      axios.get('http://localhost:5000/api/v1/admin/metrics', { withCredentials: true })
+      axiosInstance.get('/admin/metrics')
         .then(res => {
-          if (res.data?.metrics) setMetricsData(res.data.metrics);
+          if (res.metrics) setMetricsData(res.metrics);
         })
         .catch(err => console.error("Error fetching metrics:", err));
     }
@@ -41,10 +45,10 @@ export default function AdminDashboard() {
     let intervalId;
     if (activeTab === 'overview') {
       const fetchLogs = () => {
-        axios.get('http://localhost:5000/api/v1/admin/logs', { withCredentials: true })
+        axiosInstance.get('/admin/logs')
           .then(res => {
-            if (res.data?.logs) {
-              setLogs(res.data.logs);
+            if (res.logs) {
+              setLogs(res.logs);
             }
           })
           .catch(err => console.error("Error fetching backend logs:", err));
@@ -57,6 +61,17 @@ export default function AdminDashboard() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
+  }, [activeTab]);
+
+  // Fetch printer audit logs when tab selected
+  useEffect(() => {
+    if (activeTab === 'printer_audit_logs') {
+      axiosInstance.get('/admin/printer-audit-logs')
+        .then(res => {
+          if (res.logs) setPrinterAuditLogs(res.logs);
+        })
+        .catch(err => console.error("Error fetching printer audit logs:", err));
+    }
   }, [activeTab]);
 
   // Scroll event handlers to detect manual scroll up and toggle tailing
@@ -80,24 +95,54 @@ export default function AdminDashboard() {
       // Standard view smart scroll
       const stdContainer = standardLogsContainerRef.current;
       if (stdContainer && isTailingStandardRef.current) {
-        stdContainer.scrollTo({
-          top: stdContainer.scrollHeight,
-          behavior: 'smooth'
-        });
+        stdContainer.scrollTop = stdContainer.scrollHeight;
       }
 
       // Maximized view smart scroll
       const maxContainer = maximizedLogsContainerRef.current;
       if (maxContainer && isTailingMaximizedRef.current) {
-        maxContainer.scrollTo({
-          top: maxContainer.scrollHeight,
-          behavior: 'smooth'
-        });
+        maxContainer.scrollTop = maxContainer.scrollHeight;
       }
-    }, 100);
+    }, 20);
 
     return () => clearTimeout(timerId);
   }, [logs, isMaximized]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    const promises = [];
+
+    if (activeTab === 'overview') {
+      promises.push(
+        axiosInstance.get('/admin/metrics')
+          .then(res => {
+            if (res.metrics) setMetricsData(res.metrics);
+          })
+      );
+      promises.push(
+        axiosInstance.get('/admin/logs')
+          .then(res => {
+            if (res.logs) setLogs(res.logs);
+          })
+      );
+    } else if (activeTab === 'database') {
+      setRefreshTrigger(prev => prev + 1);
+    } else if (activeTab === 'counter_ops') {
+      promises.push(useAdminStore.getState().fetchActiveQueue());
+    } else if (activeTab === 'printer_audit_logs') {
+      promises.push(
+        axiosInstance.get('/admin/printer-audit-logs')
+          .then(res => {
+            if (res.logs) setPrinterAuditLogs(res.logs);
+          })
+      );
+    }
+
+    await Promise.all(promises).catch(err => console.error(err));
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 600);
+  };
 
   const handleLogout = () => {
     logout();
@@ -125,13 +170,24 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95 transition-transform cursor-pointer"
-        >
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95 transition-transform cursor-pointer font-bold disabled:opacity-50 text-sm"
+            title="Refresh Dashboard Data"
+          >
+            <RefreshCw className={`w-4 h-4 text-saffron ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95 transition-transform cursor-pointer"
+          >
           <LogOut className="w-4 h-4" />
           <span className="font-bold">Logout</span>
         </button>
+        </div>
       </header>
 
       {/* Main Workspace Area */}
@@ -164,6 +220,12 @@ export default function AdminDashboard() {
             className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-colors ${activeTab === 'counter_ops' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
           >
             <ShieldAlert className="w-5 h-5" /> Counter Operations
+          </button>
+          <button 
+            onClick={() => setActiveTab('printer_audit_logs')}
+            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-colors ${activeTab === 'printer_audit_logs' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+          >
+            <Printer className="w-5 h-5" /> Printer Audit Logs
           </button>
           {user?.role === 'SUPER_ADMIN' && (
             <button 
@@ -242,11 +304,81 @@ export default function AdminDashboard() {
           </>
         )}
         
-        {activeTab === 'database' && <DatabaseViewer />}
+        {activeTab === 'database' && <DatabaseViewer refreshTrigger={refreshTrigger} />}
 
         {activeTab === 'counter_ops' && <CounterOperations />}
 
         {activeTab === 'operators' && user?.role === 'SUPER_ADMIN' && <OperatorManager />}
+
+        {activeTab === 'printer_audit_logs' && (
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-6 text-left animate-fade-in">
+            <div className="flex justify-between items-center border-b pb-4">
+              <div>
+                <h3 className="text-xl font-bold text-navy m-0 flex items-center gap-2">
+                  <Printer className="w-6 h-6 text-saffron" />
+                  <span>Printer Operator Audit Logs</span>
+                </h3>
+                <p className="text-slate-400 text-sm font-semibold tracking-wide m-0 mt-1">
+                  Complete history of printer operator sessions, offline cash fee collections, and certificate printing events
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-xs border-b border-slate-100">
+                    <th className="py-4 px-6">Timestamp (IST)</th>
+                    <th className="py-4 px-6">Operator</th>
+                    <th className="py-4 px-6">Action</th>
+                    <th className="py-4 px-6">Token</th>
+                    <th className="py-4 px-6">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600 font-semibold">
+                  {printerAuditLogs.length > 0 ? (
+                    printerAuditLogs.map((log) => {
+                      let actionColor = "bg-blue-50 text-blue-600 border-blue-100";
+                      if (log.action === "CASH_COLLECTION") {
+                        actionColor = "bg-emerald-50 text-emerald-600 border-emerald-100";
+                      } else if (log.action === "PRINT_CERTIFICATE") {
+                        actionColor = "bg-purple-50 text-purple-600 border-purple-100";
+                      } else if (log.action === "LOGOUT") {
+                        actionColor = "bg-rose-50 text-rose-600 border-rose-100";
+                      }
+
+                      const logDate = new Date(log.created_at);
+                      const formattedTime = logDate.toLocaleString('en-IN', { timeZone: 'UTC' });
+
+                      return (
+                        <tr key={log.log_id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-6 font-mono text-xs text-slate-400">{formattedTime}</td>
+                          <td className="py-4 px-6">
+                            <div className="flex flex-col">
+                              <span className="text-navy">{log.admin?.full_name || 'Unknown'}</span>
+                              <span className="text-xs text-slate-400 font-normal">{log.admin?.email}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${actionColor}`}>
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 font-mono text-navy font-bold">{log.token_number || '-'}</td>
+                          <td className="py-4 px-6 font-normal text-slate-500">{log.details}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400 italic">No printer audit logs found in the system.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
       </main>
 

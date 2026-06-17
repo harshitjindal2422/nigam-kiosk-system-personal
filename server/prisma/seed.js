@@ -8,6 +8,8 @@ async function main() {
   // 1. Clean existing records to prevent duplicates
   await prisma.token.deleteMany();
   await prisma.certificatePrintRecord.deleteMany();
+  await prisma.printToken.deleteMany();
+  await prisma.printerAuditLog.deleteMany();
   await prisma.counterCorrectionRecord.deleteMany();
   await prisma.pehchanCorrectionRecord.deleteMany();
   await prisma.application.deleteMany();
@@ -75,7 +77,16 @@ async function main() {
       super_admin_id: superAdmin.super_admin_id,
     }
   });
-  console.log(`📡 Counter Operators created: suresh, anjali, vikram`);
+  const opMarriage = await prisma.admin.create({
+    data: {
+      full_name: 'Jaipur Nigam Marriage Operator',
+      email: 'marriage@nagarnigam.gov.in',
+      password: operatorPasswordHash,
+      role: 'MARRIAGE_OPERATOR',
+      super_admin_id: superAdmin.super_admin_id,
+    }
+  });
+  console.log(`📡 Counter Operators created: suresh, anjali, vikram. Marriage Operator created: marriage`);
 
   // 6. Create Checker Operator
   const checker = await prisma.admin.create({
@@ -112,6 +123,18 @@ async function main() {
     }
   });
   console.log(`💰 Cashier Operator created: ${cashier.email}`);
+
+  // 9. Create Printer Operator
+  const printerOperator = await prisma.admin.create({
+    data: {
+      full_name: 'Jaipur Nigam Printer Staff',
+      email: 'printer@nagarnigam.gov.in',
+      password: 'Printer@123',
+      role: 'PRINTER_OPERATOR',
+      super_admin_id: superAdmin.super_admin_id,
+    }
+  });
+  console.log(`🖨️ Printer Operator created: ${printerOperator.email}`);
 
   console.log('✅ Seeding completed successfully!');
 }

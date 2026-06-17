@@ -17,10 +17,10 @@ export const useAdminStore = create((set, get) => ({
   // ==========================================
   
   // 0. Generate Kiosk Token on Backend
-  generateToken: async (block, serviceType) => {
+  generateToken: async (block, serviceType, copies) => {
     set({ loading: true, error: null });
     try {
-      const response = await axiosInstance.post('/counter-correction/kiosk-token', { block, serviceType });
+      const response = await axiosInstance.post('/counter-correction/kiosk-token', { block, serviceType, copies });
       const rawToken = response.data.token;
       const mappedToken = {
         tokenNumber: rawToken.token_number,
@@ -28,7 +28,8 @@ export const useAdminStore = create((set, get) => ({
         serviceType: serviceType,
         createdAt: rawToken.issued_at,
         status: rawToken.queue_status,
-        counter_number: rawToken.counter_number
+        counter_number: rawToken.counter_number,
+        correction_record: rawToken.correction_record
       };
       set({ loading: false });
       return mappedToken;
@@ -39,22 +40,46 @@ export const useAdminStore = create((set, get) => ({
   },
 
   // 1. Fetch active queue tokens from backend
-  fetchActiveQueue: async () => {
-    set({ loading: true, error: null });
+  fetchActiveQueue: async (isBackground = false) => {
+    if (!isBackground) {
+      set({ loading: true, error: null });
+    }
     try {
       const response = await axiosInstance.get('/applications/active-tokens');
+      // axiosInstance interceptor returns response.data (ApiResponse), so .data contains actual payload
       const tokens = response.data || [];
       const waitingTokens = tokens.filter(t => t.queue_status === 'WAITING').map(t => t.token_number);
       const servingToken = tokens.find(t => t.queue_status === 'SERVING')?.token_number || '---';
 
-      set({
+      const updates = {
         tokens,
         queue: waitingTokens,
-        currentServing: servingToken,
-        loading: false
-      });
+        currentServing: servingToken
+      };
+
+      if (!isBackground) {
+        updates.loading = false;
+      }
+
+      const currentActive = get().activeTokenProcess;
+      if (currentActive) {
+        const freshActive = tokens.find(t => t.token_number === currentActive.tokenNumber);
+        if (freshActive) {
+          updates.activeTokenProcess = {
+            tokenNumber: freshActive.token_number,
+            block: freshActive.token_number.includes('BIR') ? 'birth' : freshActive.token_number.includes('DEA') ? 'death' : 'marriage',
+            serviceType: freshActive.token_number.includes('CORR') ? 'correction' : 'new_registration',
+            createdAt: freshActive.issued_at,
+            ...freshActive
+          };
+        }
+      }
+
+      set(updates);
     } catch (err) {
-      set({ error: err.message, loading: false });
+      if (!isBackground) {
+        set({ error: err.message, loading: false });
+      }
     }
   },
   
@@ -133,9 +158,8 @@ export const useAdminStore = create((set, get) => ({
       // Refresh active queue after submission
       await get().fetchActiveQueue();
       
-      set({
-        loading: false
-      });
+      set({ loading: false });
+      // axiosInstance interceptor returns ApiResponse object. Extract .data for the actual application.
       return response.data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -149,6 +173,7 @@ export const useAdminStore = create((set, get) => ({
     try {
       const response = await axiosInstance.get(`/applications/search?query=${searchQuery}`);
       set({ loading: false });
+      // axiosInstance interceptor returns ApiResponse object. Extract .data for the actual application.
       return response.data;
     } catch (err) {
       set({ error: err.message, loading: false });

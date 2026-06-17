@@ -13,15 +13,14 @@ export default function TokenGeneration() {
   const block = searchParams.get('block') || 'birth'; // birth, death, marriage
 
   const { language, setKioskState, speak, voiceAssist, triggerError } = useKioskStore();
-  const adminStoreState = useAdminStore();
-  console.log("useAdminStore returned state:", adminStoreState);
-  const { generateToken } = adminStoreState;
+  const generateToken = useAdminStore(state => state.generateToken);
   const navigate = useNavigate();
 
   const [tokenObj, setTokenObj] = useState(null);
   const [printInitiated, setPrintInitiated] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
+  const [copies, setCopies] = useState(1);
 
   // Theme styling based on selected block
   const themes = {
@@ -93,7 +92,7 @@ export default function TokenGeneration() {
 
   const handleGenerateToken = () => {
     setLocalLoading(true);
-    generateToken(block, type)
+    generateToken(block, type, copies)
       .then((spawnedToken) => {
         setTokenObj(spawnedToken);
 
@@ -205,11 +204,55 @@ export default function TokenGeneration() {
             </div>
           </div>
 
+          {/* Copies Selection */}
+          <div className="flex flex-col gap-2 bg-slate-50/80 border border-slate-100 rounded-2xl p-4 z-10">
+            <span className="text-slate-400 font-bold text-xs uppercase tracking-wider">
+              {language === 'hi' ? 'वांछित प्रतियां (Required Prints)' : 'Required Copies/Prints'}
+            </span>
+            <div className="flex items-center justify-between mt-1">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCopies(prev => Math.max(1, prev - 1))}
+                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-xl text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm cursor-pointer"
+                >
+                  -
+                </button>
+                <span className="font-mono text-2xl font-black text-navy w-8 text-center">
+                  {copies}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCopies(prev => Math.min(10, prev + 1))}
+                  className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-xl text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+              {type === 'correction' && (
+                <div className="text-right">
+                  <div className="text-sm font-black text-emerald-600">
+                    ₹{copies * 50 + 5}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-bold">
+                    {language === 'hi' ? '(₹5.00 संशोधन + ₹50 प्रति प्रति)' : '(₹5.00 correction + ₹50/copy)'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Advisory Notice */}
           <div className="text-xs font-semibold text-slate-500 leading-relaxed text-center px-2">
-            {language === 'hi' 
-              ? 'नोट: एक बार जनरेट होने के बाद, आपका टोकन कतार में जुड़ जाएगा। कृपया पर्ची प्रिंट करें और अपने नंबर की प्रतीक्षा करें।'
-              : 'Note: Once generated, your token will be added to the queue. Please print the slip and wait for your turn.'}
+            {type === 'correction' ? (
+              language === 'hi' 
+                ? 'नोट: एक बार जनरेट होने के बाद, आपका टोकन कतार में जुड़ जाएगा। कृपया पर्ची प्रिंट करें और अपने नंबर की प्रतीक्षा करें। और काउंटर पर ₹5.00 संशोधन + ₹50 प्रति प्रति प्रिंट के अनुसार भुगतान करें।'
+                : 'Note: Once generated, your token will be added to the queue. Please print the slip and wait for your turn. Pay at the counter as per ₹5.00 correction + ₹50 per copy print.'
+            ) : (
+              language === 'hi'
+                ? 'नोट: एक बार जनरेट होने के बाद, आपका टोकन कतार में जुड़ जाएगा। कृपया पर्ची प्रिंट करें और अपने नंबर की प्रतीक्षा करें। पंजीकरण शुल्क विलंब अवधि के अनुसार काउंटर पर देय होगा (साथ ही ₹50 प्रति प्रति प्रिंट शुल्क)।'
+                : 'Note: Once generated, your token will be added to the queue. Please print the slip and wait for your turn. Registration fee varies by delay and is payable at the counter (along with ₹50 per copy print).'
+            )}
           </div>
         </motion.div>
 
@@ -289,6 +332,12 @@ export default function TokenGeneration() {
             <span className="text-navy uppercase font-bold text-right">{serviceNameDisplay}</span>
           </div>
           <div className="flex justify-between items-center">
+            <span>{language === 'hi' ? 'प्रतियां (Copies):' : 'Copies:'}</span>
+            <span className="text-navy font-bold">
+              {tokenObj.correction_record?.remarks?.match(/COPIES:\s*(\d+)/)?.[1] || 1}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
             <span>Date & Time:</span>
             <span className="text-slate-500 font-mono text-[13px]">
               {new Date(tokenObj.createdAt).toLocaleString()}
@@ -355,6 +404,7 @@ export default function TokenGeneration() {
             <div><strong>DATE:</strong> {new Date(tokenObj.createdAt).toLocaleString()}</div>
             <div><strong>SHAKHA:</strong> {blockNameDisplay}</div>
             <div><strong>SERVICE:</strong> {serviceNameDisplay}</div>
+            <div><strong>COPIES:</strong> {tokenObj.correction_record?.remarks?.match(/COPIES:\s*(\d+)/)?.[1] || 1}</div>
             <div><strong>STATUS:</strong> QUEUED AT COUNTER</div>
           </div>
 

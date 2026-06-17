@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdminStore } from '../../store/adminStore.js';
 import { useKioskStore } from '../../store/kioskStore.js';
+import axiosInstance from '../../api/axiosInstance.js';
 import { 
   Camera, Check, FileText, CreditCard, Printer, Search, 
   Users, Smartphone, AlertCircle, ArrowRight, ShieldCheck, 
@@ -92,60 +93,48 @@ export default function CounterOperations() {
   // Payment states
   const [paymentMethod, setPaymentMethod] = useState('CASH'); // CASH, UPI_QR
   const [paying, setPaying] = useState(false);
+  const [cashCollected, setCashCollected] = useState(false);
 
   // Success enrollment state
   const [enrollmentResult, setEnrollmentResult] = useState(null);
 
-  // Predefined Fields dynamic selector with Minor/Major tag (34 Birth Certificate Fields)
+  // Predefined Fields dynamic selector with Minor/Major tag
   const getPredefinedFields = () => {
     const block = activeTokenProcess?.block || 'birth';
     if (block === 'death') {
       return [
         { id: 'deceasedNameHi', label: "मृतक का नाम हिंदी में (Deceased Name in Hindi)", isMajor: true },
         { id: 'deceasedNameEn', label: "मृतक का नाम अंग्रेजी में (Deceased Name in English)", isMajor: true },
-        { id: 'motherNameHi', label: "मृतक की माता का नाम हिंदी में (Mother's Name in Hindi)", isMajor: true },
-        { id: 'motherNameEn', label: "मृतक की माता का नाम अंग्रेजी में (Mother's Name in English)", isMajor: true },
-        { id: 'fatherNameHi', label: "मृतक के पिता का नाम हिंदी में (Father's Name in Hindi)", isMajor: true },
-        { id: 'fatherNameEn', label: "मृतक के पिता का नाम अंग्रेजी में (Father's Name in English)", isMajor: true },
-        { id: 'spouseNameHi', label: "मृतक के पति/पत्नी का नाम हिंदी में (Spouse Name in Hindi)", isMajor: true },
-        { id: 'spouseNameEn', label: "मृतक के पति/पत्नी का नाम अंग्रेजी में (Spouse Name in English)", isMajor: true },
+        { id: 'motherNameSpellingHi', label: "मृतक की माता का नाम - वर्तनी परिवर्तन हिंदी में (Mother's Name - Spelling Change in Hindi)", isMajor: false },
+        { id: 'motherNameSpellingEn', label: "मृतक की माता का नाम - वर्तनी परिवर्तन अंग्रेजी में (Mother's Name - Spelling Change in English)", isMajor: false },
+        { id: 'motherNameFullHi', label: "मृतक की माता का नाम - पूर्ण नाम परिवर्तन हिंदी में (Mother's Name - Full Name Change in Hindi)", isMajor: true },
+        { id: 'motherNameFullEn', label: "मृतक की माता का नाम - पूर्ण नाम परिवर्तन अंग्रेजी में (Mother's Name - Full Name Change in English)", isMajor: true },
+        { id: 'fatherNameSpellingHi', label: "मृतक के पिता का नाम - वर्तनी परिवर्तन हिंदी में (Father's Name - Spelling Change in Hindi)", isMajor: false },
+        { id: 'fatherNameSpellingEn', label: "मृतक के पिता का नाम - वर्तनी परिवर्तन अंग्रेजी में (Father's Name - Spelling Change in English)", isMajor: false },
+        { id: 'fatherNameFullHi', label: "मृतक के पिता का नाम - पूर्ण नाम परिवर्तन हिंदी में (Father's Name - Full Name Change in Hindi)", isMajor: true },
+        { id: 'fatherNameFullEn', label: "मृतक के पिता का नाम - पूर्ण नाम परिवर्तन अंग्रेजी में (Father's Name - Full Name Change in English)", isMajor: true },
+        { id: 'spouseNameSpellingHi', label: "मृतक के पति/पत्नी का नाम - वर्तनी परिवर्तन हिंदी में (Spouse Name - Spelling Change in Hindi)", isMajor: false },
+        { id: 'spouseNameSpellingEn', label: "मृतक के पति/पत्नी का नाम - वर्तनी परिवर्तन अंग्रेजी में (Spouse Name - Spelling Change in English)", isMajor: false },
+        { id: 'spouseNameFullHi', label: "मृतक के पति/पत्नी का नाम - पूर्ण नाम परिवर्तन हिंदी में (Spouse Name - Full Name Change in Hindi)", isMajor: true },
+        { id: 'spouseNameFullEn', label: "मृतक के पति/पत्नी का नाम - पूर्ण नाम परिवर्तन अंग्रेजी में (Spouse Name - Full Name Change in English)", isMajor: true },
         { id: 'dod', label: "मृत्यु की दिनांक (Date of Death)", isMajor: true },
-        { id: 'hospitalName', label: "अस्पताल का नाम / मृत्यु स्थान (Hospital / Place of Death)", isMajor: true },
-        
-        // Minor Fields
         { id: 'permanentAddressHi', label: "मृतक का स्थायी पता हिंदी में (Deceased Permanent Address in Hindi)", isMajor: false },
         { id: 'permanentAddressEn', label: "मृतक का स्थायी पता अंग्रेजी में (Deceased Permanent Address in English)", isMajor: false },
         { id: 'deathAddressHi', label: "मृतक का मृत्यु के समय पता हिंदी में (Address at Time of Death in Hindi)", isMajor: false },
         { id: 'deathAddressEn', label: "मृतक का मृत्यु के समय पता अंग्रेजी में (Address at Time of Death in English)", isMajor: false },
-        { id: 'deceasedAge', label: "मृतक की आयु (Deceased Age)", isMajor: false },
         { id: 'janAadhaar', label: "जन-आधार (Jan-Aadhaar)", isMajor: false },
-        { id: 'dateOfInformation', label: "सूचना की दिनांक (Date of Information)", isMajor: false },
-        { id: 'dateOfRegistration', label: "पंजीकरण की दिनांक (Date of Registration)", isMajor: false },
-        { id: 'informantMobile', label: "इत्तिला देने वाले का मोबाइल नंबर (Informant's Mobile Number)", isMajor: false },
         { id: 'pincode', label: "पिन कोड (Pin Code)", isMajor: false },
-        { id: 'informantEmail', label: "इत्तिला देने वाले का ईमेल (Informant's Email)", isMajor: false },
         { id: 'fatherAadhaar', label: "पिता का आधार नंबर (Father's Aadhaar Number)", isMajor: false },
         { id: 'motherAadhaar', label: "माता का आधार नंबर (Mother's Aadhaar Number)", isMajor: false },
-        { id: 'deceasedAadhaar', label: "मृतक का आधार नंबर (Deceased's Aadhaar Number)", isMajor: false },
         { id: 'spouseAadhaar', label: "मृतक के पति/पत्नी का आधार (Deceased's Spouse's Aadhaar)", isMajor: false },
-        { id: 'informantNameHi', label: "इत्तिला देने वाले का नाम (Informant's Name)", isMajor: false },
-        { id: 'informantNameEn', label: "इत्तिला देने वाले का नाम अंग्रेजी में (Informant's Name in English)", isMajor: false },
-        { id: 'informantAddress', label: "इत्तिला देने वाले का पता (Informant's Address)", isMajor: false },
-        { id: 'informantAadhaar', label: "इत्तिला देने वाले का आधार नंबर (Informant's Aadhaar Number)", isMajor: false },
-        { id: 'gender', label: "लिंग (Gender)", isMajor: false },
-        { id: 'remarksHi', label: "टिप्पणी हिंदी में (Remarks in Hindi)", isMajor: false },
-        { id: 'remarksEn', label: "टिप्पणी अंग्रेजी में (Remarks in English)", isMajor: false },
+        { id: 'gender', label: "लिंग (Gender)", isMajor: true },
         { id: 'eSign', label: "ई-साइन (E-Sign)", isMajor: false },
-        { id: 'deceasedDob', label: "मृतक की जन्म दिनांक (Deceased Date of Birth)", isMajor: false },
         { id: 'motherMobile', label: "माता का मोबाइल नंबर (Mother's Mobile Number)", isMajor: false },
         { id: 'motherEmail', label: "माता का ईमेल (Mother's Email)", isMajor: false },
         { id: 'fatherMobile', label: "पिता का मोबाइल नंबर (Father's Mobile Number)", isMajor: false },
         { id: 'fatherEmail', label: "पिता का ईमेल (Father's Email)", isMajor: false },
-        { id: 'spouseDob', label: "मृतक के पति / पत्नी की जन्म दिनांक (Spouse's Date of Birth)", isMajor: false },
-        { id: 'spouseEmail', label: "मृतक के पति / पत्नी का ईमेल (Spouse's Email)", isMajor: false },
-        { id: 'spouseAge', label: "मृतक के पति / पत्नी की आयु (Spouse's Age)", isMajor: false },
         { id: 'spouseMobile', label: "मृतक के पति / पत्नी का मोबाइल नंबर (Spouse's Mobile Number)", isMajor: false },
-        { id: 'affidavitCorrection', label: "एफिडेविट में संशोधन (Affidavit Amendment)", isMajor: false }
+        { id: 'spouseEmail', label: "मृतक के पति / पत्नी का ईमेल (Spouse's Email)", isMajor: false }
       ];
     } else if (block === 'marriage') {
       return [
@@ -158,48 +147,121 @@ export default function CounterOperations() {
       ];
     }
     
-    // Default / Birth Certificate (34 Fields - 9 Major, 25 Minor)
+    // Default / Birth Certificate
     return [
       { id: 'childNameHi', label: "शिशु का नाम हिंदी में (Child Name in Hindi)", isMajor: true },
       { id: 'childNameEn', label: "शिशु का नाम अंग्रेजी में (Child Name in English)", isMajor: true },
-      { id: 'motherNameHi', label: "शिशु की माता का नाम हिंदी में (Mother's Name in Hindi)", isMajor: true },
-      { id: 'motherNameEn', label: "शिशु की माता का नाम अंग्रेजी में (Mother's Name in English)", isMajor: true },
-      { id: 'fatherNameHi', label: "शिशु के पिता का नाम हिंदी में (Father's Name in Hindi)", isMajor: true },
-      { id: 'fatherNameEn', label: "शिशु के पिता का नाम अंग्रेजी में (Father's Name in English)", isMajor: true },
+      { id: 'motherNameSpellingHi', label: "शिशु की माता का नाम - वर्तनी परिवर्तन हिंदी में (Mother's Name - Spelling Change in Hindi)", isMajor: false },
+      { id: 'motherNameSpellingEn', label: "शिशु की माता का नाम - वर्तनी परिवर्तन अंग्रेजी में (Mother's Name - Spelling Change in English)", isMajor: false },
+      { id: 'motherNameFullHi', label: "शिशु की माता का नाम - पूर्ण नाम परिवर्तन हिंदी में (Mother's Name - Full Name Change in Hindi)", isMajor: true },
+      { id: 'motherNameFullEn', label: "शिशु की माता का नाम - पूर्ण नाम परिवर्तन अंग्रेजी में (Mother's Name - Full Name Change in English)", isMajor: true },
+      { id: 'fatherNameSpellingHi', label: "शिशु के पिता का नाम - वर्तनी परिवर्तन हिंदी में (Father's Name - Spelling Change in Hindi)", isMajor: false },
+      { id: 'fatherNameSpellingEn', label: "शिशु के पिता का नाम - वर्तनी परिवर्तन अंग्रेजी में (Father's Name - Spelling Change in English)", isMajor: false },
+      { id: 'fatherNameFullHi', label: "शिशु के पिता का नाम - पूर्ण नाम परिवर्तन हिंदी में (Father's Name - Full Name Change in Hindi)", isMajor: true },
+      { id: 'fatherNameFullEn', label: "शिशु के पिता का नाम - पूर्ण नाम परिवर्तन अंग्रेजी में (Father's Name - Full Name Change in English)", isMajor: true },
       { id: 'gender', label: "लिंग (Gender)", isMajor: true },
       { id: 'dob', label: "जन्म दिनांक (Date of Birth)", isMajor: true },
-      { id: 'hospitalName', label: "अस्पताल का नाम / जन्म स्थान (Hospital / Place of Birth)", isMajor: true },
-      
-      // Minor Fields (25)
       { id: 'permanentAddressHi', label: "माता पिता का स्थाई पता हिंदी में (Parents' Permanent Address in Hindi)", isMajor: false },
       { id: 'permanentAddressEn', label: "माता पिता का स्थाई पता अंग्रेजी में (Parents' Permanent Address in English)", isMajor: false },
       { id: 'birthAddressHi', label: "बच्चे के जन्म के समय माता पिता का पता हिंदी में (Address of Parents at Child's Birth in Hindi)", isMajor: false },
       { id: 'birthAddressEn', label: "बच्चे के जन्म के समय माता पिता का पता अंग्रेजी में (Address of Parents at Child's Birth in English)", isMajor: false },
-      { id: 'dateOfInformation', label: "सूचना की दिनांक (Date of Information)", isMajor: false },
-      { id: 'dateOfRegistration', label: "पंजीकरण की दिनांक (Date of Registration)", isMajor: false },
       { id: 'janAadhaar', label: "जन-आधार (Jan-Aadhaar)", isMajor: false },
-      { id: 'informantMobile', label: "इत्तिला देने वाले का मोबाइल नंबर (Informant's Mobile Number)", isMajor: false },
       { id: 'pincode', label: "पिन कोड (Pin Code)", isMajor: false },
-      { id: 'informantEmail', label: "इत्तिला देने वाले का ईमेल (Informant's Email)", isMajor: false },
       { id: 'fatherAadhaar', label: "पिता का आधार नंबर (Father's Aadhaar Number)", isMajor: false },
       { id: 'motherAadhaar', label: "माता का आधार नंबर (Mother's Aadhaar Number)", isMajor: false },
-      { id: 'informantNameHi', label: "इत्तिला देने वाले का नाम (Informant's Name)", isMajor: false },
-      { id: 'informantNameEn', label: "इत्तिला देने वाले का नाम अंग्रेजी में (Informant's Name in English)", isMajor: false },
-      { id: 'informantAddress', label: "इत्तिला देने वाले का पता (Informant's Address)", isMajor: false },
-      { id: 'informantAadhaar', label: "इत्तिला देने वाले का आधार नंबर (Informant's Aadhaar Number)", isMajor: false },
-      { id: 'remarksHi', label: "टिप्पणी हिंदी में (Remarks in Hindi)", isMajor: false },
-      { id: 'remarksEn', label: "टिप्पणी अंग्रेजी में (Remarks in English)", isMajor: false },
       { id: 'eSign', label: "ई-साइन (E-Sign)", isMajor: false },
-      { id: 'childAadhaar', label: "शिशु का आधार नंबर (Child's Aadhaar Number)", isMajor: false },
       { id: 'fatherMobile', label: "पिता का मोबाइल नंबर (Father's Mobile Number)", isMajor: false },
       { id: 'fatherEmail', label: "पिता का ईमेल (Father's Email)", isMajor: false },
       { id: 'motherMobile', label: "माता का मोबाइल नंबर (Mother's Mobile Number)", isMajor: false },
-      { id: 'motherEmail', label: "माता का ईमेल (Mother's Email)", isMajor: false },
-      { id: 'affidavitCorrection', label: "एफिडेविट में संशोधन (Affidavit Amendment)", isMajor: false }
+      { id: 'motherEmail', label: "माता का ईमेल (Mother's Email)", isMajor: false }
     ];
   };
 
   const PREDEFINED_FIELDS = getPredefinedFields();
+
+  const getSelectableFields = () => {
+    const block = activeTokenProcess?.block || 'birth';
+    if (block === 'death') {
+      return [
+        { isBilingual: true, enId: 'deceasedNameEn', hiId: 'deceasedNameHi', label: "Deceased Person Name (मृतक का नाम)", isMajor: true },
+        { isBilingual: true, enId: 'motherNameSpellingEn', hiId: 'motherNameSpellingHi', label: "Mother's Name - Spelling Change (माता का नाम - वर्तनी परिवर्तन)", isMajor: false },
+        { isBilingual: true, enId: 'motherNameFullEn', hiId: 'motherNameFullHi', label: "Mother's Name - Full Name Change (माता का नाम - पूर्ण नाम परिवर्तन)", isMajor: true },
+        { isBilingual: true, enId: 'fatherNameSpellingEn', hiId: 'fatherNameSpellingHi', label: "Father's Name - Spelling Change (पिता का नाम - वर्तनी परिवर्तन)", isMajor: false },
+        { isBilingual: true, enId: 'fatherNameFullEn', hiId: 'fatherNameFullHi', label: "Father's Name - Full Name Change (पिता का नाम - पूर्ण नाम परिवर्तन)", isMajor: true },
+        { isBilingual: true, enId: 'spouseNameSpellingEn', hiId: 'spouseNameSpellingHi', label: "Spouse's Name - Spelling Change (पति/पत्नी का नाम - वर्तनी परिवर्तन)", isMajor: false },
+        { isBilingual: true, enId: 'spouseNameFullEn', hiId: 'spouseNameFullHi', label: "Spouse's Name - Full Name Change (पति/पत्नी का नाम - पूर्ण नाम परिवर्तन)", isMajor: true },
+        { isBilingual: true, enId: 'permanentAddressEn', hiId: 'permanentAddressHi', label: "Deceased's Permanent Address (स्थायी पता)", isMajor: false },
+        { isBilingual: true, enId: 'deathAddressEn', hiId: 'deathAddressHi', label: "Address at Time of Death (मृत्यु के समय पता)", isMajor: false },
+        { isBilingual: false, id: 'dod', label: "Date of Death (मृत्यु दिनांक)", isMajor: true },
+        { isBilingual: false, id: 'janAadhaar', label: "Jan-Aadhaar (जन-आधार)", isMajor: false },
+        { isBilingual: false, id: 'pincode', label: "Pin Code (पिन कोड)", isMajor: false },
+        { isBilingual: false, id: 'fatherAadhaar', label: "Father's Aadhaar (पिता का आधार)", isMajor: false },
+        { isBilingual: false, id: 'motherAadhaar', label: "Mother's Aadhaar (माता का आधार)", isMajor: false },
+        { isBilingual: false, id: 'spouseAadhaar', label: "Spouse's Aadhaar (पति/पत्नी का आधार)", isMajor: false },
+        { isBilingual: false, id: 'gender', label: "Gender (लिंग)", isMajor: true },
+        { isBilingual: false, id: 'eSign', label: "E-Sign (ई-साइन)", isMajor: false },
+        { isBilingual: false, id: 'fatherMobile', label: "Father's Mobile (पिता का मोबाइल)", isMajor: false },
+        { isBilingual: false, id: 'fatherEmail', label: "Father's Email (पिता का ईमेल)", isMajor: false },
+        { isBilingual: false, id: 'motherMobile', label: "Mother's Mobile (माता का मोबाइल)", isMajor: false },
+        { isBilingual: false, id: 'motherEmail', label: "Mother's Email (माता का ईमेल)", isMajor: false },
+        { isBilingual: false, id: 'spouseMobile', label: "Spouse's Mobile (पति/पत्नी का मोबाइल)", isMajor: false },
+        { isBilingual: false, id: 'spouseEmail', label: "Spouse's Email (पति/पत्नी का ईमेल)", isMajor: false }
+      ];
+    } else if (block === 'marriage') {
+      return [
+        { isBilingual: false, id: 'groomName', label: "Groom's Name (वर का नाम)", isMajor: true },
+        { isBilingual: false, id: 'brideName', label: "Bride's Name (वधू का नाम)", isMajor: true },
+        { isBilingual: false, id: 'dom', label: "Date of Marriage (विवाह तिथि)", isMajor: true },
+        { isBilingual: false, id: 'placeOfMarriage', label: "Place of Solemnization (विवाह स्थल)", isMajor: true },
+        { isBilingual: false, id: 'groomFather', label: "Groom's Father's Name (वर के पिता का नाम)", isMajor: false },
+        { isBilingual: false, id: 'brideFather', label: "Bride's Father's Name (वधू के पिता का नाम)", isMajor: false }
+      ];
+    }
+
+    // Default: Birth
+    return [
+      { isBilingual: true, enId: 'childNameEn', hiId: 'childNameHi', label: "Child's Name (शिशु का नाम)", isMajor: true },
+      { isBilingual: true, enId: 'motherNameSpellingEn', hiId: 'motherNameSpellingHi', label: "Mother's Name - Spelling Change (माता का नाम - वर्तनी परिवर्तन)", isMajor: false },
+      { isBilingual: true, enId: 'motherNameFullEn', hiId: 'motherNameFullHi', label: "Mother's Name - Full Name Change (माता का नाम - पूर्ण नाम परिवर्तन)", isMajor: true },
+      { isBilingual: true, enId: 'fatherNameSpellingEn', hiId: 'fatherNameSpellingHi', label: "Father's Name - Spelling Change (पिता का नाम - वर्तनी परिवर्तन)", isMajor: false },
+      { isBilingual: true, enId: 'fatherNameFullEn', hiId: 'fatherNameFullHi', label: "Father's Name - Full Name Change (पिता का नाम - पूर्ण नाम परिवर्तन)", isMajor: true },
+      { isBilingual: true, enId: 'permanentAddressEn', hiId: 'permanentAddressHi', label: "Parents' Permanent Address (स्थायी पता)", isMajor: false },
+      { isBilingual: true, enId: 'birthAddressEn', hiId: 'birthAddressHi', label: "Address of Parents at Child's Birth (जन्म के समय माता-पिता का पता)", isMajor: false },
+      { isBilingual: false, id: 'dob', label: "Date of Birth (जन्म दिनांक)", isMajor: true },
+      { isBilingual: false, id: 'janAadhaar', label: "Jan-Aadhaar (जन-आधार)", isMajor: false },
+      { isBilingual: false, id: 'pincode', label: "Pin Code (पिन कोड)", isMajor: false },
+      { isBilingual: false, id: 'fatherAadhaar', label: "Father's Aadhaar (पिता का आधार)", isMajor: false },
+      { isBilingual: false, id: 'motherAadhaar', label: "Mother's Aadhaar (माता का आधार)", isMajor: false },
+      { isBilingual: false, id: 'gender', label: "Gender (लिंग)", isMajor: true },
+      { isBilingual: false, id: 'eSign', label: "E-Sign (ई-साइन)", isMajor: false },
+      { isBilingual: false, id: 'fatherMobile', label: "Father's Mobile (पिता का मोबाइल)", isMajor: false },
+      { isBilingual: false, id: 'fatherEmail', label: "Father's Email (पिता का ईमेल)", isMajor: false },
+      { isBilingual: false, id: 'motherMobile', label: "Mother's Mobile (माता का मोबाइल)", isMajor: false },
+      { isBilingual: false, id: 'motherEmail', label: "Mother's Email (माता का ईमेल)", isMajor: false }
+    ];
+  };
+
+  const handleEnglishBlur = async (enId, hiId, value, type) => {
+    if (!value || value.trim() === '') return;
+    try {
+      const response = await axiosInstance.post('/applications/translate', { text: value.toUpperCase() });
+      const translatedText = response.data?.translatedText;
+      if (translatedText) {
+        setFormData(prev => ({
+          ...prev,
+          fieldValues: {
+            ...prev.fieldValues,
+            [hiId]: {
+              ...prev.fieldValues[hiId],
+              [type]: translatedText
+            }
+          }
+        }));
+      }
+    } catch (err) {
+      console.warn("Transliteration API failed: ", err);
+    }
+  };
 
   // Recalculate major correction type on field changes
   useEffect(() => {
@@ -248,6 +310,7 @@ export default function CounterOperations() {
       });
       setScannedFiles({});
       setEnrollmentResult(null);
+      setCashCollected(false);
     }
   }, [activeTokenProcess]);
 
@@ -409,43 +472,61 @@ export default function CounterOperations() {
       const selectedIds = Object.keys(selectedFields).filter(id => selectedFields[id]);
       
       if (block === 'death') {
-        // Name Corrections (Deceased, spouse, parents)
+        // Deceased name corrections
+        if (selectedIds.includes('deceasedNameHi') || selectedIds.includes('deceasedNameEn')) {
+          docs.push("Gazette Notification for name change (राजपत्र अधिसूचना — नाम परिवर्तन)");
+          docs.push("Gazette Receipt (राजपत्र की रसीद)");
+          docs.push("Spouse's/Parents' Aadhaar/Jan Aadhaar (पति-पत्नी/माता-पिता का आधार/जन-आधार)");
+          docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
+        }
+        // Mother name corrections
         if (
-          selectedIds.includes('deceasedNameHi') || selectedIds.includes('deceasedNameEn') ||
-          selectedIds.includes('spouseNameHi') || selectedIds.includes('spouseNameEn') ||
-          selectedIds.includes('fatherNameHi') || selectedIds.includes('fatherNameEn') ||
-          selectedIds.includes('motherNameHi') || selectedIds.includes('motherNameEn')
+          selectedIds.includes('motherNameSpellingHi') || selectedIds.includes('motherNameSpellingEn') ||
+          selectedIds.includes('motherNameFullHi') || selectedIds.includes('motherNameFullEn')
         ) {
-          docs.push("Two Identity Cards other than Aadhaar/JanAadhaar (आधार व जन आधार के अतिरिक्त कोई दो पहचान पत्र ID)");
-          docs.push("Magistrate-certified name change affidavit (नाम संशोधन हेतु मजिस्ट्रेट शपथ पत्र)");
-          if (selectedIds.includes('spouseNameHi') || selectedIds.includes('spouseNameEn')) {
-            docs.push("Deceased Identity Proof (मृतक की आईडी)");
-            docs.push("Spouse Aadhaar Card (पति/पत्नी का आधार कार्ड)");
-            docs.push("Two Identity Cards other than JanAadhaar e.g. Voter ID, Ration Card (जन आधार के अतिरिक्त दो आईडी जैसे वोटर आईडी, राशन कार्ड)");
-          }
+          docs.push("Mother's ID/Marksheet/Aadhaar (माता का पहचान पत्र/अंकतालिका/आधार)");
+          docs.push("Mother's Voter ID Card (pre-birth) (माता की मतदाता पहचान पत्र)");
+          docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
+        }
+        // Father name corrections
+        if (
+          selectedIds.includes('fatherNameSpellingHi') || selectedIds.includes('fatherNameSpellingEn') ||
+          selectedIds.includes('fatherNameFullHi') || selectedIds.includes('fatherNameFullEn')
+        ) {
+          docs.push("Father's ID/Marksheet/Aadhaar (पिता का पहचान पत्र/अंकतालिका/आधार)");
+          docs.push("Parents' Marriage Certificate (माता-पिता का विवाह प्रमाण पत्र)");
+          docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
+        }
+        // Spouse name corrections
+        if (
+          selectedIds.includes('spouseNameSpellingHi') || selectedIds.includes('spouseNameSpellingEn') ||
+          selectedIds.includes('spouseNameFullHi') || selectedIds.includes('spouseNameFullEn')
+        ) {
+          docs.push("Spouse's ID/Aadhaar Card (पति/पत्नी का पहचान पत्र/आधार)");
+          docs.push("Marriage Certificate copy (विवाह प्रमाण पत्र की प्रति)");
+          docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
         }
         // Date of Death Corrections
         if (selectedIds.includes('dod')) {
-          docs.push("Hospital death verification records (अस्पताल के मृत्यु संबंधी दस्तावेज व रिकॉर्ड)");
-        }
-        // Place of Death Corrections
-        if (selectedIds.includes('hospitalName')) {
-          docs.push("Hospital death registration discharge summary (अस्पताल मृत्यु रिकॉर्ड व प्रपत्र)");
+          docs.push("Hospital Death Record / Cremation Slip (अस्पताल का मृत्यु रिकॉर्ड/दाह संस्कार पर्ची)");
         }
         // Address Corrections
         if (
           selectedIds.includes('permanentAddressHi') || selectedIds.includes('permanentAddressEn') ||
           selectedIds.includes('deathAddressHi') || selectedIds.includes('deathAddressEn')
         ) {
-          docs.push("Deceased Address Proof Document (मृतक के पते के सत्यापन हेतु दस्तावेज)");
+          docs.push("Deceased/Spouse Address Proof Document (मृतक/पति-पत्नी का पता प्रमाण)");
         }
         // Aadhaar corrections
         if (
-          selectedIds.includes('deceasedAadhaar') || selectedIds.includes('spouseAadhaar') ||
-          selectedIds.includes('fatherAadhaar') || selectedIds.includes('motherAadhaar') ||
-          selectedIds.includes('informantAadhaar')
+          selectedIds.includes('spouseAadhaar') ||
+          selectedIds.includes('fatherAadhaar') || selectedIds.includes('motherAadhaar')
         ) {
           docs.push("Copy of Aadhaar Card matching registry (आधार कार्ड की प्रति)");
+        }
+        // Jan-Aadhaar or Pincode
+        if (selectedIds.includes('janAadhaar') || selectedIds.includes('pincode')) {
+          docs.push("Copy of Aadhaar Card / Jan-Aadhaar Card (आधार या जन-आधार कार्ड की प्रति)");
         }
         
         if (docs.length === 0) {
@@ -455,39 +536,49 @@ export default function CounterOperations() {
       }
 
       // Default / Birth block correction documents
+      if (selectedIds.includes('childNameHi') || selectedIds.includes('childNameEn')) {
+        docs.push("Gazette Notification for name change (राजपत्र अधिसूचना — नाम परिवर्तन)");
+        docs.push("Gazette Receipt (राजपत्र की रसीद)");
+        docs.push("Parents' Aadhaar/Jan Aadhaar (माता-पिता का आधार/जन-आधार)");
+        docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
+      }
       if (
-        selectedIds.includes('childName') || 
-        selectedIds.includes('childNameHi') || 
-        selectedIds.includes('childNameEn') || 
-        selectedIds.includes('fatherName') || 
-        selectedIds.includes('fatherNameHi') || 
-        selectedIds.includes('fatherNameEn') || 
-        selectedIds.includes('motherName') ||
-        selectedIds.includes('motherNameHi') ||
-        selectedIds.includes('motherNameEn')
+        selectedIds.includes('motherNameSpellingHi') || selectedIds.includes('motherNameSpellingEn') ||
+        selectedIds.includes('motherNameFullHi') || selectedIds.includes('motherNameFullEn')
       ) {
-        docs.push("Aadhaar Card copy of Parents (माता-पिता का आधार)");
-        docs.push("Magistrate-certified Affidavit for name change (नाम सुधार हेतु मजिस्ट्रेट शपथ पत्र)");
+        docs.push("Mother's ID/Marksheet/Aadhaar (माता का पहचान पत्र/अंकतालिका/आधार)");
+        docs.push("Mother's Voter ID Card (pre-birth) (माता की मतदाता पहचान पत्र — जन्म से पूर्व की)");
+        docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
+      }
+      if (
+        selectedIds.includes('fatherNameSpellingHi') || selectedIds.includes('fatherNameSpellingEn') ||
+        selectedIds.includes('fatherNameFullHi') || selectedIds.includes('fatherNameFullEn')
+      ) {
+        docs.push("Father's ID/Marksheet/Aadhaar (पिता का पहचान पत्र/अंकतालिका/आधार)");
+        docs.push("Parents' Marriage Certificate (माता-पिता का विवाह प्रमाण पत्र)");
+        docs.push("Notary Stamp Affidavit on Pipe Paper (नोटरी स्टाम्प शपथ पत्र — पाइप पेपर पर)");
       }
       if (selectedIds.includes('dob')) {
-        docs.push("Hospital Birth Discharge Summary / Record (अस्पताल जन्म रिकॉर्ड)");
+        docs.push("Hospital Birth Record / Discharge Summary (अस्पताल का जन्म रिकॉर्ड/डिस्चार्ज समरी)");
         docs.push("School Transfer Certificate or Age proof (स्कूल टीसी / आयु प्रमाण)");
       }
       if (
-        selectedIds.includes('permanentAddress') || 
-        selectedIds.includes('permanentAddressHi') || 
-        selectedIds.includes('permanentAddressEn') || 
-        selectedIds.includes('presentAddress') ||
-        selectedIds.includes('birthAddressHi') ||
-        selectedIds.includes('birthAddressEn')
+        selectedIds.includes('permanentAddressHi') || selectedIds.includes('permanentAddressEn') ||
+        selectedIds.includes('birthAddressHi') || selectedIds.includes('birthAddressEn')
       ) {
-        docs.push("Water Bill / Electricity Bill or Land registry copy (बिजली/पानी बिल या रजिस्ट्री)");
-        docs.push("Voter ID / UID copy (मतदाता पहचान पत्र)");
+        docs.push("Parents' Address Proof (Voter ID/Electricity Bill) (बिजली बिल/पानी बिल/वोटर आईडी)");
       }
+      if (selectedIds.includes('janAadhaar') || selectedIds.includes('pincode')) {
+        docs.push("Copy of Aadhaar Card / Jan-Aadhaar Card (आधार या जन-आधार कार्ड की प्रति)");
+      }
+      if (selectedIds.includes('fatherAadhaar') || selectedIds.includes('motherAadhaar')) {
+        docs.push("Aadhaar Card copy (आधार कार्ड की प्रति)");
+      }
+
       if (docs.length === 0) {
         docs.push("Self-Declaration Form verified by Municipal councilor (पार्षद द्वारा सत्यापित स्व-घोषणा पत्र)");
       }
-      return docs;
+      return [...new Set(docs)];
     } else {
       // New Registrations
       const blockType = activeTokenProcess.block;
@@ -530,16 +621,204 @@ export default function CounterOperations() {
     }
   };
 
+  const getOfficialDocFileName = (docName) => {
+    let englishName = docName.split('(')[0].trim();
+    let cleanName = englishName
+      .replace(/[^a-zA-Z0-9]/g, ' ') // Replace non-alphanumeric with spaces
+      .trim()
+      .replace(/\s+/g, '_'); // Replace spaces with underscore
+    return `${cleanName}.pdf`;
+  };
+
   // Scanning simulation trigger
   const triggerScanFile = (docName) => {
     setScanning(docName);
     setTimeout(() => {
+      const officialName = getOfficialDocFileName(docName);
       setScannedFiles(prev => ({
         ...prev,
-        [docName]: `Scanned_Doc_${Date.now().toString().slice(-4)}.pdf`
+        [docName]: officialName
       }));
       setScanning(false);
     }, 2500);
+  };
+
+  // Dynamic municipal fee calculator
+  const calculateWizardFee = () => {
+    if (!activeTokenProcess) return { total: 20.00, items: [{ name: "Standard Processing Fee", amount: 20.00 }] };
+    if (activeTokenProcess.isReSubmission) {
+      return { total: 0.00, items: [{ name: "Objection Re-submission (Fees Exempted)", amount: 0.00 }] };
+    }
+
+    const isCorrection = activeTokenProcess.serviceType === 'correction';
+    const block = activeTokenProcess.block;
+    const match = activeTokenProcess?.correction_record?.remarks?.match(/COPIES:\s*(\d+)/);
+    const copies = match ? parseInt(match[1]) : 1;
+
+    let result;
+
+    if (isCorrection) {
+      // Birth/Death corrections cost a flat ₹5.
+      result = {
+        total: 5.00,
+        items: [
+          { name: "Correction Fee (संशोधन शुल्क)", amount: 5.00 }
+        ]
+      };
+    } else if (block === 'birth') {
+      const isAddName = newRegData.regCategory === 'ADD_NAME';
+      const dobStr = newRegData.dob;
+      if (!dobStr) {
+        result = { total: 50.00, items: [{ name: "Registration Fee (Base Certificate)", amount: 50.00 }] };
+      } else {
+        const dob = new Date(dobStr);
+        const today = new Date();
+        const diffTime = today - dob;
+        const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+        if (isAddName) {
+          if (diffDays <= 365) {
+            result = {
+              total: 0.00,
+              items: [
+                { name: "Child Name Addition (Within 1 Year)", amount: 0.00 }
+              ]
+            };
+          } else {
+            result = {
+              total: 5.00,
+              items: [
+                { name: "Child Name Addition (After 1 Year)", amount: 5.00 }
+              ]
+            };
+          }
+        } else {
+          // New Registration
+          if (diffDays <= 21) {
+            result = {
+              total: 50.00,
+              items: [
+                { name: "Birth Certificate Base Fee", amount: 50.00 },
+                { name: "Registration Fee (Within 21 Days)", amount: 0.00 }
+              ]
+            };
+          } else if (diffDays <= 30) {
+            result = {
+              total: 70.00,
+              items: [
+                { name: "Birth Certificate Base Fee", amount: 50.00 },
+                { name: "Late Registration Fee (21-30 Days)", amount: 20.00 }
+              ]
+            };
+          } else if (diffDays <= 365) {
+            result = {
+              total: 140.00,
+              items: [
+                { name: "Birth Certificate Base Fee", amount: 50.00 },
+                { name: "Late Registration Fee", amount: 20.00 },
+                { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
+                { name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 }
+              ]
+            };
+          } else {
+            result = {
+              total: 440.00,
+              items: [
+                { name: "Birth Certificate Base Fee", amount: 50.00 },
+                { name: "Late Registration Penalty", amount: 20.00 },
+                { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
+                { name: "First Class Magistrate Order Fee", amount: 50.00 },
+                { name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 }
+              ]
+            };
+          }
+        }
+      }
+    } else if (block === 'death') {
+      const dodStr = newRegData.dob; // In death, dob field stores Date of Death
+      if (!dodStr) {
+        result = { total: 50.00, items: [{ name: "Registration Fee (Base Certificate)", amount: 50.00 }] };
+      } else {
+        const dod = new Date(dodStr);
+        const today = new Date();
+        const diffTime = today - dod;
+        const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+        if (diffDays <= 21) {
+          result = {
+            total: 50.00,
+            items: [
+              { name: "Death Certificate Base Fee", amount: 50.00 },
+              { name: "Registration Fee (Within 21 Days)", amount: 0.00 }
+            ]
+          };
+        } else if (diffDays <= 30) {
+          result = {
+            total: 70.00,
+            items: [
+              { name: "Death Certificate Base Fee", amount: 50.00 },
+              { name: "Late Registration Fee (21-30 Days)", amount: 20.00 }
+            ]
+          };
+        } else if (diffDays <= 365) {
+          result = {
+            total: 140.00,
+            items: [
+              { name: "Death Certificate Base Fee", amount: 50.00 },
+              { name: "Late Registration Fee", amount: 20.00 },
+              { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
+              { name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 }
+            ]
+          };
+        } else {
+          result = {
+            total: 440.00,
+            items: [
+              { name: "Death Certificate Base Fee", amount: 50.00 },
+              { name: "Late Registration Penalty", amount: 20.00 },
+              { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
+              { name: "First Class Magistrate Order Fee", amount: 50.00 },
+              { name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 }
+            ]
+          };
+        }
+      }
+    } else if (block === 'marriage') {
+      const marriageDateStr = newRegData.marriageDate || newRegData.dob;
+      let marriageFee = 110.00;
+      if (marriageDateStr) {
+        const marriageDate = new Date(marriageDateStr);
+        const cutOffDate = new Date('2006-05-22');
+        if (marriageDate < cutOffDate) {
+          marriageFee = 120.00;
+        } else {
+          const today = new Date();
+          const diffTime = today - marriageDate;
+          const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+          if (diffDays > 30) {
+            marriageFee = 200.00;
+          }
+        }
+      }
+      result = {
+        total: marriageFee,
+        items: [{ name: "Marriage Registration Fee", amount: marriageFee }]
+      };
+    } else {
+      result = { total: 20.00, items: [{ name: "Standard Processing Fee", amount: 20.00 }] };
+    }
+
+    // Add print copy fees on top (₹50 per copy print)
+    if (copies > 0) {
+      const printAmount = copies * 50.00;
+      result.items.push({
+        name: `Certificate Prints (${copies} ${copies === 1 ? 'copy' : 'copies'} @ ₹50)`,
+        amount: printAmount
+      });
+      result.total += printAmount;
+    }
+
+    return result;
   };
 
   // Complete application submit
@@ -555,6 +834,7 @@ export default function CounterOperations() {
     setPaying(true);
 
     const isCorrection = activeTokenProcess.serviceType === 'correction';
+    const dynamicFee = calculateWizardFee();
     const applicationPayload = {
       tokenNumber: activeTokenProcess.tokenNumber,
       departmentBlock: activeTokenProcess.block,
@@ -582,8 +862,8 @@ export default function CounterOperations() {
         transactionId: `EXEMPT-${activeTokenProcess.tokenNumber}`
       } : {
         method: paymentMethod,
-        amount: 20.00,
-        status: paymentMethod === 'CASH' ? 'PENDING' : 'SUCCESS',
+        amount: dynamicFee.total,
+        status: 'SUCCESS', // Offline cash/UPI payments processed immediately at the counter
         transactionId: `TXN-${Math.floor(10000000 + Math.random() * 90000000)}`
       }
     };
@@ -599,7 +879,8 @@ export default function CounterOperations() {
           commonDetails: applicationPayload.commonDetails,
           uploadedDocuments: applicationPayload.uploadedDocuments,
           paymentDetails: applicationPayload.paymentDetails,
-          correctionFields: applicationPayload.correctionFields
+          correctionFields: applicationPayload.correctionFields,
+          feeItems: dynamicFee.items
         });
         setPaying(false);
         setStep('COMPLETE');
@@ -956,27 +1237,44 @@ export default function CounterOperations() {
 
             {/* Checkbox fields grid (3 columns for premium widescreen, collapses on mobile) */}
             <div className="overflow-y-auto max-h-[380px] pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 border rounded-xl p-4 bg-slate-50 shadow-inner font-semibold">
-              {PREDEFINED_FIELDS.map((field) => (
-                <label 
-                  key={field.id}
-                  className={`flex items-center gap-3.5 p-3.5 border rounded-xl cursor-pointer select-none transition-all text-md font-bold hover:bg-white ${
-                    selectedFields[field.id] 
-                      ? 'bg-navy/5 border-navy shadow-sm text-navy font-extrabold' 
-                      : 'border-slate-200 bg-white text-slate-600'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!selectedFields[field.id]}
-                    onChange={(e) => setSelectedFields({
-                      ...selectedFields,
-                      [field.id]: e.target.checked
-                    })}
-                    className="w-5 h-5 accent-navy shrink-0 cursor-pointer"
-                  />
-                  <span className="leading-snug">{field.label}</span>
-                </label>
-              ))}
+              {getSelectableFields().map((field) => {
+                const checked = field.isBilingual 
+                  ? (!!selectedFields[field.enId] && !!selectedFields[field.hiId]) 
+                  : !!selectedFields[field.id];
+                
+                return (
+                  <label 
+                    key={field.isBilingual ? field.enId : field.id}
+                    className={`flex items-center gap-3.5 p-3.5 border rounded-xl cursor-pointer select-none transition-all text-md font-bold hover:bg-white ${
+                      checked 
+                        ? 'bg-navy/5 border-navy shadow-sm text-navy font-extrabold' 
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        if (field.isBilingual) {
+                          setSelectedFields(prev => ({
+                            ...prev,
+                            [field.enId]: isChecked,
+                            [field.hiId]: isChecked
+                          }));
+                        } else {
+                          setSelectedFields(prev => ({
+                            ...prev,
+                            [field.id]: isChecked
+                          }));
+                        }
+                      }}
+                      className="w-5 h-5 accent-navy shrink-0 cursor-pointer"
+                    />
+                    <span className="leading-snug">{field.label}</span>
+                  </label>
+                );
+              })}
             </div>
 
             {/* Action buttons */}
@@ -1132,53 +1430,160 @@ export default function CounterOperations() {
                   </h4>
 
                   <div className="flex flex-col gap-3.5 overflow-y-auto max-h-[290px] pr-1">
-                    {PREDEFINED_FIELDS.filter(f => selectedFields[f.id]).map((field) => (
-                      <div key={field.id} className="border border-slate-100 rounded-xl p-3 bg-slate-50/50 flex flex-col gap-2">
-                        <span className="text-sm font-bold text-navy">{field.label}</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-                          <div className="flex flex-col gap-1">
-                            <label className="text-slate-400">Old Value (पुराना मूल्य)</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. Suresh Sharma"
-                              value={formData.fieldValues[field.id]?.old || ''}
-                              onChange={(e) => setFormData({
-                                ...formData,
-                                fieldValues: {
-                                  ...formData.fieldValues,
-                                  [field.id]: {
-                                    ...formData.fieldValues[field.id],
-                                    old: e.target.value
-                                  }
-                                }
-                              })}
-                              className="p-2 border rounded-lg text-sm text-navy bg-white outline-none"
-                            />
+                    {getSelectableFields().filter(field => 
+                      field.isBilingual 
+                        ? (selectedFields[field.enId] || selectedFields[field.hiId])
+                        : selectedFields[field.id]
+                    ).map((field) => {
+                      if (field.isBilingual) {
+                        return (
+                          <div key={field.enId} className="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 flex flex-col gap-3">
+                            <span className="text-sm font-bold text-navy border-b pb-1.5">{field.label}</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* English inputs */}
+                              <div className="flex flex-col gap-2.5">
+                                <span className="text-xs font-extrabold text-navy/70 uppercase tracking-wider">English (अंग्रेजी)</span>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[11px] font-bold text-slate-400">Old Value (पुराना मूल्य)</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. RAMESH"
+                                    value={formData.fieldValues[field.enId]?.old || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.enId]: {
+                                          ...formData.fieldValues[field.enId],
+                                          old: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    onBlur={(e) => handleEnglishBlur(field.enId, field.hiId, e.target.value, 'old')}
+                                    className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[11px] font-bold text-slate-400">New Value (नया मूल्य)</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. SURESH"
+                                    value={formData.fieldValues[field.enId]?.new || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.enId]: {
+                                          ...formData.fieldValues[field.enId],
+                                          new: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    onBlur={(e) => handleEnglishBlur(field.enId, field.hiId, e.target.value, 'new')}
+                                    className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Hindi inputs */}
+                              <div className="flex flex-col gap-2.5">
+                                <span className="text-xs font-extrabold text-navy/70 uppercase tracking-wider">Hindi (हिंदी)</span>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[11px] font-bold text-slate-400">Old Value (पुराना मूल्य)</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. रमेश"
+                                    value={formData.fieldValues[field.hiId]?.old || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.hiId]: {
+                                          ...formData.fieldValues[field.hiId],
+                                          old: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[11px] font-bold text-slate-400">New Value (नया मूल्य)</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. सुरेश"
+                                    value={formData.fieldValues[field.hiId]?.new || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.hiId]: {
+                                          ...formData.fieldValues[field.hiId],
+                                          new: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-slate-400">New Value (नया मूल्य)</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. Ramesh Sharma"
-                              value={formData.fieldValues[field.id]?.new || ''}
-                              onChange={(e) => setFormData({
-                                ...formData,
-                                fieldValues: {
-                                  ...formData.fieldValues,
-                                  [field.id]: {
-                                    ...formData.fieldValues[field.id],
-                                    new: e.target.value
-                                  }
-                                }
-                              })}
-                              className="p-2 border rounded-lg text-sm text-navy bg-white focus:border-navy outline-none"
-                            />
+                        );
+                      } else {
+                        return (
+                          <div key={field.id} className="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 flex flex-col gap-2">
+                            <span className="text-sm font-bold text-navy">{field.label}</span>
+                            <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-slate-400">Old Value (पुराना मूल्य)</label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="Old value..."
+                                  value={formData.fieldValues[field.id]?.old || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.id]: {
+                                        ...formData.fieldValues[field.id],
+                                        old: e.target.value
+                                      }
+                                    }
+                                  })}
+                                  className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-slate-400">New Value (नया मूल्य)</label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="New value..."
+                                  value={formData.fieldValues[field.id]?.new || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.id]: {
+                                        ...formData.fieldValues[field.id],
+                                        new: e.target.value
+                                      }
+                                    }
+                                  })}
+                                  className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      }
+                    })}
                   </div>
                 </div>
               ) : (
@@ -1696,12 +2101,23 @@ export default function CounterOperations() {
                   <span>Department Block:</span>
                   <span className="text-navy uppercase">{activeTokenProcess.block}</span>
                 </div>
+                
+                {/* Itemized Fee Breakdown */}
+                <div className="border-t border-dashed border-slate-200 mt-2 pt-2 flex flex-col gap-1 text-sm font-bold">
+                  <span className="text-[11px] text-slate-400 uppercase tracking-widest block mb-1">Fee Breakdown (शुल्क विवरण)</span>
+                  {calculateWizardFee().items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between font-rajdhani text-navy font-bold">
+                      <span>{item.name}</span>
+                      <span>₹{item.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="flex justify-between items-baseline">
-                <span className="text-sm font-bold text-slate-400 uppercase">Service Fee Due:</span>
-                <span className="text-4xl font-extrabold text-navy">
-                  {activeTokenProcess?.isReSubmission ? '₹0.00' : '₹20.00'}
+                <span className="text-sm font-bold text-slate-400 uppercase">Total Demand Due:</span>
+                <span className="text-4xl font-extrabold text-navy font-mono">
+                  ₹{calculateWizardFee().total.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -1753,7 +2169,7 @@ export default function CounterOperations() {
                     <div className="flex items-center gap-4 bg-slate-50 border p-3 rounded-xl">
                       <div className="w-20 h-20 bg-white border border-slate-300 rounded-lg p-1.5 flex items-center justify-center shrink-0">
                         <img 
-                          src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=nagarnigam.kiosk@sbi%26am=20.00%26tn=Counter-Bill" 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=nagarnigam.kiosk@sbi%26am=${calculateWizardFee().total.toFixed(2)}%26tn=Counter-Bill-${activeTokenProcess.tokenNumber}`}
                           alt="Mock QR" 
                           className="w-full h-full object-contain"
                         />
@@ -1764,18 +2180,31 @@ export default function CounterOperations() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 bg-amber-50/50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 leading-snug">
-                      <AlertCircle className="w-5 h-5 text-saffron shrink-0" />
-                      <span>Admin verifies cash received of flat ₹20.00 from the citizen before completing registry.</span>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3 bg-amber-50/50 border border-amber-200 p-3 rounded-xl text-xs text-amber-950 font-bold leading-snug">
+                        <AlertCircle className="w-5 h-5 text-saffron shrink-0" />
+                        <span>Admin verifies cash received of flat ₹{calculateWizardFee().total.toFixed(2)} from the citizen before completing registry.</span>
+                      </div>
+                      <label className="flex items-center gap-2.5 p-3.5 border border-slate-200 hover:border-slate-300 rounded-xl bg-slate-50/30 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={cashCollected}
+                          onChange={(e) => setCashCollected(e.target.checked)}
+                          className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-slate-700">
+                          Cash Collected (₹{calculateWizardFee().total.toFixed(2)} received in hand)
+                        </span>
+                      </label>
                     </div>
                   )}
                 </>
               )}
 
               <button
-                disabled={paying}
+                disabled={paying || (paymentMethod === 'CASH' && !activeTokenProcess?.isReSubmission && !cashCollected)}
                 onClick={handleSubmission}
-                className="w-full p-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                className="w-full p-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
               >
                 {paying ? (
                   <>
@@ -1785,7 +2214,7 @@ export default function CounterOperations() {
                 ) : (
                   <>
                     <Check className="w-5 h-5" />
-                    <span>Approve & Print Enrollment Slip</span>
+                    <span>Submit & Print Enrollment Slip</span>
                   </>
                 )}
               </button>
@@ -1894,10 +2323,10 @@ export default function CounterOperations() {
                   <span>Service Fee:</span>
                   {enrollmentResult.paymentDetails.method === 'EXEMPT' ? (
                     <span className="text-emerald-600 font-bold">₹0.00 (EXEMPT)</span>
-                  ) : enrollmentResult.paymentDetails.method === 'CASH' ? (
-                    <span className="text-amber-600 font-bold">₹20.00 (PENDING)</span>
                   ) : (
-                    <span className="text-emerald-600 font-bold">₹20.00 (PAID)</span>
+                    <span className="text-emerald-600 font-bold">
+                      ₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} ({enrollmentResult.paymentDetails.method === 'CASH' ? 'PAID via CASH' : 'PAID'})
+                    </span>
                   )}
                 </div>
                 <div className="flex justify-between border-t border-slate-100 pt-2.5 mt-1 font-bold text-navy">
@@ -1963,9 +2392,9 @@ export default function CounterOperations() {
                     {enrollmentResult.paymentDetails.method === 'EXEMPT' ? (
                       <span style={{ color: '#059669', fontWeight: 'bold' }}>₹0.00 (FEE EXEMPT)</span>
                     ) : enrollmentResult.paymentDetails.method === 'CASH' ? (
-                      <span style={{ color: '#d97706', fontWeight: 'bold' }}>₹20.00 (PENDING via CASH)</span>
+                      <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} (PAID via CASH)</span>
                     ) : (
-                      <span>₹20.00 (PAID via {enrollmentResult.paymentDetails.method})</span>
+                      <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} (PAID via {enrollmentResult.paymentDetails.method})</span>
                     )}
                   </p>
                   <p className="my-1.5"><strong>Transaction Reference:</strong> {enrollmentResult.paymentDetails.transactionId}</p>
@@ -1997,12 +2426,29 @@ export default function CounterOperations() {
               )}
 
               <div className="mb-6">
-                <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Scanned & Uploaded Physical Attachments</h4>
-                <ul className="text-sm list-inside list-disc pl-2">
-                  {enrollmentResult.uploadedDocuments.map((doc, idx) => (
-                    <li key={idx} className="my-1 text-slate-700">Verified Attachment: <strong>{doc}</strong></li>
-                  ))}
-                </ul>
+                <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Fee Breakdown (शुल्क विवरण)</h4>
+                <table className="w-full text-sm border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100">
+                      <th className="border border-slate-300 p-2 text-left">Particular Description</th>
+                      <th className="border border-slate-300 p-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enrollmentResult.feeItems && enrollmentResult.feeItems.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="border border-slate-300 p-2 font-bold">{item.name}</td>
+                        <td className="border border-slate-300 p-2 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-50 font-extrabold">
+                      <td className="border border-slate-300 p-2 text-right uppercase">Total Paid Fee:</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono" style={{ color: '#059669' }}>
+                        ₹{enrollmentResult.paymentDetails.amount?.toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               {enrollmentResult.paymentDetails.method === 'CASH' ? (
