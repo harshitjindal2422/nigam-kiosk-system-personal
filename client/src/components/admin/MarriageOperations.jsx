@@ -42,10 +42,10 @@ export default function MarriageOperations() {
   // Custom Marriage Details
   const [marriageData, setMarriageData] = useState({
     groomName: '',
-    groomAge: '',
+    groomDob: '',
     groomFather: '',
     brideName: '',
-    brideAge: '',
+    brideDob: '',
     brideFather: '',
     placeOfMarriage: '',
     dom: '' // Date of Marriage
@@ -84,10 +84,10 @@ export default function MarriageOperations() {
       });
       setMarriageData({
         groomName: '',
-        groomAge: '',
+        groomDob: '',
         groomFather: '',
         brideName: '',
-        brideAge: '',
+        brideDob: '',
         brideFather: '',
         placeOfMarriage: '',
         dom: ''
@@ -145,10 +145,10 @@ export default function MarriageOperations() {
 
         setMarriageData({
           groomName: getValue("Groom's Full Name") || getValue("Groom Name") || app.applicant_name,
-          groomAge: getValue("Groom Age") || getValue("Age") || '',
+          groomDob: getValue("Groom Date of Birth") || getValue("Groom DOB") || '',
           groomFather: getValue("Groom Father") || getValue("Father's Name") || app.father_name || '',
           brideName: getValue("Bride's Full Name") || getValue("Bride Name") || '',
-          brideAge: getValue("Bride Age") || '',
+          brideDob: getValue("Bride Date of Birth") || getValue("Bride DOB") || '',
           brideFather: getValue("Bride Father") || '',
           placeOfMarriage: getValue("Place of Solemnization") || getValue("Place of Marriage") || '',
           dom: getValue("Date of Marriage") || getValue("Date of Birth") || app.dob || ''
@@ -209,11 +209,9 @@ export default function MarriageOperations() {
   // Required documents
   const getRequiredDocumentsList = () => {
     return [
-      "Age proof of Groom (marksheet/passport) (वर का आयु प्रमाण पत्र)",
-      "Age proof of Bride (marksheet/passport) (वधू का आयु प्रमाण पत्र)",
       "Joint photograph of Bride & Groom (वर-वधू का संयुक्त चित्र)",
-      "Wedding Invitation Card copy (विवाह निमंत्रण पत्र)",
-      "Identities of 2 Wedding Witnesses (2 गवाहों के पहचान पत्र)"
+      "Marriage Application Form - Front Side (विवाह आवेदन पत्र - मुख्य पृष्ठ)",
+      "Marriage Application Form - Back Side (विवाह आवेदन पत्र - अंतिम पृष्ठ)"
     ];
   };
 
@@ -234,14 +232,6 @@ export default function MarriageOperations() {
       items.push({ label: 'Marriage Registration Fee (Within 1 Month) (विवाह पंजीकरण शुल्क)', amount: 110 });
     } else {
       items.push({ label: 'Marriage Registration Fee (After 1 Month) (विवाह पंजीकरण शुल्क)', amount: 200 });
-    }
-
-    if (copies > 0) {
-      const printAmount = copies * 50.00;
-      items.push({
-        label: `Certificate Prints (${copies} ${copies === 1 ? 'copy' : 'copies'} @ ₹50) (प्रमाण पत्र प्रतियां)`,
-        amount: printAmount
-      });
     }
 
     const total = items.reduce((sum, item) => sum + item.amount, 0);
@@ -289,10 +279,10 @@ export default function MarriageOperations() {
       correctionFields: [
         { fieldName: 'Registration Category', oldValue: '---', newValue: 'NEW_REGISTRATION' },
         { fieldName: "Groom's Full Name", oldValue: '---', newValue: marriageData.groomName },
-        { fieldName: 'Groom Age', oldValue: '---', newValue: marriageData.groomAge },
+        { fieldName: 'Groom DOB', oldValue: '---', newValue: marriageData.groomDob },
         { fieldName: 'Groom Father', oldValue: '---', newValue: marriageData.groomFather },
         { fieldName: "Bride's Full Name", oldValue: '---', newValue: marriageData.brideName },
-        { fieldName: 'Bride Age', oldValue: '---', newValue: marriageData.brideAge },
+        { fieldName: 'Bride DOB', oldValue: '---', newValue: marriageData.brideDob },
         { fieldName: 'Bride Father', oldValue: '---', newValue: marriageData.brideFather },
         { fieldName: 'Date of Marriage', oldValue: '---', newValue: marriageData.dom },
         { fieldName: 'Place of Solemnization', oldValue: '---', newValue: marriageData.placeOfMarriage },
@@ -631,14 +621,13 @@ export default function MarriageOperations() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Groom's Age (वर की आयु)</label>
+                    <label className="text-slate-600">Groom's Date of Birth (वर की जन्म तिथि)</label>
                     <input
-                      type="number"
+                      type="date"
                       required
-                      placeholder="e.g. 25"
-                      value={marriageData.groomAge}
-                      onChange={(e) => setMarriageData({ ...marriageData, groomAge: e.target.value })}
-                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-purple-600 outline-none"
+                      value={marriageData.groomDob}
+                      onChange={(e) => setMarriageData({ ...marriageData, groomDob: e.target.value })}
+                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-purple-600 outline-none font-mono"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -678,14 +667,13 @@ export default function MarriageOperations() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Bride's Age (वधू की आयु)</label>
+                    <label className="text-slate-600">Bride's Date of Birth (वधू की जन्म तिथि)</label>
                     <input
-                      type="number"
+                      type="date"
                       required
-                      placeholder="e.g. 22"
-                      value={marriageData.brideAge}
-                      onChange={(e) => setMarriageData({ ...marriageData, brideAge: e.target.value })}
-                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-purple-600 outline-none"
+                      value={marriageData.brideDob}
+                      onChange={(e) => setMarriageData({ ...marriageData, brideDob: e.target.value })}
+                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-purple-600 outline-none font-mono"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -955,9 +943,24 @@ export default function MarriageOperations() {
                 </div>
 
                 {paymentMethod === 'UPI_QR' && (
-                  <div className="mt-5 p-4 border border-emerald-200 bg-emerald-50 rounded-xl flex items-center gap-3 text-xs text-emerald-800 font-bold">
-                    <Check className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <span>UPI QR generated on customer kiosk. Once paid successfully, click submit to complete enrollment.</span>
+                  <div className="flex flex-col gap-4 mt-5">
+                    <div className="flex items-center gap-4 bg-slate-50 border p-3 rounded-xl">
+                      <div className="w-20 h-20 bg-white border border-slate-300 rounded-lg p-1.5 flex items-center justify-center shrink-0">
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=nagarnigam.kiosk@sbi%26am=${feeInfo.total.toFixed(2)}%26tn=Marriage-Bill-${activeTokenProcess.tokenNumber}`}
+                          alt="Mock QR" 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="text-left text-xs leading-snug">
+                        <span className="font-bold text-purple-700 uppercase block">dynamic upi qr generated</span>
+                        <span className="text-slate-500 block mt-0.5">Show this terminal display to citizen, wait for payment confirmation, then click submit.</span>
+                      </div>
+                    </div>
+                    <div className="p-4 border border-emerald-200 bg-emerald-50 rounded-xl flex items-center gap-3 text-xs text-emerald-800 font-bold">
+                      <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <span>UPI QR generated on customer kiosk. Once paid successfully, click submit to complete enrollment.</span>
+                    </div>
                   </div>
                 )}
 
@@ -1157,7 +1160,7 @@ export default function MarriageOperations() {
                 <div>
                   <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
                   <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
-                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleDateString()}</p>
+                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleString('en-IN')}</p>
                   <p className="my-1.5"><strong>Department Block:</strong> MARRIAGE</p>
                   <p className="my-1.5"><strong>Application Type:</strong> NEW REGISTRATION</p>
                 </div>

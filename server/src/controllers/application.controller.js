@@ -167,7 +167,7 @@ export const submitApplication = asyncHandler(async (req, res) => {
           correction_type: correctionType,
           correction_details: correctionFields || [],
           uploaded_documents: uploadedDocuments || [],
-          status: 'PENDING_CHECKER',
+          status: serviceType.toUpperCase() === 'NEW_REGISTRATION' ? 'APPROVED' : 'PENDING_CHECKER',
           objection_remarks: null,
           next_visit_time: nextVisitTime,
           counter_operator_id: req.user.admin_id
@@ -193,7 +193,7 @@ export const submitApplication = asyncHandler(async (req, res) => {
           correction_type: correctionType,
           correction_details: correctionFields || [],
           uploaded_documents: uploadedDocuments || [],
-          status: 'PENDING_CHECKER',
+          status: serviceType.toUpperCase() === 'NEW_REGISTRATION' ? 'APPROVED' : 'PENDING_CHECKER',
           next_visit_time: nextVisitTime,
           payment_method: paymentDetails.method,
           payment_amount: paymentDetails.amount,
@@ -263,7 +263,9 @@ export const submitApplication = asyncHandler(async (req, res) => {
   // 3. Dispatch simulated SMS
   logger.info(`[SMS] Sent to ${mobileNumber}: Dear Applicant, your application reference number is ${result.enrollmentId} and will be proceeded with in 7 days. - Jaipur Municipal`);
 
-  const msg = "Application registered and queued for Checker review successfully";
+  const msg = serviceType.toUpperCase() === 'NEW_REGISTRATION'
+    ? "Application registered and queued for Approval review successfully"
+    : "Application registered and queued for Checker review successfully";
 
   return res.status(201).json(
     new ApiResponse(201, result.application, msg)
@@ -711,5 +713,73 @@ export const uploadCertificate = asyncHandler(async (req, res) => {
 
   return res.status(200).json(
     new ApiResponse(200, { filePath }, "Certificate file uploaded and written successfully")
+  );
+});
+
+/**
+ * @desc    Update uploaded documents array on an application (e.g. for approval operator rescan)
+ * @route   POST /api/v1/applications/:id/update-documents
+ */
+export const updateApplicationDocuments = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { uploadedDocuments } = req.body;
+
+  if (!uploadedDocuments || !Array.isArray(uploadedDocuments)) {
+    throw new ApiError(400, "Invalid uploadedDocuments array");
+  }
+
+  const application = await prisma.application.findUnique({
+    where: { application_id: parseInt(id) }
+  });
+
+  if (!application) {
+    throw new ApiError(404, "Application not found");
+  }
+
+  const updated = await prisma.application.update({
+    where: { application_id: application.application_id },
+    data: {
+      uploaded_documents: uploadedDocuments
+    }
+  });
+
+  logger.info(`🔄 [DOCUMENT UPDATE]: Approval operator updated documents for App ID ${id}: ${JSON.stringify(uploadedDocuments)}`);
+
+  return res.status(200).json(
+    new ApiResponse(200, updated, "Documents updated successfully")
+  );
+});
+
+/**
+ * @desc    Update application details (Approval Operator)
+ * @route   POST /api/v1/applications/:id/update-details
+ */
+export const updateApplicationDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { applicantName, mobileNumber, registrationNumber, dob, correctionDetails } = req.body;
+
+  const application = await prisma.application.findUnique({
+    where: { application_id: parseInt(id) }
+  });
+
+  if (!application) {
+    throw new ApiError(404, "Application not found");
+  }
+
+  const updated = await prisma.application.update({
+    where: { application_id: application.application_id },
+    data: {
+      applicant_name: applicantName,
+      mobile_number: mobileNumber,
+      registration_number: registrationNumber,
+      dob: dob,
+      correction_details: correctionDetails || []
+    }
+  });
+
+  logger.info(`🔄 [DETAIL UPDATE]: Approval operator updated details for App ID ${id}`);
+
+  return res.status(200).json(
+    new ApiResponse(200, updated, "Application details updated successfully")
   );
 });

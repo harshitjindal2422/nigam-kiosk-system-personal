@@ -17,10 +17,25 @@ export default function ApprovalDashboard() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    applicantName: '',
+    mobileNumber: '',
+    registrationNumber: '',
+    dob: '',
+    correctionDetails: []
+  });
+
   const selectedAppRef = useRef(selectedApp);
+  const isEditingRef = useRef(isEditing);
+
   useEffect(() => {
     selectedAppRef.current = selectedApp;
   }, [selectedApp]);
+
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
 
   const [dscDoneCheck, setDscDoneCheck] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
@@ -37,9 +52,54 @@ export default function ApprovalDashboard() {
       setUploadedFileName('');
       setUploadedFileUrl('');
       setUploadError('');
+      setIsEditing(false);
       prevAppIdRef.current = currentId;
     }
   }, [selectedApp]);
+
+  const [rescanningDoc, setRescanningDoc] = useState(null);
+
+  const handleRescanDocument = async (oldDocName) => {
+    setRescanningDoc(oldDocName);
+    setErrorMsg('');
+    setSuccessMsg('');
+    setTimeout(async () => {
+      try {
+        const cleanName = oldDocName.split('.')[0];
+        const ext = oldDocName.includes('.') ? oldDocName.split('.').pop() : 'pdf';
+        const newDocName = `${cleanName}_Rescanned_${Math.floor(1000 + Math.random() * 9000)}.${ext}`;
+
+        const currentApp = selectedAppRef.current;
+        if (!currentApp) return;
+
+        const updatedDocs = (currentApp.uploaded_documents || []).map(d => d === oldDocName ? newDocName : d);
+
+        await axiosInstance.post(`/applications/${currentApp.application_id}/update-documents`, {
+          uploadedDocuments: updatedDocs
+        });
+
+        setSelectedApp(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            uploaded_documents: updatedDocs
+          };
+        });
+
+        setApplications(prev => prev.map(app => 
+          app.application_id === currentApp.application_id
+            ? { ...app, uploaded_documents: updatedDocs }
+            : app
+        ));
+
+        setSuccessMsg(`Document "${oldDocName}" rescanned and updated as: "${newDocName}"`);
+      } catch (err) {
+        setErrorMsg(err.message || "Failed to update rescanned document on server");
+      } finally {
+        setRescanningDoc(null);
+      }
+    }, 2500);
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -92,7 +152,7 @@ export default function ApprovalDashboard() {
       setApplications(queueData);
       
       const currentSelected = selectedAppRef.current;
-      if (currentSelected) {
+      if (currentSelected && !isEditingRef.current) {
         const freshApp = queueData.find(app => app.application_id === currentSelected.application_id);
         if (freshApp) {
           setSelectedApp(freshApp);
@@ -126,10 +186,55 @@ export default function ApprovalDashboard() {
 
   const handleSelectApp = (app) => {
     setSelectedApp(app);
+    setIsEditing(false);
     setRevertRemarks('');
     setShowRevertForm(false);
     setSuccessMsg('');
     setErrorMsg('');
+  };
+
+  const startEditing = () => {
+    setEditForm({
+      applicantName: selectedApp.applicant_name,
+      mobileNumber: selectedApp.mobile_number,
+      registrationNumber: selectedApp.registration_number || '',
+      dob: selectedApp.dob || '',
+      correctionDetails: (selectedApp.correction_details || []).map(d => ({ ...d }))
+    });
+    setIsEditing(true);
+  };
+
+  const saveEditing = async () => {
+    setActionLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await axiosInstance.post(`/applications/${selectedApp.application_id}/update-details`, {
+        applicantName: editForm.applicantName,
+        mobileNumber: editForm.mobileNumber,
+        registrationNumber: editForm.registrationNumber,
+        dob: editForm.dob,
+        correctionDetails: editForm.correctionDetails
+      });
+
+      setSuccessMsg("Application details updated successfully.");
+      setIsEditing(false);
+      isEditingRef.current = false;
+
+      const updatedApp = res.data;
+      if (updatedApp) {
+        setSelectedApp(updatedApp);
+        setApplications(prev => prev.map(app => 
+          app.application_id === updatedApp.application_id ? updatedApp : app
+        ));
+      } else {
+        await fetchQueue();
+      }
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || err.message || "Failed to update application details");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleReview = async (action) => {
@@ -304,9 +409,19 @@ export default function ApprovalDashboard() {
                       File Enrollment ID: {selectedApp.enrollment_id} · Token: {selectedApp.token_number}
                     </p>
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-lg border">
-                    Type: {selectedApp.service_type}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {!isEditing && (
+                      <button
+                        onClick={startEditing}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg transition-transform active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        Edit Details
+                      </button>
+                    )}
+                    <span className="text-xs font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-lg border">
+                      Type: {selectedApp.service_type}
+                    </span>
+                  </div>
                 </div>
 
                 {(() => {
@@ -331,42 +446,91 @@ export default function ApprovalDashboard() {
                       </div>
 
                       {/* Info fields column */}
-                      <div className="md:col-span-3 grid grid-cols-2 gap-4 text-sm font-semibold text-slate-600">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                            <User className="w-3.5 h-3.5" /> Deceased/Child/Groom Name
-                          </span>
-                          <span className="text-base text-navy font-bold">{selectedApp.applicant_name}</span>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                            <Smartphone className="w-3.5 h-3.5" /> Mobile Number
-                          </span>
-                          <span className="text-base text-navy font-bold">{selectedApp.mobile_number}</span>
-                        </div>
-                        {selectedApp.registration_number && (
+                      {isEditing ? (
+                        <div className="md:col-span-3 grid grid-cols-2 gap-4 text-sm font-semibold text-slate-600">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <User className="w-3.5 h-3.5" /> Deceased/Child/Groom Name
+                            </span>
+                            <input
+                              type="text"
+                              value={editForm.applicantName}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, applicantName: e.target.value }))}
+                              className="p-2 border border-slate-300 rounded-lg text-sm text-navy font-bold bg-white focus:border-navy outline-none"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <Smartphone className="w-3.5 h-3.5" /> Mobile Number
+                            </span>
+                            <input
+                              type="text"
+                              value={editForm.mobileNumber}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                              className="p-2 border border-slate-300 rounded-lg text-sm text-navy font-bold bg-white focus:border-navy outline-none"
+                            />
+                          </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
                               <Tag className="w-3.5 h-3.5" /> Base Registration ID
                             </span>
-                            <span className="text-base text-navy font-bold font-mono">{selectedApp.registration_number}</span>
+                            <input
+                              type="text"
+                              value={editForm.registrationNumber}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, registrationNumber: e.target.value }))}
+                              className="p-2 border border-slate-300 rounded-lg text-sm text-navy font-bold bg-white focus:border-navy outline-none"
+                            />
                           </div>
-                        )}
-                        {selectedApp.dob && (
                           <div className="flex flex-col gap-1">
                             <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
                               <Calendar className="w-3.5 h-3.5" /> Birth/Event/Marriage Date
                             </span>
-                            <span className="text-base text-navy font-bold">{selectedApp.dob}</span>
+                            <input
+                              type="text"
+                              value={editForm.dob}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, dob: e.target.value }))}
+                              className="p-2 border border-slate-300 rounded-lg text-sm text-navy font-bold bg-white focus:border-navy outline-none"
+                            />
                           </div>
-                        )}
-                        <div className="flex flex-col gap-1 col-span-2 border-t pt-2 mt-1">
-                          <span className="text-slate-400 uppercase text-[10px] tracking-wider">Fee Registry Details</span>
-                          <span className="text-sm font-bold text-navy">
-                            ₹{selectedApp.payment_amount} ({selectedApp.payment_status} via {selectedApp.payment_method || 'CASH'})
-                          </span>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="md:col-span-3 grid grid-cols-2 gap-4 text-sm font-semibold text-slate-600">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <User className="w-3.5 h-3.5" /> Deceased/Child/Groom Name
+                            </span>
+                            <span className="text-base text-navy font-bold">{selectedApp.applicant_name}</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                              <Smartphone className="w-3.5 h-3.5" /> Mobile Number
+                            </span>
+                            <span className="text-base text-navy font-bold">{selectedApp.mobile_number}</span>
+                          </div>
+                          {selectedApp.registration_number && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                                <Tag className="w-3.5 h-3.5" /> Base Registration ID
+                              </span>
+                              <span className="text-base text-navy font-bold font-mono">{selectedApp.registration_number}</span>
+                            </div>
+                          )}
+                          {selectedApp.dob && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-slate-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" /> Birth/Event/Marriage Date
+                              </span>
+                              <span className="text-base text-navy font-bold">{selectedApp.dob}</span>
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-1 col-span-2 border-t pt-2 mt-1">
+                            <span className="text-slate-400 uppercase text-[10px] tracking-wider">Fee Registry Details</span>
+                            <span className="text-sm font-bold text-navy">
+                              ₹{selectedApp.payment_amount} ({selectedApp.payment_status} via {selectedApp.payment_method || 'CASH'})
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -384,7 +548,54 @@ export default function ApprovalDashboard() {
               </div>
 
               {/* Dynamic Details Section for CORRECTION vs NEW_REGISTRATION */}
-              {selectedApp.service_type === 'CORRECTION' ? (
+              {isEditing ? (
+                <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm flex flex-col gap-4">
+                  <h4 className="m-0 text-navy font-bold border-b pb-3 text-base flex items-center gap-1.5 uppercase">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Modify Registry Particulars
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2 font-semibold text-slate-600">
+                    {editForm.correctionDetails
+                      .filter(field => field.fieldName !== 'combinedPhoto')
+                      .map((field, idx) => (
+                        <div key={idx} className="border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col gap-1.5">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">{field.fieldName}</span>
+                          <input
+                            type="text"
+                            value={field.newValue}
+                            onChange={(e) => {
+                              const updatedDetails = [...editForm.correctionDetails];
+                              const realIdx = editForm.correctionDetails.findIndex(d => d.fieldName === field.fieldName);
+                              if (realIdx !== -1) {
+                                updatedDetails[realIdx].newValue = e.target.value;
+                                setEditForm(prev => ({ ...prev, correctionDetails: updatedDetails }));
+                              }
+                            }}
+                            className="p-2 border border-slate-300 rounded-lg text-sm text-navy font-bold bg-white focus:border-navy outline-none"
+                          />
+                        </div>
+                      ))}
+                  </div>
+
+                  <div className="flex gap-3 justify-end mt-4 border-t pt-4">
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      disabled={actionLoading}
+                      className="px-6 py-2.5 border rounded-xl hover:bg-slate-50 text-slate-600 font-bold text-sm cursor-pointer transition-transform active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveEditing}
+                      disabled={actionLoading}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-transform active:scale-95 cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      {actionLoading ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              ) : selectedApp.service_type === 'CORRECTION' ? (
                 <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
                   <h4 className="m-0 text-navy font-bold border-b pb-3 text-base flex items-center gap-1.5 uppercase">
                     <Tag className="w-5 h-5 text-saffron" />
@@ -450,16 +661,32 @@ export default function ApprovalDashboard() {
                           <FileText className="w-4 h-4 text-slate-400" />
                           <span>{doc}</span>
                         </div>
-                        <a
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            alert(`Opening mock document: ${doc}`);
-                          }}
-                          className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
-                        >
-                          View Document
-                        </a>
+                        <div className="flex gap-2 items-center">
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              alert(`Opening mock document: ${doc}`);
+                            }}
+                            className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
+                          >
+                            View Document
+                          </a>
+                          <button
+                            disabled={rescanningDoc === doc}
+                            onClick={() => handleRescanDocument(doc)}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg active:scale-95 transition-transform flex items-center gap-1 cursor-pointer border border-purple-700 shadow-sm"
+                          >
+                            {rescanningDoc === doc ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 animate-spin text-white" />
+                                <span>Scanning...</span>
+                              </>
+                            ) : (
+                              <span>Rescan</span>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -579,13 +806,15 @@ export default function ApprovalDashboard() {
                           <span>Approve & Release Certificate</span>
                         </button>
  
-                        <button
-                          onClick={() => setShowRevertForm(true)}
-                          className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-sm rounded-xl active:scale-95 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <AlertTriangle className="w-4 h-4" />
-                          <span>Revert to Checker</span>
-                        </button>
+                        {selectedApp.service_type !== 'NEW_REGISTRATION' && (
+                          <button
+                            onClick={() => setShowRevertForm(true)}
+                            className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-sm rounded-xl active:scale-95 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                            <span>Revert to Checker</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

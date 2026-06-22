@@ -63,6 +63,8 @@ export default function CounterOperations() {
   // Custom Form Details for New Registrations
   const [newRegData, setNewRegData] = useState({
     // Birth
+    regCategory: 'NEW_REGISTRATION',
+    hospitalUnfed: false,
     childName: '',
     gender: 'MALE',
     placeOfBirth: 'HOSPITAL',
@@ -78,12 +80,13 @@ export default function CounterOperations() {
     
     // Marriage
     groomName: '',
-    groomAge: '',
+    groomDob: '',
     groomFather: '',
     brideName: '',
-    brideAge: '',
+    brideDob: '',
     brideFather: '',
-    placeOfMarriage: ''
+    placeOfMarriage: '',
+    dob: ''
   });
 
   // Scanning states
@@ -280,9 +283,9 @@ export default function CounterOperations() {
       setSelfieSrc(null);
       setSelectedFields({});
       setFormData({
-        applicantName: '',
-        mobileNumber: '',
-        registrationNumber: '',
+        applicantName: activeTokenProcess.correction_record?.applicant_name !== 'Kiosk Citizen' ? (activeTokenProcess.correction_record?.applicant_name || '') : '',
+        mobileNumber: activeTokenProcess.correction_record?.mobile_number !== '9829XXXXXX' ? (activeTokenProcess.correction_record?.mobile_number || '') : '',
+        registrationNumber: activeTokenProcess.correction_record?.registration_number !== 'KIOSK-TICKET' ? (activeTokenProcess.correction_record?.registration_number || '') : '',
         fatherName: '',
         motherName: '',
         dob: '',
@@ -290,6 +293,8 @@ export default function CounterOperations() {
         fieldValues: {}
       });
       setNewRegData({
+        regCategory: 'NEW_REGISTRATION',
+        hospitalUnfed: false,
         childName: '',
         gender: 'MALE',
         placeOfBirth: 'HOSPITAL',
@@ -301,12 +306,13 @@ export default function CounterOperations() {
         placeOfDeath: '',
         placeOfDeathCategory: 'HOSPITAL',
         groomName: '',
-        groomAge: '',
+        groomDob: '',
         groomFather: '',
         brideName: '',
-        brideAge: '',
+        brideDob: '',
         brideFather: '',
-        placeOfMarriage: ''
+        placeOfMarriage: '',
+        dob: ''
       });
       setScannedFiles({});
       setEnrollmentResult(null);
@@ -386,24 +392,32 @@ export default function CounterOperations() {
         setSelfieSrc(app.selfie_url);
 
         if (app.service_type.toLowerCase() === 'new_registration') {
+          const details = app.correction_details || [];
+          const getValue = (name) => {
+            const found = details.find(d => d.fieldName === name);
+            return found ? found.newValue : '';
+          };
           setNewRegData({
-            childName: app.applicant_name,
-            gender: 'MALE',
-            placeOfBirth: 'HOSPITAL',
-            hospitalName: '',
-            permanentAddress: '',
-            deceasedName: app.applicant_name,
-            ageAtDeath: '',
-            causeOfDeath: '',
-            placeOfDeath: '',
-            placeOfDeathCategory: 'HOSPITAL',
-            groomName: app.applicant_name,
-            groomAge: '',
-            groomFather: app.father_name || '',
-            brideName: '',
-            brideAge: '',
-            brideFather: '',
-            placeOfMarriage: ''
+            regCategory: getValue("Registration Category") || 'NEW_REGISTRATION',
+            hospitalUnfed: getValue("Hospital Unfed") === 'Yes',
+            childName: getValue("Child's Name") || getValue("Child Name") || app.applicant_name,
+            gender: getValue("Gender") || 'MALE',
+            placeOfBirth: getValue("Place of Birth") || getValue("Place of Birth Category") || 'HOSPITAL',
+            hospitalName: getValue("Hospital Details") || getValue("Place of Birth Details / Hospital Name") || '',
+            permanentAddress: getValue("Permanent Address") || '',
+            deceasedName: getValue("Deceased Person Name") || getValue("Deceased Name") || app.applicant_name,
+            ageAtDeath: getValue("Age at Death") || '',
+            causeOfDeath: getValue("Cause of Death") || '',
+            placeOfDeath: getValue("Place of Death Details") || getValue("Place of Death") || '',
+            placeOfDeathCategory: getValue("Place of Death Category") || 'HOSPITAL',
+            groomName: getValue("Groom's Full Name") || getValue("Groom Name") || app.applicant_name,
+            groomDob: getValue("Groom Date of Birth") || getValue("Groom DOB") || '',
+            groomFather: getValue("Father's Name") || getValue("Groom Father") || app.father_name || '',
+            brideName: getValue("Bride's Full Name") || getValue("Bride Name") || '',
+            brideDob: getValue("Bride Date of Birth") || getValue("Bride DOB") || '',
+            brideFather: getValue("Bride Father") || '',
+            placeOfMarriage: getValue("Place of Solemnization") || getValue("Place of Marriage") || '',
+            dob: getValue("Date of Marriage") || getValue("Birth Date") || getValue("Date of Death") || app.dob || ''
           });
         }
 
@@ -585,37 +599,37 @@ export default function CounterOperations() {
       if (blockType === 'birth') {
         return [
           "Hospital Birth discharge report (अस्पताल प्रसव रिपोर्ट)",
-          "Aadhaar Cards of both parents (माता-पिता के आधार कार्ड)",
+          "Father's Aadhaar Card (पिता का आधार कार्ड)",
+          "Mother's Aadhaar Card (माता का आधार कार्ड)",
+          "JanAadhaar Card of Family (परिवार का जन-आधार कार्ड)",
           "Self-declaration address verification (स्व-घोषणा पता प्रमाण)"
         ];
       } else if (blockType === 'death') {
         const placeCat = newRegData.placeOfDeathCategory || 'HOSPITAL';
+        const baseDocs = [];
         if (placeCat === 'HOSPITAL') {
-          return [
-            "Hospital death report Propatra-2 (अस्पताल प्रपत्र-2 एवं प्रमाणित रिपोर्ट फोरम)",
-            "Aadhaar/JanAadhaar copy of Deceased, Spouse & Parents (मृतक, मृतक के पति/पत्नी, माता-पिता के आधार, जन आधार की प्रति)"
-          ];
+          baseDocs.push("Hospital death report Propatra-2 (अस्पताल प्रपत्र-2 एवं प्रमाणित रिपोर्ट फोरम)");
         } else if (placeCat === 'HOME') {
-          return [
-            "Affidavit & Report Form-2 (शपथ पत्र, रिपोर्ट फोरम प्रपत्र-2)",
-            "Government employee certified Report Propatra-2 or verification document (राजकीय कार्मिक से प्रमाणित रिपोर्ट फोरम प्रपत्र-2 अथवा मृत्यु प्रमाणीकरण दस्तावेज)",
-            "Deceased, spouse & parents identity/Aadhaar proof (मृतक, मृतक के पति/पत्नी, माता-पिता के पहचान दस्तावेज/आधार आईडी)"
-          ];
+          baseDocs.push("Affidavit & Report Form-2 (शपथ पत्र, रिपोर्ट फोरम प्रपत्र-2)");
+          baseDocs.push("Government employee certified Report Propatra-2 or verification document (राजकीय कार्मिक से प्रमाणित रिपोर्ट फोरम प्रपत्र-2 अथवा मृत्यु प्रमाणीकरण दस्तावेज)");
         } else {
-          // BROUGHT_DEAD
-          return [
-            "Letter of Brought Dead from hospital (अस्पताल Brought Dead पत्र)",
-            "Report Form-2 certified by Hospital (अस्पताल से प्रमाणित रिपोर्ट फोरम प्रपत्र-2)"
-          ];
+          baseDocs.push("Letter of Brought Dead from hospital (अस्पताल Brought Dead पत्र)");
+          baseDocs.push("Report Form-2 certified by Hospital (अस्पताल से प्रमाणित रिपोर्ट फोरम प्रपत्र-2)");
         }
+        return [
+          ...baseDocs,
+          "Deceased's Aadhaar Card (मृतक का आधार कार्ड)",
+          "Spouse's Aadhaar Card (पति/पत्नी का आधार कार्ड)",
+          "Father's Aadhaar Card (पिता का आधार कार्ड)",
+          "Mother's Aadhaar Card (माता का आधार कार्ड)",
+          "JanAadhaar Card of Family (परिवार का जन-आधार कार्ड)"
+        ];
       } else {
         // Marriage
         return [
-          "Age proof of Groom (marksheet/passport) (वर का आयु प्रमाण पत्र)",
-          "Age proof of Bride (marksheet/passport) (वधू का आयु प्रमाण पत्र)",
           "Joint photograph of Bride & Groom (वर-वधू का संयुक्त चित्र)",
-          "Wedding Invitation card copy (विवाह निमंत्रण पत्र)",
-          "Identities of 2 Wedding Witnesses (2 गवाहों के पहचान पत्र)"
+          "Marriage Application Form - Front Side (विवाह आवेदन पत्र - मुख्य पृष्ठ)",
+          "Marriage Application Form - Back Side (विवाह आवेदन पत्र - अंतिम पृष्ठ)"
         ];
       }
     }
@@ -808,8 +822,8 @@ export default function CounterOperations() {
       result = { total: 20.00, items: [{ name: "Standard Processing Fee", amount: 20.00 }] };
     }
 
-    // Add print copy fees on top (₹50 per copy print)
-    if (copies > 0) {
+    // Add print copy fees on top (₹50 per copy print) (except for marriage)
+    if (copies > 0 && block !== 'marriage') {
       const printAmount = copies * 50.00;
       result.items.push({
         name: `Certificate Prints (${copies} ${copies === 1 ? 'copy' : 'copies'} @ ₹50)`,
@@ -823,14 +837,7 @@ export default function CounterOperations() {
 
   // Complete application submit
   const handleSubmission = () => {
-    const docKeys = getRequiredDocumentsList();
-    const incompleteDocs = docKeys.filter(doc => !scannedFiles[doc]);
-    
-    if (incompleteDocs.length > 0) {
-      alert(`WARNING: Please scan/upload all required documents first! \nMissing: ${incompleteDocs.join(", ")}`);
-      return;
-    }
-
+    // Scanning is optional, so we do not block submission if documents are missing.
     setPaying(true);
 
     const isCorrection = activeTokenProcess.serviceType === 'correction';
@@ -844,15 +851,54 @@ export default function CounterOperations() {
         applicantName: activeTokenProcess.block === 'marriage' ? newRegData.groomName : newRegData.childName || newRegData.deceasedName,
         mobileNumber: formData.mobileNumber || "9829XXXXXX",
         registrationNumber: isCorrection ? formData.registrationNumber : 'NEW-REGISTRATION',
-        fatherName: newRegData.groomFather || newRegData.fatherName || formData.fatherName,
-        motherName: newRegData.motherName || formData.motherName,
+        fatherName: activeTokenProcess.block === 'marriage' ? newRegData.groomFather : formData.fatherName,
+        motherName: isCorrection ? formData.motherName : (newRegData.motherName || '---'),
         dob: newRegData.dob || formData.dob,
+        relationWithApplicant: formData.relationWithApplicant || 'Self',
       },
       correctionFields: isCorrection ? Object.keys(selectedFields).filter(k => selectedFields[k]).map(key => ({
         fieldName: PREDEFINED_FIELDS.find(f => f.id === key)?.label || key,
         oldValue: formData.fieldValues[key]?.old || '---',
         newValue: formData.fieldValues[key]?.new || '---'
-      })) : [],
+      })) : (
+        activeTokenProcess.block === 'birth' ? [
+          { fieldName: 'Registration Category', oldValue: '---', newValue: newRegData.regCategory || 'NEW_REGISTRATION' },
+          { fieldName: 'Hospital Unfed', oldValue: '---', newValue: newRegData.hospitalUnfed ? "Yes" : "No" },
+          { fieldName: 'Applicant Name', oldValue: '---', newValue: formData.applicantName },
+          { fieldName: 'Applicant Mobile', oldValue: '---', newValue: formData.mobileNumber },
+          { fieldName: 'Relation with Child', oldValue: '---', newValue: formData.relationWithApplicant },
+          { fieldName: "Child's Name", oldValue: '---', newValue: newRegData.childName },
+          { fieldName: 'Gender', oldValue: '---', newValue: newRegData.gender },
+          { fieldName: 'Birth Date', oldValue: '---', newValue: newRegData.dob },
+          { fieldName: "Father's Name of Child", oldValue: '---', newValue: formData.fatherName },
+          { fieldName: 'Place of Birth', oldValue: '---', newValue: newRegData.placeOfBirth },
+          { fieldName: 'Hospital Details', oldValue: '---', newValue: newRegData.placeOfBirth === 'HOSPITAL' ? newRegData.hospitalName : 'N/A' },
+          { fieldName: 'Permanent Address', oldValue: '---', newValue: newRegData.permanentAddress }
+        ] : activeTokenProcess.block === 'death' ? [
+          { fieldName: 'Registration Category', oldValue: '---', newValue: 'NEW_REGISTRATION' },
+          { fieldName: 'Applicant Name', oldValue: '---', newValue: formData.applicantName },
+          { fieldName: 'Applicant Mobile', oldValue: '---', newValue: formData.mobileNumber },
+          { fieldName: 'Relation with Deceased', oldValue: '---', newValue: formData.relationWithApplicant },
+          { fieldName: 'Deceased Person Name', oldValue: '---', newValue: newRegData.deceasedName },
+          { fieldName: 'Gender', oldValue: '---', newValue: newRegData.gender },
+          { fieldName: 'Age at Death', oldValue: '---', newValue: newRegData.ageAtDeath },
+          { fieldName: 'Date of Death', oldValue: '---', newValue: newRegData.dob },
+          { fieldName: "Father's Name of Deceased", oldValue: '---', newValue: formData.fatherName },
+          { fieldName: 'Place of Death Category', oldValue: '---', newValue: newRegData.placeOfDeathCategory || 'HOSPITAL' },
+          { fieldName: 'Place of Death Details', oldValue: '---', newValue: newRegData.placeOfDeath },
+          { fieldName: 'Cause of Death', oldValue: '---', newValue: newRegData.causeOfDeath }
+        ] : activeTokenProcess.block === 'marriage' ? [
+          { fieldName: 'Registration Category', oldValue: '---', newValue: 'NEW_REGISTRATION' },
+          { fieldName: "Groom's Full Name", oldValue: '---', newValue: newRegData.groomName },
+          { fieldName: 'Groom DOB', oldValue: '---', newValue: newRegData.groomDob },
+          { fieldName: 'Groom Father', oldValue: '---', newValue: newRegData.groomFather },
+          { fieldName: "Bride's Full Name", oldValue: '---', newValue: newRegData.brideName },
+          { fieldName: 'Bride DOB', oldValue: '---', newValue: newRegData.brideDob },
+          { fieldName: 'Bride Father', oldValue: '---', newValue: newRegData.brideFather },
+          { fieldName: 'Date of Marriage', oldValue: '---', newValue: newRegData.marriageDate || newRegData.dob },
+          { fieldName: 'Place of Solemnization', oldValue: '---', newValue: newRegData.placeOfMarriage }
+        ] : []
+      ),
       correctionType: isCorrection ? (isMajorCorrection ? 'MAJOR' : 'MINOR') : 'NEW_REGISTRATION',
       uploadedDocuments: Object.values(scannedFiles),
       paymentDetails: activeTokenProcess?.isReSubmission ? {
@@ -907,6 +953,8 @@ export default function CounterOperations() {
       fieldValues: {}
     });
     setNewRegData({
+      regCategory: 'NEW_REGISTRATION',
+      hospitalUnfed: false,
       childName: '',
       gender: 'MALE',
       placeOfBirth: 'HOSPITAL',
@@ -918,12 +966,13 @@ export default function CounterOperations() {
       placeOfDeath: '',
       placeOfDeathCategory: 'HOSPITAL',
       groomName: '',
-      groomAge: '',
+      groomDob: '',
       groomFather: '',
       brideName: '',
-      brideAge: '',
+      brideDob: '',
       brideFather: '',
-      placeOfMarriage: ''
+      placeOfMarriage: '',
+      dob: ''
     });
     setScannedFiles({});
     setEnrollmentResult(null);
@@ -1353,7 +1402,7 @@ export default function CounterOperations() {
                   />
                 </div>
 
-                {activeTokenProcess.serviceType === 'correction' ? (
+                {activeTokenProcess.serviceType === 'correction' && activeTokenProcess.block !== 'birth' && activeTokenProcess.block !== 'death' ? (
                   <div className="flex flex-col gap-1">
                     <label className="text-slate-600">Base Registration Number (पंजीकरण संख्या)</label>
                     <input
@@ -1367,54 +1416,94 @@ export default function CounterOperations() {
                   </div>
                 ) : null}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Father's Name (प्रमाण पत्र धारक के पिता)</label>
-                    <input
-                      type="text"
-                      placeholder="Father's name"
-                      value={formData.fatherName}
-                      onChange={(e) => setFormData({ ...formData, fatherName: e.target.value.toUpperCase() })}
-                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Mother's Name (प्रमाण पत्र धारक की माता)</label>
-                    <input
-                      type="text"
-                      placeholder="Mother's name"
-                      value={formData.motherName}
-                      onChange={(e) => setFormData({ ...formData, motherName: e.target.value.toUpperCase() })}
-                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
-                    />
-                  </div>
-                </div>
+                {(activeTokenProcess.block === 'birth' || activeTokenProcess.block === 'death') ? (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-slate-600">
+                        {activeTokenProcess.block === 'birth' 
+                          ? "Father's Name of Child (बालक के पिता का नाम)" 
+                          : "Father's Name of Deceased (मृतक के पिता का नाम)"}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Father's name"
+                        value={formData.fatherName}
+                        onChange={(e) => setFormData({ ...formData, fatherName: e.target.value.toUpperCase() })}
+                        className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">Relation with Certificate Holder (प्रमाण पत्र धारक से आपका संबंध)</label>
-                    <select
-                      value={formData.relationWithApplicant}
-                      onChange={(e) => setFormData({ ...formData, relationWithApplicant: e.target.value })}
-                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
-                    >
-                      <option value="Self">Self (स्वयं)</option>
-                      <option value="Father">Father (पिता)</option>
-                      <option value="Mother">Mother (माता)</option>
-                      <option value="Husband">Husband (पति)</option>
-                      <option value="Relative">Guardian (संरक्षक)</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-slate-600">DOB of Applicant</label>
-                    <input
-                      type="date"
-                      value={formData.dob}
-                      onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                      className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none font-mono"
-                    />
-                  </div>
-                </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-slate-600">
+                        {activeTokenProcess.block === 'birth' 
+                          ? "Relation with Child (बालक से संबंध)" 
+                          : "Relation with Deceased (मृतक से संबंध)"}
+                      </label>
+                      <select
+                        value={formData.relationWithApplicant}
+                        onChange={(e) => setFormData({ ...formData, relationWithApplicant: e.target.value })}
+                        className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
+                      >
+                        <option value="Self">Self (स्वयं)</option>
+                        <option value="Father">Father (पिता)</option>
+                        <option value="Mother">Mother (माता)</option>
+                        <option value="Spouse">Spouse (पति/पत्नी)</option>
+                        <option value="Relative">Relative/Guardian (रिश्तेदार/संरक्षक)</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-slate-600">Father's Name (प्रमाण पत्र धारक के पिता)</label>
+                        <input
+                          type="text"
+                          placeholder="Father's name"
+                          value={formData.fatherName}
+                          onChange={(e) => setFormData({ ...formData, fatherName: e.target.value.toUpperCase() })}
+                          className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-slate-600">Mother's Name (प्रमाण पत्र धारक की माता)</label>
+                        <input
+                          type="text"
+                          placeholder="Mother's name"
+                          value={formData.motherName}
+                          onChange={(e) => setFormData({ ...formData, motherName: e.target.value.toUpperCase() })}
+                          className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-slate-600">Relation with Certificate Holder (प्रमाण पत्र धारक से आपका संबंध)</label>
+                        <select
+                          value={formData.relationWithApplicant}
+                          onChange={(e) => setFormData({ ...formData, relationWithApplicant: e.target.value })}
+                          className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
+                        >
+                          <option value="Self">Self (स्वयं)</option>
+                          <option value="Father">Father (पिता)</option>
+                          <option value="Mother">Mother (माता)</option>
+                          <option value="Husband">Husband (पति)</option>
+                          <option value="Relative">Guardian (संरक्षक)</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-slate-600">DOB of Applicant</label>
+                        <input
+                          type="date"
+                          value={formData.dob}
+                          onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                          className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1763,13 +1852,12 @@ export default function CounterOperations() {
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex flex-col gap-1">
-                              <label className="text-slate-600">Age</label>
+                              <label className="text-slate-600 font-mono">Date of Birth</label>
                               <input
-                                type="number"
-                                placeholder="e.g. 26"
-                                value={newRegData.groomAge}
-                                onChange={(e) => setNewRegData({ ...newRegData, groomAge: e.target.value })}
-                                className="p-2 border rounded-lg text-sm text-navy font-bold"
+                                type="date"
+                                value={newRegData.groomDob}
+                                onChange={(e) => setNewRegData({ ...newRegData, groomDob: e.target.value })}
+                                className="p-2 border rounded-lg text-sm text-navy font-bold font-mono"
                               />
                             </div>
                             <div className="flex flex-col gap-1">
@@ -1797,13 +1885,12 @@ export default function CounterOperations() {
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex flex-col gap-1">
-                              <label className="text-slate-600">Age</label>
+                              <label className="text-slate-600 font-mono">Date of Birth</label>
                               <input
-                                type="number"
-                                placeholder="e.g. 23"
-                                value={newRegData.brideAge}
-                                onChange={(e) => setNewRegData({ ...newRegData, brideAge: e.target.value })}
-                                className="p-2 border rounded-lg text-sm text-navy font-bold"
+                                type="date"
+                                value={newRegData.brideDob}
+                                onChange={(e) => setNewRegData({ ...newRegData, brideDob: e.target.value })}
+                                className="p-2 border rounded-lg text-sm text-navy font-bold font-mono"
                               />
                             </div>
                             <div className="flex flex-col gap-1">
@@ -2311,10 +2398,29 @@ export default function CounterOperations() {
                   <span>Token Number:</span>
                   <span className="text-navy font-bold font-mono">{enrollmentResult.tokenNumber}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Applicant Name:</span>
-                  <span className="text-navy font-bold uppercase">{enrollmentResult.commonDetails.applicantName}</span>
-                </div>
+                {enrollmentResult.departmentBlock.toUpperCase() === 'BIRTH' || enrollmentResult.departmentBlock.toUpperCase() === 'DEATH' ? (
+                  <>
+                    {enrollmentResult.serviceType === 'new_registration' && (
+                      <div className="flex justify-between">
+                        <span>{enrollmentResult.departmentBlock.toUpperCase() === 'BIRTH' ? "Child's Name" : "Deceased's Name"}:</span>
+                        <span className="text-navy font-bold uppercase">{enrollmentResult.commonDetails.applicantName}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Applicant/Informant:</span>
+                      <span className="text-navy font-bold uppercase">
+                        {enrollmentResult.serviceType === 'new_registration'
+                          ? (enrollmentResult.correctionFields?.find(f => f.fieldName === 'Applicant Name')?.newValue || 'N/A')
+                          : enrollmentResult.commonDetails.applicantName}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between">
+                    <span>Applicant Name:</span>
+                    <span className="text-navy font-bold uppercase">{enrollmentResult.commonDetails.applicantName}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Verified Documents:</span>
                   <span className="text-navy font-bold font-mono">{enrollmentResult.uploadedDocuments.length} Scanned</span>
@@ -2330,8 +2436,8 @@ export default function CounterOperations() {
                   )}
                 </div>
                 <div className="flex justify-between border-t border-slate-100 pt-2.5 mt-1 font-bold text-navy">
-                  <span>Next Visit:</span>
-                  <span>{enrollmentResult.next_visit_time ? new Date(enrollmentResult.next_visit_time).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</span>
+                  <span>Timeline:</span>
+                  <span>Will be proceeded with in 7 working days</span>
                 </div>
               </div>
 
@@ -2378,14 +2484,48 @@ export default function CounterOperations() {
                 <div>
                   <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
                   <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
-                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleDateString()}</p>
+                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleString('en-IN')}</p>
                   <p className="my-1.5"><strong>Department Block:</strong> {enrollmentResult.departmentBlock.toUpperCase()}</p>
                   <p className="my-1.5"><strong>Application Type:</strong> {enrollmentResult.serviceType.toUpperCase()}</p>
-                  <p className="my-1.5 font-bold" style={{ color: '#1e3a8a' }}><strong>Next Visit Scheduled:</strong> {enrollmentResult.next_visit_time ? new Date(enrollmentResult.next_visit_time).toLocaleString('en-IN') : 'N/A'}</p>
+                  <p className="my-1.5 font-bold" style={{ color: '#1e3a8a' }}>Your application will be proceeded with in 7 working days</p>
                 </div>
                 <div>
-                  <p className="my-1.5"><strong>Applicant Name:</strong> {enrollmentResult.commonDetails.applicantName.toUpperCase()}</p>
-                  <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
+                  {(() => {
+                    const block = enrollmentResult.departmentBlock.toUpperCase();
+                    const isBirthOrDeath = (block === 'BIRTH' || block === 'DEATH');
+                    
+                    if (isBirthOrDeath) {
+                      const appNameField = enrollmentResult.serviceType === 'new_registration'
+                        ? (enrollmentResult.correctionFields?.find(f => f.fieldName === 'Applicant Name')?.newValue || 'N/A')
+                        : enrollmentResult.commonDetails.applicantName;
+                      
+                      const relationField = enrollmentResult.serviceType === 'new_registration'
+                        ? (enrollmentResult.correctionFields?.find(f => f.fieldName.startsWith('Relation'))?.newValue || 'N/A')
+                        : enrollmentResult.commonDetails.relationWithApplicant;
+
+                      const childDeceasedName = enrollmentResult.serviceType === 'new_registration'
+                        ? enrollmentResult.commonDetails.applicantName
+                        : (enrollmentResult.correctionFields?.find(f => f.fieldName.includes("Child's Name") || f.fieldName.includes("Deceased Person Name"))?.newValue || 'See Correction Particulars');
+                      
+                      return (
+                        <>
+                          {enrollmentResult.serviceType === 'new_registration' && (
+                            <p className="my-1.5"><strong>{block === 'BIRTH' ? "Child's Name" : "Deceased's Name"}:</strong> {childDeceasedName.toUpperCase()}</p>
+                          )}
+                          <p className="my-1.5"><strong>Applicant/Informant:</strong> {(appNameField || 'N/A').toUpperCase()} ({(relationField || 'N/A').toUpperCase()})</p>
+                          <p className="my-1.5"><strong>Father's Name:</strong> {(enrollmentResult.commonDetails.fatherName || 'N/A').toUpperCase()}</p>
+                          <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
+                        </>
+                      );
+                    } else {
+                      return (
+                        <>
+                          <p className="my-1.5"><strong>Applicant Name:</strong> {enrollmentResult.commonDetails.applicantName.toUpperCase()}</p>
+                          <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
+                        </>
+                      );
+                    }
+                  })()}
                   <p className="my-1.5"><strong>Base Reg ID:</strong> {enrollmentResult.commonDetails.registrationNumber}</p>
                   <p className="my-1.5">
                     <strong>Payment Fee:</strong>{' '}
@@ -2401,29 +2541,6 @@ export default function CounterOperations() {
                 </div>
               </div>
 
-              {enrollmentResult.serviceType === 'correction' && (
-                <div className="mb-6">
-                  <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3">Correction Field registries</h4>
-                  <table className="w-full text-sm border-collapse border border-slate-300">
-                    <thead>
-                      <tr className="bg-slate-100">
-                        <th className="border border-slate-300 p-2 text-left">Correction Particular field</th>
-                        <th className="border border-slate-300 p-2 text-left">Old Value in registry</th>
-                        <th className="border border-slate-300 p-2 text-left">New Value requested</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {enrollmentResult.correctionFields.map((field, idx) => (
-                        <tr key={idx}>
-                          <td className="border border-slate-300 p-2 font-bold">{field.fieldName}</td>
-                          <td className="border border-slate-300 p-2 font-mono text-slate-500">{field.oldValue}</td>
-                          <td className="border border-slate-300 p-2 font-bold text-navy">{field.newValue}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
 
               <div className="mb-6">
                 <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Fee Breakdown (शुल्क विवरण)</h4>

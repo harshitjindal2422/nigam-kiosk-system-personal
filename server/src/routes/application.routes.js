@@ -9,7 +9,9 @@ import {
   getApprovalQueue,
   reviewApprovalApplication,
   translateText,
-  uploadCertificate
+  uploadCertificate,
+  updateApplicationDocuments,
+  updateApplicationDetails
 } from '../controllers/application.controller.js';
 
 const router = Router();
@@ -31,5 +33,7 @@ router.post('/:id/checker-review', authorizeRoles('CHECKER_OPERATOR', 'SUPER_ADM
 router.get('/approval-queue', authorizeRoles('APPROVAL_OPERATOR', 'SUPER_ADMIN'), getApprovalQueue);
 router.post('/upload-certificate', authorizeRoles('APPROVAL_OPERATOR', 'SUPER_ADMIN'), uploadCertificate);
 router.post('/:id/approval-review', authorizeRoles('APPROVAL_OPERATOR', 'SUPER_ADMIN'), reviewApprovalApplication);
+router.post('/:id/update-documents', authorizeRoles('APPROVAL_OPERATOR', 'SUPER_ADMIN'), updateApplicationDocuments);
+router.post('/:id/update-details', authorizeRoles('APPROVAL_OPERATOR', 'SUPER_ADMIN'), updateApplicationDetails);
 
 export default router;
