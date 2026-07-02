@@ -590,11 +590,9 @@ export default function CheckerDashboard() {
                               {scanningDocIdx === idx ? 'Scanning...' : 'Rescan / Upload'}
                             </button>
                             <a
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                alert(`Opening mock document: ${doc}`);
-                              }}
+                              href={`http://localhost:5000/temp/scans/${doc}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
                             >
                               View
@@ -613,11 +611,9 @@ export default function CheckerDashboard() {
                             <span className="truncate" title={doc}>{doc}</span>
                           </div>
                           <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              alert(`Opening mock document: ${doc}`);
-                            }}
+                            href={`http://localhost:5000/temp/scans/${doc}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
                           >
                             View Document

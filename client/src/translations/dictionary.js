@@ -104,7 +104,7 @@ export const dictionary = {
 
     // Block 4 — Pehchan Online Correction
     pehchan_correction_title: "ऑनलाइन संशोधन विवरण",
-    pehchan_correction_desc: "संशोधन पोर्टल पर आगे बढ़ने से पहले कृपया बुनियादी जानकारी भरें। ₹20 का भुगतान आवश्यक है।",
+    pehchan_correction_desc: "संशोधन पोर्टल पर आगे बढ़ने से पहले कृपया बुनियादी जानकारी भरें।",
 
     // Admin Dashboard & Logging
     admin_login_title: "कियोस्क एडमिन लॉगिन",
@@ -226,7 +226,7 @@ export const dictionary = {
 
     // Block 4 — Pehchan Online Correction
     pehchan_correction_title: "Online Correction Details",
-    pehchan_correction_desc: "Please fill in the basic details before proceeding to the portal. Fee ₹20 applies.",
+    pehchan_correction_desc: "Please fill in the basic details before proceeding to the portal.",
 
     // Admin Dashboard & Logging
     admin_login_title: "Kiosk Admin Login",

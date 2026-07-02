@@ -63,42 +63,94 @@ export default function ApprovalDashboard() {
     setRescanningDoc(oldDocName);
     setErrorMsg('');
     setSuccessMsg('');
-    setTimeout(async () => {
-      try {
-        const cleanName = oldDocName.split('.')[0];
-        const ext = oldDocName.includes('.') ? oldDocName.split('.').pop() : 'pdf';
-        const newDocName = `${cleanName}_Rescanned_${Math.floor(1000 + Math.random() * 9000)}.${ext}`;
 
-        const currentApp = selectedAppRef.current;
-        if (!currentApp) return;
+    const cleanName = oldDocName.split('.')[0].replace(/_Rescanned_\d+/g, '');
+    const ext = oldDocName.includes('.') ? oldDocName.split('.').pop() : 'pdf';
+    const newDocName = `${cleanName}_Rescanned_${Math.floor(1000 + Math.random() * 9000)}.${ext}`;
 
-        const updatedDocs = (currentApp.uploaded_documents || []).map(d => d === oldDocName ? newDocName : d);
+    const currentApp = selectedAppRef.current;
+    if (!currentApp) {
+      setRescanningDoc(null);
+      return;
+    }
 
-        await axiosInstance.post(`/applications/${currentApp.application_id}/update-documents`, {
-          uploadedDocuments: updatedDocs
-        });
+    const triggerAndSave = async (fileName) => {
+      const updatedDocs = (currentApp.uploaded_documents || []).map(d => d === oldDocName ? fileName : d);
 
-        setSelectedApp(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            uploaded_documents: updatedDocs
-          };
-        });
+      // Save to database
+      await axiosInstance.post(`/applications/${currentApp.application_id}/update-documents`, {
+        uploadedDocuments: updatedDocs
+      });
 
-        setApplications(prev => prev.map(app => 
-          app.application_id === currentApp.application_id
-            ? { ...app, uploaded_documents: updatedDocs }
-            : app
-        ));
+      setSelectedApp(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          uploaded_documents: updatedDocs
+        };
+      });
 
-        setSuccessMsg(`Document "${oldDocName}" rescanned and updated as: "${newDocName}"`);
-      } catch (err) {
-        setErrorMsg(err.message || "Failed to update rescanned document on server");
-      } finally {
+      setApplications(prev => prev.map(app => 
+        app.application_id === currentApp.application_id
+          ? { ...app, uploaded_documents: updatedDocs }
+          : app
+      ));
+
+      setSuccessMsg(`Document "${oldDocName}" successfully rescanned and saved as: "${fileName}"`);
+    };
+
+    try {
+      // 1. Try to trigger the physical scanner directly
+      const res = await axiosInstance.post('/applications/trigger-physical-scan', {
+        targetFileName: newDocName
+      });
+
+      if (res.data && res.data.success) {
+        await triggerAndSave(newDocName);
         setRescanningDoc(null);
+        return;
       }
-    }, 2500);
+    } catch (err) {
+      console.warn("Physical scan failed, falling back to folder polling: ", err);
+      const errMsg = err.response?.data?.message || err.message || "Scanner offline";
+      alert(`PHYSICAL SCANNER ERROR:\n${errMsg}\n\nFalling back to folder monitoring mode. Please scan document using Epson Scan 2 and save it to temp/scans, or click "OK" to wait 60 seconds for folder detection.`);
+    }
+
+    // 2. Fallback to folder polling loop
+    const startTime = Date.now();
+    const pollTimeout = 60000;
+
+    const intervalId = setInterval(async () => {
+      if (Date.now() - startTime > pollTimeout) {
+        clearInterval(intervalId);
+        setRescanningDoc(null);
+        
+        // Timeout fallback to mock file
+        console.warn("Scan polling timed out. Falling back to mock file.");
+        await triggerAndSave(newDocName);
+        return;
+      }
+
+      try {
+        const res = await axiosInstance.get('/applications/detect-scan');
+        const data = res.data;
+        if (data && data.detected) {
+          clearInterval(intervalId);
+          
+          const tempFileName = data.fileName;
+          
+          await axiosInstance.post('/applications/save-scan', {
+            tempFileName,
+            targetFileName: newDocName
+          });
+
+          await triggerAndSave(newDocName);
+          setRescanningDoc(null);
+        }
+      } catch (err) {
+        console.error("Failed to poll detect-scan endpoint: ", err);
+      }
+    }, 2000);
   };
 
   const handleFileUpload = (e) => {
@@ -205,9 +257,19 @@ export default function ApprovalDashboard() {
   };
 
   const saveEditing = async () => {
-    setActionLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
+
+    if (!editForm.mobileNumber.match(/^[0-9]{10}$/)) {
+      setErrorMsg('Please enter a valid 10-digit mobile number / कृपया 10-अंकीय मान्य मोबाइल नंबर दर्ज करें');
+      return;
+    }
+    if (/^(.)\1{9}$/.test(editForm.mobileNumber)) {
+      setErrorMsg('Invalid mobile number: repeated digits are not allowed / अमान्य मोबाइल नंबर: सभी अंक समान नहीं हो सकते');
+      return;
+    }
+
+    setActionLoading(true);
     try {
       const res = await axiosInstance.post(`/applications/${selectedApp.application_id}/update-details`, {
         applicantName: editForm.applicantName,
@@ -443,6 +505,23 @@ export default function ApprovalDashboard() {
                             <span className="text-xs text-slate-500 italic">No Photo Available</span>
                           )}
                         </div>
+                        {combinedPhotoSrc ? (
+                          <a
+                            href={combinedPhotoSrc}
+                            download={`${selectedApp.token_number}_marriage_photo.jpg`}
+                            className="mt-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1 cursor-pointer"
+                          >
+                            Download Photo (JPEG)
+                          </a>
+                        ) : selectedApp.selfie_url ? (
+                          <a
+                            href={selectedApp.selfie_url}
+                            download={`${selectedApp.token_number}_selfie.jpg`}
+                            className="mt-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1 cursor-pointer"
+                          >
+                            Download Selfie (JPEG)
+                          </a>
+                        ) : null}
                       </div>
 
                       {/* Info fields column */}
@@ -663,12 +742,10 @@ export default function ApprovalDashboard() {
                         </div>
                         <div className="flex gap-2 items-center">
                           <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              alert(`Opening mock document: ${doc}`);
-                            }}
-                            className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
+                            href={`http://localhost:5000/temp/scans/${doc}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm text-center"
                           >
                             View Document
                           </a>

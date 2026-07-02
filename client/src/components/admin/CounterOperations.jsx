@@ -34,12 +34,34 @@ export default function CounterOperations() {
     const index = stepsList.indexOf(currentStepName);
     return index !== -1 ? index + 1 : 1;
   };
+
+  const getAgeAtMarriage = (dobString, marriageDateString) => {
+    if (!dobString || !marriageDateString) return null;
+    const dob = new Date(dobString);
+    const dom = new Date(marriageDateString);
+    if (isNaN(dob.getTime()) || isNaN(dom.getTime())) return null;
+    let age = dom.getFullYear() - dob.getFullYear();
+    const m = dom.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && dom.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  };
   
   // Verification states
   const [cameraActive, setCameraActive] = useState(false);
   const [selfieSrc, setSelfieSrc] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const scanPollIntervalRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (scanPollIntervalRef.current) {
+        clearInterval(scanPollIntervalRef.current);
+      }
+    };
+  }, []);
 
   const [selectedFields, setSelectedFields] = useState({});
   const [isMajorCorrection, setIsMajorCorrection] = useState(false);
@@ -97,6 +119,13 @@ export default function CounterOperations() {
   const [paymentMethod, setPaymentMethod] = useState('CASH'); // CASH, UPI_QR
   const [paying, setPaying] = useState(false);
   const [cashCollected, setCashCollected] = useState(false);
+
+  // Stateful Billing Editor States
+  const [customDocName, setCustomDocName] = useState('');
+  const [billingCopies, setBillingCopies] = useState(1);
+  const [extraFeesList, setExtraFeesList] = useState([]);
+  const [customFeeName, setCustomFeeName] = useState('');
+  const [customFeeAmount, setCustomFeeAmount] = useState('');
 
   // Success enrollment state
   const [enrollmentResult, setEnrollmentResult] = useState(null);
@@ -317,6 +346,13 @@ export default function CounterOperations() {
       setScannedFiles({});
       setEnrollmentResult(null);
       setCashCollected(false);
+      setCustomDocName('');
+      const match = activeTokenProcess.correction_record?.remarks?.match(/COPIES:\s*(\d+)/);
+      const initialCopies = match ? parseInt(match[1]) : 1;
+      setBillingCopies(initialCopies);
+      setExtraFeesList([]);
+      setCustomFeeName('');
+      setCustomFeeAmount('');
     }
   }, [activeTokenProcess]);
 
@@ -597,32 +633,16 @@ export default function CounterOperations() {
       // New Registrations
       const blockType = activeTokenProcess.block;
       if (blockType === 'birth') {
+        const isHospital = newRegData.placeOfBirth === 'HOSPITAL';
         return [
-          "Hospital Birth discharge report (अस्पताल प्रसव रिपोर्ट)",
-          "Father's Aadhaar Card (पिता का आधार कार्ड)",
-          "Mother's Aadhaar Card (माता का आधार कार्ड)",
-          "JanAadhaar Card of Family (परिवार का जन-आधार कार्ड)",
-          "Self-declaration address verification (स्व-घोषणा पता प्रमाण)"
+          "Report Form-1 (रिपोर्ट प्रपत्र-1)",
+          isHospital ? "other Hospital document (अस्पताल प्रसव रिपोर्ट)" : "Magistrate affidavit (मजिस्ट्रेट शपथ पत्र)"
         ];
       } else if (blockType === 'death') {
-        const placeCat = newRegData.placeOfDeathCategory || 'HOSPITAL';
-        const baseDocs = [];
-        if (placeCat === 'HOSPITAL') {
-          baseDocs.push("Hospital death report Propatra-2 (अस्पताल प्रपत्र-2 एवं प्रमाणित रिपोर्ट फोरम)");
-        } else if (placeCat === 'HOME') {
-          baseDocs.push("Affidavit & Report Form-2 (शपथ पत्र, रिपोर्ट फोरम प्रपत्र-2)");
-          baseDocs.push("Government employee certified Report Propatra-2 or verification document (राजकीय कार्मिक से प्रमाणित रिपोर्ट फोरम प्रपत्र-2 अथवा मृत्यु प्रमाणीकरण दस्तावेज)");
-        } else {
-          baseDocs.push("Letter of Brought Dead from hospital (अस्पताल Brought Dead पत्र)");
-          baseDocs.push("Report Form-2 certified by Hospital (अस्पताल से प्रमाणित रिपोर्ट फोरम प्रपत्र-2)");
-        }
+        const isHospital = newRegData.placeOfDeathCategory === 'HOSPITAL';
         return [
-          ...baseDocs,
-          "Deceased's Aadhaar Card (मृतक का आधार कार्ड)",
-          "Spouse's Aadhaar Card (पति/पत्नी का आधार कार्ड)",
-          "Father's Aadhaar Card (पिता का आधार कार्ड)",
-          "Mother's Aadhaar Card (माता का आधार कार्ड)",
-          "JanAadhaar Card of Family (परिवार का जन-आधार कार्ड)"
+          "Report Form-2 (रिपोर्ट प्रपत्र-2)",
+          isHospital ? "other Hospital document (अस्पताल मृत्यु रिपोर्ट)" : "Magistrate affidavit (मजिस्ट्रेट शपथ पत्र)"
         ];
       } else {
         // Marriage
@@ -644,160 +664,187 @@ export default function CounterOperations() {
     return `${cleanName}.pdf`;
   };
 
-  // Scanning simulation trigger
-  const triggerScanFile = (docName) => {
+  // Scanning trigger
+  const triggerScanFile = async (docName) => {
+    if (scanPollIntervalRef.current) {
+      clearInterval(scanPollIntervalRef.current);
+      scanPollIntervalRef.current = null;
+    }
+    
     setScanning(docName);
-    setTimeout(() => {
+    const targetFileName = getOfficialDocFileName(docName);
+    
+    try {
+      // 1. Try to trigger the physical scanner directly
+      const res = await axiosInstance.post('/applications/trigger-physical-scan', {
+        targetFileName
+      });
+      
+      if (res.data && res.data.success) {
+        setScannedFiles(prev => ({
+          ...prev,
+          [docName]: targetFileName
+        }));
+        setScanning(false);
+        return;
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || "Scanner offline";
+      alert(`PHYSICAL SCANNER ERROR:\n${errMsg}\n\nFalling back to folder monitoring mode. Please scan document using Epson Scan 2 and save it to temp/scans, or click "Bypass & Use Demo Mock File".`);
+    }
+    
+    // 2. Fallback to folder-polling loop
+    const startTime = Date.now();
+    const pollTimeout = 60000; // Timeout after 60 seconds
+    
+    const intervalId = setInterval(async () => {
+      if (Date.now() - startTime > pollTimeout) {
+        clearInterval(intervalId);
+        scanPollIntervalRef.current = null;
+        
+        console.warn("Scan polling timed out. Falling back to mock file.");
+        const officialName = getOfficialDocFileName(docName);
+        setScannedFiles(prev => ({
+          ...prev,
+          [docName]: officialName
+        }));
+        setScanning(false);
+        return;
+      }
+      
+      try {
+        const res = await axiosInstance.get('/applications/detect-scan');
+        const data = res.data;
+        if (data && data.detected) {
+          clearInterval(intervalId);
+          scanPollIntervalRef.current = null;
+          
+          const tempFileName = data.fileName;
+          const targetFileName = getOfficialDocFileName(docName);
+          
+          await axiosInstance.post('/applications/save-scan', {
+            tempFileName,
+            targetFileName
+          });
+          
+          setScannedFiles(prev => ({
+            ...prev,
+            [docName]: targetFileName
+          }));
+          setScanning(false);
+        }
+      } catch (err) {
+        console.error("Failed to poll detect-scan endpoint: ", err);
+      }
+    }, 2000);
+    
+    scanPollIntervalRef.current = intervalId;
+  };
+
+  const handleBypassScan = () => {
+    if (scanPollIntervalRef.current) {
+      clearInterval(scanPollIntervalRef.current);
+      scanPollIntervalRef.current = null;
+    }
+    if (scanning) {
+      const docName = scanning;
       const officialName = getOfficialDocFileName(docName);
       setScannedFiles(prev => ({
         ...prev,
         [docName]: officialName
       }));
       setScanning(false);
-    }, 2500);
+    }
   };
 
-  // Dynamic municipal fee calculator
-  const calculateWizardFee = () => {
-    if (!activeTokenProcess) return { total: 20.00, items: [{ name: "Standard Processing Fee", amount: 20.00 }] };
+  // Default Base Fee and Prepopulated items calculation
+  const calculateDefaultBaseFeeAndItems = () => {
+    if (!activeTokenProcess) return { baseFee: 20.00, baseLabel: "Standard Processing Fee", extraItems: [] };
     if (activeTokenProcess.isReSubmission) {
-      return { total: 0.00, items: [{ name: "Objection Re-submission (Fees Exempted)", amount: 0.00 }] };
+      return { baseFee: 0.00, baseLabel: "Objection Re-submission (Fees Exempted)", extraItems: [] };
     }
 
     const isCorrection = activeTokenProcess.serviceType === 'correction';
     const block = activeTokenProcess.block;
-    const match = activeTokenProcess?.correction_record?.remarks?.match(/COPIES:\s*(\d+)/);
-    const copies = match ? parseInt(match[1]) : 1;
-
-    let result;
-
+    
     if (isCorrection) {
-      // Birth/Death corrections cost a flat ₹5.
-      result = {
-        total: 5.00,
-        items: [
-          { name: "Correction Fee (संशोधन शुल्क)", amount: 5.00 }
-        ]
+      return {
+        baseFee: 5.00,
+        baseLabel: "Correction Fee (संशोधन शुल्क)",
+        extraItems: []
       };
-    } else if (block === 'birth') {
+    }
+
+    if (block === 'birth') {
       const isAddName = newRegData.regCategory === 'ADD_NAME';
       const dobStr = newRegData.dob;
       if (!dobStr) {
-        result = { total: 50.00, items: [{ name: "Registration Fee (Base Certificate)", amount: 50.00 }] };
-      } else {
-        const dob = new Date(dobStr);
-        const today = new Date();
-        const diffTime = today - dob;
-        const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-
-        if (isAddName) {
-          if (diffDays <= 365) {
-            result = {
-              total: 0.00,
-              items: [
-                { name: "Child Name Addition (Within 1 Year)", amount: 0.00 }
-              ]
-            };
-          } else {
-            result = {
-              total: 5.00,
-              items: [
-                { name: "Child Name Addition (After 1 Year)", amount: 5.00 }
-              ]
-            };
-          }
-        } else {
-          // New Registration
-          if (diffDays <= 21) {
-            result = {
-              total: 50.00,
-              items: [
-                { name: "Birth Certificate Base Fee", amount: 50.00 },
-                { name: "Registration Fee (Within 21 Days)", amount: 0.00 }
-              ]
-            };
-          } else if (diffDays <= 30) {
-            result = {
-              total: 70.00,
-              items: [
-                { name: "Birth Certificate Base Fee", amount: 50.00 },
-                { name: "Late Registration Fee (21-30 Days)", amount: 20.00 }
-              ]
-            };
-          } else if (diffDays <= 365) {
-            result = {
-              total: 140.00,
-              items: [
-                { name: "Birth Certificate Base Fee", amount: 50.00 },
-                { name: "Late Registration Fee", amount: 20.00 },
-                { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
-                { name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 }
-              ]
-            };
-          } else {
-            result = {
-              total: 440.00,
-              items: [
-                { name: "Birth Certificate Base Fee", amount: 50.00 },
-                { name: "Late Registration Penalty", amount: 20.00 },
-                { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
-                { name: "First Class Magistrate Order Fee", amount: 50.00 },
-                { name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 }
-              ]
-            };
-          }
-        }
+        return { baseFee: 50.00, baseLabel: "Registration Fee (Base Certificate)", extraItems: [] };
       }
-    } else if (block === 'death') {
-      const dodStr = newRegData.dob; // In death, dob field stores Date of Death
+      const dob = new Date(dobStr);
+      const today = new Date();
+      const diffTime = today - dob;
+      const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+      if (isAddName) {
+        if (diffDays <= 365) {
+          return { baseFee: 0.00, baseLabel: "Child Name Addition (Within 1 Year)", extraItems: [] };
+        } else {
+          return { baseFee: 5.00, baseLabel: "Child Name Addition (After 1 Year)", extraItems: [] };
+        }
+      } else {
+        const extraItems = [];
+        if (diffDays > 21 && diffDays <= 30) {
+          extraItems.push({ name: "Late Registration Fee (21-30 Days)", amount: 20.00 });
+        } else if (diffDays > 30 && diffDays <= 365) {
+          extraItems.push({ name: "Late Registration Fee", amount: 20.00 });
+          extraItems.push({ name: "Search Fee (खोज शुल्क)", amount: 20.00 });
+          extraItems.push({ name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 });
+        } else if (diffDays > 365) {
+          extraItems.push({ name: "Late Registration Penalty", amount: 20.00 });
+          extraItems.push({ name: "Search Fee (खोज शुल्क)", amount: 20.00 });
+          extraItems.push({ name: "First Class Magistrate Order Fee", amount: 50.00 });
+          extraItems.push({ name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 });
+        }
+        return {
+          baseFee: 50.00,
+          baseLabel: "Birth Certificate Base Fee",
+          extraItems
+        };
+      }
+    }
+
+    if (block === 'death') {
+      const dodStr = newRegData.dob;
       if (!dodStr) {
-        result = { total: 50.00, items: [{ name: "Registration Fee (Base Certificate)", amount: 50.00 }] };
-      } else {
-        const dod = new Date(dodStr);
-        const today = new Date();
-        const diffTime = today - dod;
-        const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-
-        if (diffDays <= 21) {
-          result = {
-            total: 50.00,
-            items: [
-              { name: "Death Certificate Base Fee", amount: 50.00 },
-              { name: "Registration Fee (Within 21 Days)", amount: 0.00 }
-            ]
-          };
-        } else if (diffDays <= 30) {
-          result = {
-            total: 70.00,
-            items: [
-              { name: "Death Certificate Base Fee", amount: 50.00 },
-              { name: "Late Registration Fee (21-30 Days)", amount: 20.00 }
-            ]
-          };
-        } else if (diffDays <= 365) {
-          result = {
-            total: 140.00,
-            items: [
-              { name: "Death Certificate Base Fee", amount: 50.00 },
-              { name: "Late Registration Fee", amount: 20.00 },
-              { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
-              { name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 }
-            ]
-          };
-        } else {
-          result = {
-            total: 440.00,
-            items: [
-              { name: "Death Certificate Base Fee", amount: 50.00 },
-              { name: "Late Registration Penalty", amount: 20.00 },
-              { name: "Search Fee (खोज शुल्क)", amount: 20.00 },
-              { name: "First Class Magistrate Order Fee", amount: 50.00 },
-              { name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 }
-            ]
-          };
-        }
+        return { baseFee: 50.00, baseLabel: "Registration Fee (Base Certificate)", extraItems: [] };
       }
-    } else if (block === 'marriage') {
+      const dod = new Date(dodStr);
+      const today = new Date();
+      const diffTime = today - dod;
+      const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+      const extraItems = [];
+      if (diffDays > 21 && diffDays <= 30) {
+        extraItems.push({ name: "Late Registration Fee (21-30 Days)", amount: 20.00 });
+      } else if (diffDays > 30 && diffDays <= 365) {
+        extraItems.push({ name: "Late Registration Fee", amount: 20.00 });
+        extraItems.push({ name: "Search Fee (खोज शुल्क)", amount: 20.00 });
+        extraItems.push({ name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 });
+      } else if (diffDays > 365) {
+        extraItems.push({ name: "Late Registration Penalty", amount: 20.00 });
+        extraItems.push({ name: "Search Fee (खोज शुल्क)", amount: 20.00 });
+        extraItems.push({ name: "First Class Magistrate Order Fee", amount: 50.00 });
+        extraItems.push({ name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 });
+      }
+      return {
+        baseFee: 50.00,
+        baseLabel: "Death Certificate Base Fee",
+        extraItems
+      };
+    }
+
+    if (block === 'marriage') {
       const marriageDateStr = newRegData.marriageDate || newRegData.dob;
       let marriageFee = 110.00;
       if (marriageDateStr) {
@@ -814,25 +861,88 @@ export default function CounterOperations() {
           }
         }
       }
-      result = {
-        total: marriageFee,
-        items: [{ name: "Marriage Registration Fee", amount: marriageFee }]
+      return {
+        baseFee: marriageFee,
+        baseLabel: "Marriage Registration Fee",
+        extraItems: []
       };
-    } else {
-      result = { total: 20.00, items: [{ name: "Standard Processing Fee", amount: 20.00 }] };
     }
 
-    // Add print copy fees on top (₹50 per copy print) (except for marriage)
-    if (copies > 0 && block !== 'marriage') {
-      const printAmount = copies * 50.00;
+    return { baseFee: 20.00, baseLabel: "Standard Processing Fee", extraItems: [] };
+  };
+
+  // Dynamic municipal fee calculator
+  const calculateWizardFee = () => {
+    const baseObj = calculateDefaultBaseFeeAndItems();
+    
+    const result = {
+      total: baseObj.baseFee,
+      items: [{ name: baseObj.baseLabel, amount: baseObj.baseFee }]
+    };
+
+    const block = activeTokenProcess?.block;
+    if (billingCopies > 0 && block !== 'marriage') {
+      const printAmount = billingCopies * 50.00;
       result.items.push({
-        name: `Certificate Prints (${copies} ${copies === 1 ? 'copy' : 'copies'} @ ₹50)`,
+        name: `Certificate Prints (${billingCopies} ${billingCopies === 1 ? 'copy' : 'copies'} @ ₹50)`,
         amount: printAmount
       });
       result.total += printAmount;
     }
 
+    extraFeesList.forEach(fee => {
+      const amt = parseFloat(fee.amount) || 0;
+      result.items.push({
+        name: fee.name,
+        amount: amt
+      });
+      result.total += amt;
+    });
+
     return result;
+  };
+
+  // Proceed step validation helper
+  const handleProceedToScanning = () => {
+    if (!formData.applicantName || !formData.applicantName.trim()) {
+      alert("Please enter Applicant Name / कृपया आवेदक का नाम दर्ज करें");
+      return;
+    }
+
+    const mobile = formData.mobileNumber ? formData.mobileNumber.trim() : '';
+    if (!/^[0-9]{10}$/.test(mobile)) {
+      alert("Please enter a valid 10-digit mobile number / कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें");
+      return;
+    }
+    if (/^(.)\1{9}$/.test(mobile)) {
+      alert("Invalid mobile number: Repeated digits are not allowed / अमान्य मोबाइल नंबर: बार-बार आने वाले अंकों की अनुमति नहीं है");
+      return;
+    }
+
+    if (activeTokenProcess?.serviceType === 'correction') {
+      const regNum = formData.registrationNumber ? formData.registrationNumber.trim() : '';
+      if (!regNum) {
+        alert("Please enter Registration Number / कृपया पंजीकरण संख्या दर्ज करें");
+        return;
+      }
+      if (!/^\d+\/\d{4}$/.test(regNum)) {
+        alert("Registration number must be in format [Number]/[Year] (e.g. 1234/2026) / पंजीकरण संख्या प्रारूप [संख्या]/[वर्ष] (जैसे 1234/2026) में होनी चाहिए");
+        return;
+      }
+    }
+
+    setStep('SCANNING');
+  };
+
+  // Payment billing initialization helper
+  const initializePaymentBilling = () => {
+    const baseObj = calculateDefaultBaseFeeAndItems();
+    const extraWithIds = baseObj.extraItems.map((item, idx) => ({
+      ...item,
+      id: Date.now() + idx
+    }));
+    setExtraFeesList(extraWithIds);
+    setStep('PAYMENT');
   };
 
   // Complete application submit
@@ -858,8 +968,8 @@ export default function CounterOperations() {
       },
       correctionFields: isCorrection ? Object.keys(selectedFields).filter(k => selectedFields[k]).map(key => ({
         fieldName: PREDEFINED_FIELDS.find(f => f.id === key)?.label || key,
-        oldValue: formData.fieldValues[key]?.old || '---',
-        newValue: formData.fieldValues[key]?.new || '---'
+        oldValue: key === 'eSign' ? 'RE-SIGN REQUEST' : (formData.fieldValues[key]?.old || '---'),
+        newValue: key === 'eSign' ? 'RE-SIGN REQUEST' : (formData.fieldValues[key]?.new || '---')
       })) : (
         activeTokenProcess.block === 'birth' ? [
           { fieldName: 'Registration Category', oldValue: '---', newValue: newRegData.regCategory || 'NEW_REGISTRATION' },
@@ -1402,13 +1512,13 @@ export default function CounterOperations() {
                   />
                 </div>
 
-                {activeTokenProcess.serviceType === 'correction' && activeTokenProcess.block !== 'birth' && activeTokenProcess.block !== 'death' ? (
+                {activeTokenProcess.serviceType === 'correction' ? (
                   <div className="flex flex-col gap-1">
                     <label className="text-slate-600">Base Registration Number (पंजीकरण संख्या)</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. B-2026/89127"
+                      placeholder="e.g. 1234/2026"
                       value={formData.registrationNumber}
                       onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value.toUpperCase() })}
                       className="p-3 border border-slate-300 rounded-xl text-base text-navy font-bold bg-white focus:border-navy outline-none"
@@ -1533,11 +1643,10 @@ export default function CounterOperations() {
                               <div className="flex flex-col gap-2.5">
                                 <span className="text-xs font-extrabold text-navy/70 uppercase tracking-wider">English (अंग्रेजी)</span>
                                 <div className="flex flex-col gap-1.5">
-                                  <label className="text-[11px] font-bold text-slate-400">Old Value (पुराना मूल्य)</label>
+                                  <label className="text-[11px] font-bold text-slate-400">Old Value (पुराना मूल्य - वैकल्पिक)</label>
                                   <input
                                     type="text"
-                                    required
-                                    placeholder="e.g. RAMESH"
+                                    placeholder="e.g. RAMESH (optional)"
                                     value={formData.fieldValues[field.enId]?.old || ''}
                                     onChange={(e) => setFormData({
                                       ...formData,
@@ -1580,11 +1689,10 @@ export default function CounterOperations() {
                               <div className="flex flex-col gap-2.5">
                                 <span className="text-xs font-extrabold text-navy/70 uppercase tracking-wider">Hindi (हिंदी)</span>
                                 <div className="flex flex-col gap-1.5">
-                                  <label className="text-[11px] font-bold text-slate-400">Old Value (पुराना मूल्य)</label>
+                                  <label className="text-[11px] font-bold text-slate-400">Old Value (पुराना मूल्य - वैकल्पिक)</label>
                                   <input
                                     type="text"
-                                    required
-                                    placeholder="e.g. रमेश"
+                                    placeholder="e.g. रमेश (optional)"
                                     value={formData.fieldValues[field.hiId]?.old || ''}
                                     onChange={(e) => setFormData({
                                       ...formData,
@@ -1627,48 +1735,54 @@ export default function CounterOperations() {
                         return (
                           <div key={field.id} className="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 flex flex-col gap-2">
                             <span className="text-sm font-bold text-navy">{field.label}</span>
-                            <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-                              <div className="flex flex-col gap-1.5">
-                                <label className="text-slate-400">Old Value (पुराना मूल्य)</label>
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="Old value..."
-                                  value={formData.fieldValues[field.id]?.old || ''}
-                                  onChange={(e) => setFormData({
-                                    ...formData,
-                                    fieldValues: {
-                                      ...formData.fieldValues,
-                                      [field.id]: {
-                                        ...formData.fieldValues[field.id],
-                                        old: e.target.value
-                                      }
-                                    }
-                                  })}
-                                  className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
-                                />
+                            {field.id === 'eSign' ? (
+                              <div className="p-3.5 border border-purple-200 bg-purple-50 text-purple-800 rounded-xl text-xs font-bold leading-normal">
+                                E-Sign Correction: Citizen will re-sign digitally during approval. No text input required. <br/>
+                                (ई-साइन संशोधन: नागरिक अनुमोदन के दौरान डिजिटल रूप से पुनः हस्ताक्षर करेंगे। किसी इनपुट की आवश्यकता नहीं है।)
                               </div>
-                              <div className="flex flex-col gap-1.5">
-                                <label className="text-slate-400">New Value (नया मूल्य)</label>
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="New value..."
-                                  value={formData.fieldValues[field.id]?.new || ''}
-                                  onChange={(e) => setFormData({
-                                    ...formData,
-                                    fieldValues: {
-                                      ...formData.fieldValues,
-                                      [field.id]: {
-                                        ...formData.fieldValues[field.id],
-                                        new: e.target.value
+                            ) : (
+                              <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-slate-400">Old Value (पुराना मूल्य - वैकल्पिक)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Old value (optional)..."
+                                    value={formData.fieldValues[field.id]?.old || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.id]: {
+                                          ...formData.fieldValues[field.id],
+                                          old: e.target.value
+                                        }
                                       }
-                                    }
-                                  })}
-                                  className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
-                                />
+                                    })}
+                                    className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-slate-400">New Value (नया मूल्य)</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="New value..."
+                                    value={formData.fieldValues[field.id]?.new || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.id]: {
+                                          ...formData.fieldValues[field.id],
+                                          new: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    className="p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy"
+                                  />
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         );
                       }
@@ -1859,6 +1973,19 @@ export default function CounterOperations() {
                                 onChange={(e) => setNewRegData({ ...newRegData, groomDob: e.target.value })}
                                 className="p-2 border rounded-lg text-sm text-navy font-bold font-mono"
                               />
+                              {(() => {
+                                const groomAge = getAgeAtMarriage(newRegData.groomDob, newRegData.dob);
+                                if (groomAge === null) return null;
+                                return (
+                                  <div className={`mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded border text-left ${
+                                    groomAge >= 18 
+                                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                                      : 'bg-red-50 border-red-200 text-red-800'
+                                  }`}>
+                                    Age: {groomAge} yrs ({groomAge >= 18 ? "Eligible / योग्य" : "Underage / कम उम्र"})
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="flex flex-col gap-1">
                               <label className="text-slate-600 font-mono">Father's Name</label>
@@ -1892,6 +2019,19 @@ export default function CounterOperations() {
                                 onChange={(e) => setNewRegData({ ...newRegData, brideDob: e.target.value })}
                                 className="p-2 border rounded-lg text-sm text-navy font-bold font-mono"
                               />
+                              {(() => {
+                                const brideAge = getAgeAtMarriage(newRegData.brideDob, newRegData.dob);
+                                if (brideAge === null) return null;
+                                return (
+                                  <div className={`mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded border text-left ${
+                                    brideAge >= 18 
+                                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                                      : 'bg-red-50 border-red-200 text-red-800'
+                                  }`}>
+                                    Age: {brideAge} yrs ({brideAge >= 18 ? "Eligible / योग्य" : "Underage / कम उम्र"})
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="flex flex-col gap-1">
                               <label className="text-slate-600 font-mono">Father's Name</label>
@@ -1944,7 +2084,7 @@ export default function CounterOperations() {
               Previous Step
             </button>
             <button
-              onClick={() => setStep('SCANNING')}
+              onClick={handleProceedToScanning}
               className="px-8 py-3 bg-navy hover:bg-slate-800 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer shadow-md"
             >
               <span>Scan Required Documents</span>
@@ -2004,9 +2144,14 @@ export default function CounterOperations() {
                       </div>
                       
                       {scannedFiles[doc] ? (
-                        <span className="font-mono text-xs text-emerald-600 font-bold bg-white px-2 py-1 rounded border border-emerald-200/50">
+                        <a
+                          href={`http://localhost:5000/temp/scans/${scannedFiles[doc]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-xs text-emerald-600 hover:text-emerald-750 underline font-bold bg-white px-2 py-1 rounded border border-emerald-200/50 cursor-pointer"
+                        >
                           {scannedFiles[doc]}
-                        </span>
+                        </a>
                       ) : (
                         <button
                           onClick={() => triggerScanFile(doc)}
@@ -2018,51 +2163,73 @@ export default function CounterOperations() {
                     </div>
                   ))}
 
-                  {/* Additional/Other Document (Optional Scan Option) */}
-                  <div 
-                    className={`flex items-center justify-between p-4 border rounded-xl transition-all shadow-sm ${
-                      scannedFiles["Other Document (अन्य दस्तावेज)"] 
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
-                        : 'bg-white border-slate-200 text-slate-700 border-dashed'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                        scannedFiles["Other Document (अन्य दस्तावेज)"] ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-450'
-                      }`}>
-                        {scannedFiles["Other Document (अन्य दस्तावेज)"] ? <Check className="w-4 h-4" /> : "+"}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-[0.95rem]">Other Document (अन्य दस्तावेज)</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Optional / अतिरिक्त दस्तावेज</span>
-                      </div>
-                    </div>
-                    
-                    {scannedFiles["Other Document (अन्य दस्तावेज)"] ? (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-emerald-600 font-bold bg-white px-2 py-1 rounded border border-emerald-200/50">
-                          {scannedFiles["Other Document (अन्य दस्तावेज)"]}
-                        </span>
-                        <button
-                          onClick={() => setScannedFiles(prev => {
-                            const copy = { ...prev };
-                            delete copy["Other Document (अन्य दस्तावेज)"];
-                            return copy;
-                          })}
-                          className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold rounded active:scale-95 transition-transform cursor-pointer border border-red-200/30"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    ) : (
+                  {/* Dynamic Additional Document Scanner */}
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col gap-3 mt-4">
+                    <span className="text-xs font-extrabold text-navy uppercase tracking-wider block text-left font-rajdhani">Scan Additional Document (अतिरिक्त दस्तावेज)</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. Affidavit, Ration Card (दस्तावेज का नाम)"
+                        value={customDocName}
+                        onChange={(e) => setCustomDocName(e.target.value)}
+                        className="flex-1 p-2 border rounded-lg text-sm text-navy bg-white outline-none font-semibold focus:border-navy font-rajdhani"
+                      />
                       <button
-                        onClick={() => triggerScanFile("Other Document (अन्य दस्तावेज)")}
-                        className="px-3.5 py-1.5 bg-slate-500 hover:bg-slate-600 text-white font-bold text-xs rounded-lg active:scale-95 transition-transform cursor-pointer"
+                        onClick={() => {
+                          if (!customDocName.trim()) {
+                            alert("Please enter a document name / कृपया दस्तावेज का नाम दर्ज करें");
+                            return;
+                          }
+                          const docName = customDocName.trim();
+                          triggerScanFile(docName);
+                          setCustomDocName('');
+                        }}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg active:scale-95 transition-transform cursor-pointer"
                       >
-                        Scan & Upload
+                        Scan & Add
                       </button>
-                    )}
+                    </div>
                   </div>
+
+                  {/* Render dynamically scanned custom documents */}
+                  {Object.keys(scannedFiles)
+                    .filter(doc => !getRequiredDocumentsList().includes(doc))
+                    .map((doc) => (
+                      <div 
+                        key={doc}
+                        className="flex items-center justify-between p-3.5 bg-slate-50/50 border border-emerald-300 bg-emerald-50 text-emerald-800 rounded-xl shadow-inner text-sm mt-3"
+                      >
+                        <div className="flex items-center gap-3 text-left">
+                          <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                            <Check className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[0.95rem] text-emerald-900">{doc}</span>
+                            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Additional Document / अतिरिक्त दस्तावेज</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`http://localhost:5000/temp/scans/${scannedFiles[doc]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs text-emerald-600 hover:text-emerald-700 underline font-bold bg-white px-2 py-1 rounded border border-emerald-250/50 cursor-pointer"
+                          >
+                            {scannedFiles[doc]}
+                          </a>
+                          <button
+                            onClick={() => setScannedFiles(prev => {
+                              const copy = { ...prev };
+                              delete copy[doc];
+                              return copy;
+                            })}
+                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold rounded active:scale-95 transition-transform cursor-pointer border border-red-200/30"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
 
@@ -2091,26 +2258,41 @@ export default function CounterOperations() {
               {/* Visual simulated scanner screen */}
               <div className="flex-1 flex flex-col items-center justify-center py-6 relative">
                 {scanning ? (
-                  // Sweeping laser animation
-                  <div className="w-48 h-64 bg-slate-800 border-2 border-slate-700/60 rounded-xl relative flex flex-col items-center justify-between p-4 overflow-hidden">
-                    <FileText className="w-20 h-20 text-slate-500 mt-16 animate-pulse" />
-                    <span className="text-[10px] text-slate-400 font-mono tracking-wider animate-pulse">Scanning: {scanning.substring(0, 20)}...</span>
-                    
-                    {/* Laser beam */}
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-[scan_2.5s_infinite_linear]" 
-                      style={{
-                        animation: 'scan-laser 2.5s infinite linear'
-                      }}
-                    />
-                    
-                    {/* Injecting CSS keyframes for scan simulation */}
-                    <style>{`
-                      @keyframes scan-laser {
-                        0% { top: 0%; }
-                        50% { top: 100%; }
-                        100% { top: 0%; }
-                      }
-                    `}</style>
+                  <div className="flex flex-col items-center gap-4">
+                    {/* Sweeping laser animation */}
+                    <div className="w-48 h-64 bg-slate-800 border-2 border-slate-700/60 rounded-xl relative flex flex-col items-center justify-between p-4 overflow-hidden shadow-md">
+                      <FileText className="w-20 h-20 text-slate-500 mt-16 animate-pulse" />
+                      <span className="text-[10px] text-slate-400 font-mono tracking-wider animate-pulse">Scanning: {scanning.substring(0, 20)}...</span>
+                      
+                      {/* Laser beam */}
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-[scan_2.5s_infinite_linear]" 
+                        style={{
+                          animation: 'scan-laser 2.5s infinite linear'
+                        }}
+                      />
+                      
+                      {/* Injecting CSS keyframes for scan simulation */}
+                      <style>{`
+                        @keyframes scan-laser {
+                          0% { top: 0%; }
+                          50% { top: 100%; }
+                          100% { top: 0%; }
+                        }
+                      `}</style>
+                    </div>
+
+                    {/* Physical scanner instructions & bypass */}
+                    <div className="text-center flex flex-col items-center gap-2 max-w-xs px-2">
+                      <p className="text-[11px] text-slate-400 font-bold leading-normal m-0 animate-pulse">
+                        Waiting for scanner... Please place document on the scanner bed and scan it using Epson Scan 2 (saving output to temp/scans).
+                      </p>
+                      <button
+                        onClick={handleBypassScan}
+                        className="mt-1 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[10px] uppercase rounded-md tracking-wider active:scale-95 transition-transform cursor-pointer border border-slate-700"
+                      >
+                        Bypass & Use Demo Mock File
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-3 text-slate-500">
@@ -2140,8 +2322,9 @@ export default function CounterOperations() {
             </button>
             
             <button
-              onClick={() => setStep('PAYMENT')}
-              className="px-8 py-3 bg-navy hover:bg-slate-800 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer shadow-md"
+              onClick={initializePaymentBilling}
+              disabled={getRequiredDocumentsList().some(doc => !scannedFiles[doc]) || scanning}
+              className="px-8 py-3 bg-navy hover:bg-slate-800 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
             >
               <span>Proceed to Payment</span>
               <ArrowRight className="w-5 h-5 text-saffron" />
@@ -2172,32 +2355,150 @@ export default function CounterOperations() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch max-w-4xl mx-auto w-full">
             
-            {/* Box A: Invoice summary */}
+            {/* Box A: Stateful Billing Editor */}
             <div className="bg-white border border-slate-200 shadow-sm p-6 rounded-2xl flex flex-col justify-between gap-5 text-navy">
               <div>
-                <span className="font-bebas text-sm tracking-wider text-saffron uppercase block">payment statement</span>
-                <h3 className="font-bold text-xl m-0 mt-1 uppercase">Nagar Nigam Billing Ticket</h3>
+                <span className="font-bebas text-sm tracking-wider text-saffron uppercase block">payment statement & billing editor</span>
+                <h3 className="font-bold text-xl m-0 mt-1 uppercase">Counter Billing Console</h3>
               </div>
 
-              <div className="flex flex-col gap-2 font-semibold text-slate-600 border-y py-4 my-2">
-                <div className="flex justify-between text-base">
-                  <span>Service Type:</span>
-                  <span className="text-navy uppercase">{activeTokenProcess.serviceType.replace('_', ' ')}</span>
-                </div>
-                <div className="flex justify-between text-base">
-                  <span>Department Block:</span>
-                  <span className="text-navy uppercase">{activeTokenProcess.block}</span>
-                </div>
+              <div className="flex flex-col gap-4 border-y py-4 my-2 text-sm font-semibold max-h-[350px] overflow-y-auto pr-1">
                 
-                {/* Itemized Fee Breakdown */}
-                <div className="border-t border-dashed border-slate-200 mt-2 pt-2 flex flex-col gap-1 text-sm font-bold">
-                  <span className="text-[11px] text-slate-400 uppercase tracking-widest block mb-1">Fee Breakdown (शुल्क विवरण)</span>
-                  {calculateWizardFee().items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between font-rajdhani text-navy font-bold">
-                      <span>{item.name}</span>
-                      <span>₹{item.amount.toFixed(2)}</span>
+                {/* 1. Copies adjustment (only for Birth/Death) */}
+                {activeTokenProcess.block !== 'marriage' && (
+                  <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div className="flex flex-col text-left">
+                      <span className="font-bold text-slate-800">Print Copies (प्रिंट प्रतियां)</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">₹50.00 per certificate copy</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setBillingCopies(prev => Math.max(1, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center font-extrabold hover:bg-slate-50 active:scale-95 transition-transform text-navy cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="font-extrabold font-mono text-base">{billingCopies}</span>
+                      <button
+                        onClick={() => setBillingCopies(prev => prev + 1)}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center font-extrabold hover:bg-slate-50 active:scale-95 transition-transform text-navy cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Add Predefined or Custom Extra Fee */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+                  <span className="font-bold text-slate-700 block text-left">Add Fees / Penalties (शुल्क / शास्ति जोड़ें)</span>
+                  
+                  {/* Predefined Dropdown */}
+                  <div className="flex flex-col gap-1.5 text-left">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Predefined Municipal Fees</label>
+                    <select
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const val = JSON.parse(e.target.value);
+                        setExtraFeesList(prev => [...prev, { name: val.name, amount: val.amount, id: Date.now() }]);
+                        e.target.value = ''; // reset dropdown selection
+                      }}
+                      className="p-2 border rounded-lg bg-white font-rajdhani text-sm text-navy outline-none font-bold focus:border-navy"
+                    >
+                      <option value="">-- Choose predefined fee to add --</option>
+                      <option value={JSON.stringify({ name: "Late Registration Fee", amount: 20.00 })}>Late Registration Fee (₹20.00)</option>
+                      <option value={JSON.stringify({ name: "Search Fee (खोज शुल्क)", amount: 20.00 })}>Search Fee (₹20.00)</option>
+                      <option value={JSON.stringify({ name: "First Class Magistrate Order Fee", amount: 50.00 })}>Magistrate Order Fee (₹50.00)</option>
+                      <option value={JSON.stringify({ name: "Commissioner Approval Fee (अनुमोदन शुल्क)", amount: 50.00 })}>Commissioner Approval Fee (₹50.00)</option>
+                      <option value={JSON.stringify({ name: "Jaipur Nagar Nigam Late Penalty", amount: 300.00 })}>Late Penalty (₹300.00)</option>
+                    </select>
+                  </div>
+
+                  {/* Custom Fee inputs */}
+                  <div className="flex flex-col gap-1.5 text-left">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Or Enter Custom Particular</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Fee Name (e.g. Penalty)"
+                        value={customFeeName}
+                        onChange={(e) => setCustomFeeName(e.target.value)}
+                        className="flex-1 p-2 border rounded-lg text-xs bg-white outline-none font-bold text-navy"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        value={customFeeAmount}
+                        onChange={(e) => setCustomFeeAmount(e.target.value)}
+                        className="w-20 p-2 border rounded-lg text-xs bg-white outline-none font-bold text-navy font-mono"
+                      />
+                      <button
+                        onClick={() => {
+                          if (!customFeeName.trim() || !customFeeAmount.trim()) {
+                            alert("Please enter both fee name and amount / कृपया शुल्क का नाम और राशि दोनों दर्ज करें");
+                            return;
+                          }
+                          const amt = parseFloat(customFeeAmount);
+                          if (isNaN(amt) || amt < 0) {
+                            alert("Please enter a valid positive amount / कृपया एक वैध धनात्मक राशि दर्ज करें");
+                            return;
+                          }
+                          setExtraFeesList(prev => [...prev, { name: customFeeName.trim(), amount: amt, id: Date.now() }]);
+                          setCustomFeeName('');
+                          setCustomFeeAmount('');
+                        }}
+                        className="px-3 py-2 bg-navy hover:bg-slate-800 text-white font-bold text-xs rounded-lg active:scale-95 transition-all cursor-pointer font-sans"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Editable Itemized Fee Breakdown list */}
+                <div className="flex flex-col gap-2.5">
+                  <span className="text-[11px] text-slate-400 uppercase tracking-widest block text-left font-bold">Itemized Invoice Details</span>
+                  
+                  {/* Fixed Base Fee */}
+                  <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded border border-slate-100 font-rajdhani text-navy font-bold text-xs">
+                    <span>{calculateDefaultBaseFeeAndItems().baseLabel} (Base Fixed)</span>
+                    <span>₹{calculateDefaultBaseFeeAndItems().baseFee.toFixed(2)}</span>
+                  </div>
+
+                  {/* Certificate Prints */}
+                  {activeTokenProcess.block !== 'marriage' && billingCopies > 0 && (
+                    <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded border border-slate-100 font-rajdhani text-navy font-bold text-xs">
+                      <span>Certificate Prints ({billingCopies} copies @ ₹50)</span>
+                      <span>₹{(billingCopies * 50).toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {/* Custom Extra Fees List (Editable Prices & Removable) */}
+                  {extraFeesList.map((fee, idx) => (
+                    <div key={fee.id || idx} className="flex justify-between items-center bg-white p-2 rounded border border-slate-200 font-rajdhani text-navy font-bold text-xs gap-4">
+                      <span className="flex-1 text-left">{fee.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span>₹</span>
+                        <input
+                          type="number"
+                          value={fee.amount}
+                          onChange={(e) => {
+                            const newAmt = e.target.value;
+                            setExtraFeesList(prev => prev.map(f => f.id === fee.id ? { ...f, amount: newAmt } : f));
+                          }}
+                          className="w-16 p-1 border rounded text-right font-mono font-bold outline-none focus:border-navy"
+                        />
+                        <button
+                          onClick={() => setExtraFeesList(prev => prev.filter(f => f.id !== fee.id))}
+                          className="text-red-500 hover:text-red-700 font-extrabold px-1 font-sans text-sm cursor-pointer"
+                          title="Remove item"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
                   ))}
+
                 </div>
               </div>
 
@@ -2463,127 +2764,138 @@ export default function CounterOperations() {
 
           {/* 🖨️ A4 ENROLLMENT PRINT SLIP BODY (HIDDEN BY DEFAULT, RENDERED IN PRINT MEDIA ONLY) */}
           {enrollmentResult && createPortal(
-            <div className="hidden print:block w-full p-10 text-black font-sans leading-relaxed text-left" style={{ fontFamily: 'sans-serif' }}>
-              <div className="flex items-center justify-between border-b-4 border-black pb-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 border border-black flex items-center justify-center font-bold text-2xl">NN</div>
+            <div className="hidden print:block w-full text-black font-sans leading-relaxed text-left" style={{ fontFamily: 'sans-serif' }}>
+              {[
+                { title: 'Applicant Copy / आवेदक प्रति' },
+                { title: 'Office Copy / कार्यालय प्रति' }
+              ].map((copy, index) => (
+                <div key={index} className="w-full p-10 flex flex-col justify-between" style={{ minHeight: '297mm', boxSizing: 'border-box', pageBreakAfter: index === 0 ? 'always' : 'auto' }}>
                   <div>
-                    <h2 className="text-2xl font-bold uppercase m-0 leading-none">nagar nigam jaipur</h2>
-                    <span className="text-xs uppercase font-bold tracking-wider text-slate-500 mt-1 block">citizen registry center</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm uppercase block font-bold">enrollment voucher</span>
-                  <span className="text-lg font-bold font-mono block mt-1">{enrollmentResult.enrollmentId}</span>
-                </div>
-              </div>
+                    <div className="flex items-center justify-between border-b-4 border-black pb-4 mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 border border-black flex items-center justify-center font-bold text-2xl">NN</div>
+                        <div>
+                          <h2 className="text-2xl font-bold uppercase m-0 leading-none">nagar nigam jaipur</h2>
+                          <span className="text-xs uppercase font-bold tracking-wider text-slate-500 mt-1 block">citizen registry center</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm uppercase block font-bold">{copy.title}</span>
+                        <span className="text-xs uppercase block font-medium mt-1">enrollment voucher</span>
+                        <span className="text-lg font-bold font-mono block mt-1">{enrollmentResult.enrollmentId}</span>
+                      </div>
+                    </div>
 
-              <h3 className="text-center font-bold uppercase text-lg border-b pb-2 mb-6">Citizen Request Enrollment Acknowledgement</h3>
+                    <h3 className="text-center font-bold uppercase text-lg border-b pb-2 mb-6">Citizen Request Enrollment Acknowledgement</h3>
 
-              <div className="grid grid-cols-2 gap-6 text-sm mb-6 pb-6 border-b">
-                <div>
-                  <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
-                  <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
-                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleString('en-IN')}</p>
-                  <p className="my-1.5"><strong>Department Block:</strong> {enrollmentResult.departmentBlock.toUpperCase()}</p>
-                  <p className="my-1.5"><strong>Application Type:</strong> {enrollmentResult.serviceType.toUpperCase()}</p>
-                  <p className="my-1.5 font-bold" style={{ color: '#1e3a8a' }}>Your application will be proceeded with in 7 working days</p>
-                </div>
-                <div>
-                  {(() => {
-                    const block = enrollmentResult.departmentBlock.toUpperCase();
-                    const isBirthOrDeath = (block === 'BIRTH' || block === 'DEATH');
-                    
-                    if (isBirthOrDeath) {
-                      const appNameField = enrollmentResult.serviceType === 'new_registration'
-                        ? (enrollmentResult.correctionFields?.find(f => f.fieldName === 'Applicant Name')?.newValue || 'N/A')
-                        : enrollmentResult.commonDetails.applicantName;
-                      
-                      const relationField = enrollmentResult.serviceType === 'new_registration'
-                        ? (enrollmentResult.correctionFields?.find(f => f.fieldName.startsWith('Relation'))?.newValue || 'N/A')
-                        : enrollmentResult.commonDetails.relationWithApplicant;
+                    <div className="grid grid-cols-2 gap-6 text-sm mb-6 pb-6 border-b">
+                      <div>
+                        <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
+                        <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
+                        <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleString('en-IN')}</p>
+                        <p className="my-1.5"><strong>Department Block:</strong> {enrollmentResult.departmentBlock.toUpperCase()}</p>
+                        <p className="my-1.5"><strong>Application Type:</strong> {enrollmentResult.serviceType.toUpperCase()}</p>
+                        <p className="my-1.5 font-bold" style={{ color: '#1e3a8a' }}>Your application will be proceeded with in 7 working days</p>
+                      </div>
+                      <div>
+                        {(() => {
+                          const block = enrollmentResult.departmentBlock.toUpperCase();
+                          const isBirthOrDeath = (block === 'BIRTH' || block === 'DEATH');
+                          
+                          if (isBirthOrDeath) {
+                            const appNameField = enrollmentResult.serviceType === 'new_registration'
+                              ? (enrollmentResult.correctionFields?.find(f => f.fieldName === 'Applicant Name')?.newValue || 'N/A')
+                              : enrollmentResult.commonDetails.applicantName;
+                            
+                            const relationField = enrollmentResult.serviceType === 'new_registration'
+                              ? (enrollmentResult.correctionFields?.find(f => f.fieldName.startsWith('Relation'))?.newValue || 'N/A')
+                              : enrollmentResult.commonDetails.relationWithApplicant;
 
-                      const childDeceasedName = enrollmentResult.serviceType === 'new_registration'
-                        ? enrollmentResult.commonDetails.applicantName
-                        : (enrollmentResult.correctionFields?.find(f => f.fieldName.includes("Child's Name") || f.fieldName.includes("Deceased Person Name"))?.newValue || 'See Correction Particulars');
-                      
-                      return (
-                        <>
-                          {enrollmentResult.serviceType === 'new_registration' && (
-                            <p className="my-1.5"><strong>{block === 'BIRTH' ? "Child's Name" : "Deceased's Name"}:</strong> {childDeceasedName.toUpperCase()}</p>
+                            const childDeceasedName = enrollmentResult.serviceType === 'new_registration'
+                              ? enrollmentResult.commonDetails.applicantName
+                              : (enrollmentResult.correctionFields?.find(f => f.fieldName.includes("Child's Name") || f.fieldName.includes("Deceased Person Name"))?.newValue || 'See Correction Particulars');
+                            
+                            return (
+                              <>
+                                {enrollmentResult.serviceType === 'new_registration' && (
+                                  <p className="my-1.5"><strong>{block === 'BIRTH' ? "Child's Name" : "Deceased's Name"}:</strong> {childDeceasedName.toUpperCase()}</p>
+                                )}
+                                <p className="my-1.5"><strong>Applicant/Informant:</strong> {(appNameField || 'N/A').toUpperCase()} ({(relationField || 'N/A').toUpperCase()})</p>
+                                <p className="my-1.5"><strong>Father's Name:</strong> {(enrollmentResult.commonDetails.fatherName || 'N/A').toUpperCase()}</p>
+                                <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
+                              </>
+                            );
+                          } else {
+                            return (
+                              <>
+                                <p className="my-1.5"><strong>Applicant Name:</strong> {enrollmentResult.commonDetails.applicantName.toUpperCase()}</p>
+                                <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
+                              </>
+                            );
+                          }
+                        })()}
+                        <p className="my-1.5"><strong>Base Reg ID:</strong> {enrollmentResult.commonDetails.registrationNumber}</p>
+                        <p className="my-1.5">
+                          <strong>Payment Fee:</strong>{' '}
+                          {enrollmentResult.paymentDetails.method === 'EXEMPT' ? (
+                            <span style={{ color: '#059669', fontWeight: 'bold' }}>₹0.00 (FEE EXEMPT)</span>
+                          ) : enrollmentResult.paymentDetails.method === 'CASH' ? (
+                            <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} (PAID via CASH)</span>
+                          ) : (
+                            <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} (PAID via {enrollmentResult.paymentDetails.method})</span>
                           )}
-                          <p className="my-1.5"><strong>Applicant/Informant:</strong> {(appNameField || 'N/A').toUpperCase()} ({(relationField || 'N/A').toUpperCase()})</p>
-                          <p className="my-1.5"><strong>Father's Name:</strong> {(enrollmentResult.commonDetails.fatherName || 'N/A').toUpperCase()}</p>
-                          <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
-                        </>
-                      );
-                    } else {
-                      return (
-                        <>
-                          <p className="my-1.5"><strong>Applicant Name:</strong> {enrollmentResult.commonDetails.applicantName.toUpperCase()}</p>
-                          <p className="my-1.5"><strong>Applicant Contact:</strong> {enrollmentResult.commonDetails.mobileNumber}</p>
-                        </>
-                      );
-                    }
-                  })()}
-                  <p className="my-1.5"><strong>Base Reg ID:</strong> {enrollmentResult.commonDetails.registrationNumber}</p>
-                  <p className="my-1.5">
-                    <strong>Payment Fee:</strong>{' '}
-                    {enrollmentResult.paymentDetails.method === 'EXEMPT' ? (
-                      <span style={{ color: '#059669', fontWeight: 'bold' }}>₹0.00 (FEE EXEMPT)</span>
-                    ) : enrollmentResult.paymentDetails.method === 'CASH' ? (
-                      <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} (PAID via CASH)</span>
+                        </p>
+                        <p className="my-1.5"><strong>Transaction Reference:</strong> {enrollmentResult.paymentDetails.transactionId}</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Fee Breakdown (शुल्क विवरण)</h4>
+                      <table className="w-full text-sm border-collapse border border-slate-300">
+                        <thead>
+                          <tr className="bg-slate-100">
+                            <th className="border border-slate-300 p-2 text-left">Particular Description</th>
+                            <th className="border border-slate-300 p-2 text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {enrollmentResult.feeItems && enrollmentResult.feeItems.map((item, idx) => (
+                            <tr key={idx}>
+                              <td className="border border-slate-300 p-2 font-bold">{item.name}</td>
+                              <td className="border border-slate-300 p-2 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-slate-50 font-extrabold">
+                            <td className="border border-slate-300 p-2 text-right uppercase">Total Paid Fee:</td>
+                            <td className="border border-slate-300 p-2 text-right font-mono" style={{ color: '#059669' }}>
+                              ₹{enrollmentResult.paymentDetails.amount?.toFixed(2)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    {enrollmentResult.paymentDetails.method === 'CASH' ? (
+                      <div className="mt-12 flex justify-between text-xs font-semibold pt-12 border-t border-dashed">
+                        <div className="text-center">
+                          <div className="w-32 border-b border-black mb-2 mx-auto" />
+                          <span>Applicant's Signature</span>
+                        </div>
+                        <div className="text-center">
+                          <div className="w-32 border-b border-black mb-2 mx-auto" />
+                          <span>Cashier Signature & Stamp</span>
+                        </div>
+                      </div>
                     ) : (
-                      <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{enrollmentResult.paymentDetails.amount?.toFixed(2)} (PAID via {enrollmentResult.paymentDetails.method})</span>
+                      <div className="mt-8 text-center text-xs font-semibold pt-4 border-t border-dashed text-slate-500 italic">
+                        * This is a digitally generated acknowledgement. No signature or stamp is required.
+                      </div>
                     )}
-                  </p>
-                  <p className="my-1.5"><strong>Transaction Reference:</strong> {enrollmentResult.paymentDetails.transactionId}</p>
-                </div>
-              </div>
-
-
-              <div className="mb-6">
-                <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Fee Breakdown (शुल्क विवरण)</h4>
-                <table className="w-full text-sm border-collapse border border-slate-300">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-slate-300 p-2 text-left">Particular Description</th>
-                      <th className="border border-slate-300 p-2 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enrollmentResult.feeItems && enrollmentResult.feeItems.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="border border-slate-300 p-2 font-bold">{item.name}</td>
-                        <td className="border border-slate-300 p-2 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-slate-50 font-extrabold">
-                      <td className="border border-slate-300 p-2 text-right uppercase">Total Paid Fee:</td>
-                      <td className="border border-slate-300 p-2 text-right font-mono" style={{ color: '#059669' }}>
-                        ₹{enrollmentResult.paymentDetails.amount?.toFixed(2)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {enrollmentResult.paymentDetails.method === 'CASH' ? (
-                <div className="mt-12 flex justify-between text-xs font-semibold pt-12 border-t border-dashed">
-                  <div className="text-center">
-                    <div className="w-32 border-b border-black mb-2 mx-auto" />
-                    <span>Applicant's Signature</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-32 border-b border-black mb-2 mx-auto" />
-                    <span>Cashier Signature & Stamp</span>
                   </div>
                 </div>
-              ) : (
-                <div className="mt-8 text-center text-xs font-semibold pt-4 border-t border-dashed text-slate-500 italic">
-                  * This is a digitally generated acknowledgement. No signature or stamp is required.
-                </div>
-              )}
+              ))}
             </div>,
             document.body
           )}

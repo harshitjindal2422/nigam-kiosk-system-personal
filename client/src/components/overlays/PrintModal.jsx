@@ -71,8 +71,7 @@ export default function PrintModal() {
             }
 
             try {
-              const isSearchAndPrint = pauseContext === 'BLOCK_2';
-              const amountVal = isSearchAndPrint ? 20 + (form.totalCopies * 50) : form.totalCopies * 50;
+              const amountVal = form.totalCopies * 50;
 
               // Trigger spooled printer execution & privacy purge on server
               const response = await axiosInstance.post('/print/execute', {
@@ -235,6 +234,10 @@ export default function PrintModal() {
       setError(language === 'hi' ? 'कृपया 10-अंकीय मान्य मोबाइल नंबर दर्ज करें' : 'Please enter a valid 10-digit mobile number');
       return;
     }
+    if (/^(.)\1{9}$/.test(form.mobileNumber)) {
+      setError(language === 'hi' ? 'अमान्य मोबाइल नंबर: सभी अंक समान नहीं हो सकते' : 'Invalid mobile number: repeated digits are not allowed');
+      return;
+    }
 
     setStep('HOLD');
     setKioskState('HOLD', pauseContext); // Pause the global inactivity timer while silently polling
@@ -253,7 +256,7 @@ export default function PrintModal() {
   const startPolling = () => {
     if (pollIntervalId) clearInterval(pollIntervalId);
     let attempts = 0;
-    const maxAttempts = 48; // Timeout after 120 seconds (48 * 2.5s)
+    const maxAttempts = 240; // Timeout after 10 minutes (240 * 2.5s)
 
     const intervalId = setInterval(async () => {
       attempts++;
@@ -324,8 +327,7 @@ export default function PrintModal() {
     // Generate UPI QR Code session
     setPaymentLoading(true);
     try {
-      const isSearchAndPrint = pauseContext === 'BLOCK_2';
-      const amountVal = isSearchAndPrint ? 20 + (form.totalCopies * 50) : form.totalCopies * 50;
+      const amountVal = form.totalCopies * 50;
       const response = await axiosInstance.post('/payment/qr', {
         amount: amountVal,
         registrationNumber: form.registrationNumber
@@ -676,7 +678,7 @@ export default function PrintModal() {
                       </div>
                       <div className="flex justify-between font-semibold text-slate-600">
                         <span>{language === 'hi' ? 'खोज शुल्क' : 'Search Fee'}:</span>
-                        <span className="text-navy">₹{pauseContext === 'BLOCK_2' ? '20.00' : '0.00'}</span>
+                        <span className="text-navy">₹0.00</span>
                       </div>
                       <div className="flex justify-between font-semibold text-slate-600">
                         <span>{language === 'hi' ? 'मुद्रण प्रतियां' : 'Number of Copies'}:</span>
@@ -692,7 +694,7 @@ export default function PrintModal() {
                     <div className="flex justify-between items-baseline font-rajdhani">
                       <span className="text-sm font-bold text-slate-500">{language === 'hi' ? 'कुल देय राशि' : 'Total Due'}:</span>
                       <span className="text-4xl font-extrabold text-navy leading-none">
-                        ₹{pauseContext === 'BLOCK_2' ? 20 + (form.totalCopies * 50) : form.totalCopies * 50}.00
+                        ₹{form.totalCopies * 50}.00
                       </span>
                     </div>
 
@@ -734,7 +736,7 @@ export default function PrintModal() {
                     </div>
                     <div className="flex justify-between font-semibold text-slate-600">
                       <span>{language === 'hi' ? 'खोज शुल्क' : 'Search Fee'}:</span>
-                      <span className="text-navy">₹{pauseContext === 'BLOCK_2' ? '20.00' : '0.00'}</span>
+                      <span className="text-navy">₹0.00</span>
                     </div>
                     <div className="flex justify-between font-semibold text-slate-600">
                       <span>{language === 'hi' ? 'मुद्रण प्रतियां' : 'Number of Copies'}:</span>
@@ -742,7 +744,7 @@ export default function PrintModal() {
                     </div>
                     <div className="flex justify-between border-t border-slate-200 pt-2 mt-1 font-bold text-base">
                       <span>{language === 'hi' ? 'नकद देय राशि' : 'Total Cash to Pay'}:</span>
-                      <span className="text-navy">₹{pauseContext === 'BLOCK_2' ? 20 + (form.totalCopies * 50) : form.totalCopies * 50}.00</span>
+                      <span className="text-navy">₹{form.totalCopies * 50}.00</span>
                     </div>
                   </div>
 

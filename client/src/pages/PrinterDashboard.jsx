@@ -16,6 +16,7 @@ export default function PrinterDashboard() {
   
   // Dashboard States
   const [tokens, setTokens] = useState([]);
+  const [pdfOpenedForToken, setPdfOpenedForToken] = useState({});
   const [selectedToken, setSelectedToken] = useState(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -117,6 +118,14 @@ export default function PrinterDashboard() {
     setErrorMsg('');
   };
 
+  const handleOpenInAdobe = () => {
+    if (!selectedToken) return;
+    setPdfOpenedForToken(prev => ({ ...prev, [selectedToken.token_number]: true }));
+    const baseUrl = axiosInstance.defaults.baseURL || 'http://localhost:5000/api/v1';
+    const pdfUrl = `${baseUrl}/printer/tokens/${selectedToken.token_number}/pdf?token=${localStorage.getItem('kiosk_admin_token') || ''}`;
+    window.open(pdfUrl, '_blank');
+  };
+
   // Collect Offline cash fee or process payment category
   const handleCollectCash = async (paymentMode) => {
     if (!selectedToken) return;
@@ -154,26 +163,12 @@ export default function PrinterDashboard() {
     setShowChecklistModal(false);
 
     try {
-      const res = await axiosInstance.post(`/printer/tokens/${selectedToken.token_number}/print`);
-      const payload = res.data;
-      
-      setSuccessMsg(`Print request processed successfully for ${selectedToken.token_number}.`);
-      
-      if (payload.base64Pdf) {
-        printJS({
-          printable: payload.base64Pdf,
-          type: 'pdf',
-          base64: true,
-          onPrintDialogClose: () => {
-            fetchTokens();
-            setSelectedToken(null);
-          }
-        });
-      } else {
-        setErrorMsg('Error: No base64 PDF payload returned from server.');
-      }
+      await axiosInstance.post(`/printer/tokens/${selectedToken.token_number}/print`);
+      setSuccessMsg(`Print token ${selectedToken.token_number} status updated to successfully printed.`);
+      fetchTokens();
+      setSelectedToken(null);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to process certificate printing');
+      setErrorMsg(err.message || 'Failed to update certificate printing status');
     } finally {
       setActionLoading(false);
     }
@@ -482,14 +477,24 @@ export default function PrinterDashboard() {
                       </button>
                     </div>
                   ) : (
-                    <button
-                      disabled={actionLoading}
-                      onClick={handleExecutePrint}
-                      className="w-full py-4 bg-navy hover:bg-slate-800 text-white font-bold text-lg rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md mt-4 border-2 border-saffron"
-                    >
-                      <Printer className="w-5 h-5 text-saffron" />
-                      <span>{actionLoading ? 'Loading Spool...' : 'Print Certificate'}</span>
-                    </button>
+                    <div className="flex flex-col gap-3 mt-4">
+                      <button
+                        onClick={handleOpenInAdobe}
+                        className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md border-2 border-purple-400 font-rajdhani"
+                      >
+                        <Eye className="w-5 h-5 text-white" />
+                        <span>Open in Adobe (PDF)</span>
+                      </button>
+
+                      <button
+                        disabled={actionLoading || !pdfOpenedForToken[selectedToken.token_number]}
+                        onClick={handleExecutePrint}
+                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 font-rajdhani"
+                      >
+                        <Check className="w-5 h-5 text-white" />
+                        <span>{actionLoading ? 'Saving...' : 'Certificate Printed Successfully'}</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

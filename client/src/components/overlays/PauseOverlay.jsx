@@ -16,13 +16,13 @@ export default function PauseOverlay() {
 
   const isPaused = kioskState === 'PAUSE';
 
-  // 120-second countdown for PAUSE state inactivity reset
-  const [secondsLeft, setSecondsLeft] = useState(120);
+  // 600-second (10-minute) countdown for PAUSE state inactivity reset
+  const [secondsLeft, setSecondsLeft] = useState(600);
 
   // Trigger TTS voice guide once when pause mode initializes
   useEffect(() => {
     if (isPaused) {
-      setSecondsLeft(120); // reset countdown
+      setSecondsLeft(600); // reset countdown
       if (voiceAssist) {
         const msg = language === 'hi'
           ? (pauseContext === 'BLOCK_1' 
@@ -133,7 +133,7 @@ export default function PauseOverlay() {
               <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: '100%' }}
-                  animate={{ width: `${(secondsLeft / 120) * 100}%` }}
+                  animate={{ width: `${(secondsLeft / 600) * 100}%` }}
                   transition={{ duration: 1, ease: 'linear' }}
                   className="h-full bg-gradient-to-r from-saffron to-emerald-500"
                 />

@@ -268,3 +268,58 @@ export const executePrinterPrint = asyncHandler(async (req, res) => {
     new ApiResponse(200, { token: updatedToken, base64Pdf }, 'Certificate printed successfully')
   );
 });
+
+/**
+ * @desc Get certificate PDF binary file for opening in Adobe Reader
+ * @route GET /api/v1/printer/tokens/:tokenNumber/pdf
+ */
+export const getPrinterTokenPdf = asyncHandler(async (req, res) => {
+  const { tokenNumber } = req.params;
+
+  const printToken = await prisma.printToken.findUnique({
+    where: { token_number: tokenNumber }
+  });
+
+  if (!printToken) {
+    throw new ApiError(404, 'Print token not found');
+  }
+
+  const filename = printToken.downloaded_file_name || '';
+  const filePath = path.join(DOWNLOAD_DIR, filename);
+  const isMock = !filename || filename.startsWith('mock_download_');
+
+  let pdfBytes = null;
+
+  try {
+    if (!isMock && fs.existsSync(filePath)) {
+      pdfBytes = fs.readFileSync(filePath);
+    } else {
+      // High-fidelity fallback PDF for testing
+      const mockBase64 = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
+      pdfBytes = Buffer.from(mockBase64, 'base64');
+    }
+
+    if (pdfBytes) {
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const outputPdf = await PDFDocument.create();
+      const copies = Math.max(1, printToken.total_copies || 1);
+
+      for (let i = 0; i < copies; i++) {
+        const copiedPages = await outputPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+        copiedPages.forEach((page) => {
+          outputPdf.addPage(page);
+        });
+      }
+
+      const outputBytes = await outputPdf.save();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${printToken.token_number}_certificate.pdf"`);
+      return res.status(200).send(Buffer.from(outputBytes));
+    } else {
+      throw new ApiError(500, 'Failed to compile certificate PDF bytes.');
+    }
+  } catch (pdfErr) {
+    logger.error(`⚠️ [PRINTER PDF ERROR]: Failed to stream PDF: ${pdfErr.message}`);
+    throw new ApiError(500, `Failed to stream certificate file: ${pdfErr.message}`);
+  }
+});

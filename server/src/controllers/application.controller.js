@@ -507,8 +507,9 @@ export const reviewApprovalApplication = asyncHandler(async (req, res) => {
 
   // Dispatch simulated SMS status updates
   if (finalStatus === 'DONE') {
-    const downloadLink = downloadedCertificateUrl || `http://localhost:5000/temp/downloads/${application.token_number}.pdf`;
-    logger.info(`[SMS] Sent to ${application.mobile_number}: Dear Applicant, your request under Enrollment No: ${application.enrollment_id} has been completed successfully. Download certificate: ${downloadLink} - Jaipur Municipal`);
+    // There is no need to send SMS to user from our side after DSC completed
+    // const downloadLink = downloadedCertificateUrl || `http://localhost:5000/temp/downloads/${application.token_number}.pdf`;
+    // logger.info(`[SMS] Sent to ${application.mobile_number}: Dear Applicant, your request under Enrollment No: ${application.enrollment_id} has been completed successfully. Download certificate: ${downloadLink} - Jaipur Municipal`);
   } else {
     // Request goes back to checker. Checker reviews the revert remarks and triggers Objection SMS.
     logger.info(`[SYSTEM] Application ${application.enrollment_id} reverted from Approval to Checker with remarks: "${revertRemarks}"`);
@@ -713,6 +714,271 @@ export const uploadCertificate = asyncHandler(async (req, res) => {
 
   return res.status(200).json(
     new ApiResponse(200, { filePath }, "Certificate file uploaded and written successfully")
+  );
+});
+
+// Keep track of already processed scan files to prevent double-detection
+const PROCESSED_SCANS = new Set();
+
+/**
+ * @desc    Detect fresh scanned document in temp/downloads
+ * @route   GET /api/v1/applications/detect-scan
+ */
+export const detectScan = asyncHandler(async (req, res) => {
+  const scansDir = path.resolve(__dirname, '../../temp/scans');
+
+  if (!fs.existsSync(scansDir)) {
+    fs.mkdirSync(scansDir, { recursive: true });
+  }
+
+  const files = fs.readdirSync(scansDir);
+  const scanExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+  const scanFiles = files.filter(f => {
+    const ext = path.extname(f).toLowerCase();
+    return scanExtensions.includes(ext) && !PROCESSED_SCANS.has(f);
+  });
+
+  if (scanFiles.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(200, { detected: false }, 'No fresh scanned file detected yet.')
+    );
+  }
+
+  // Find the latest modified file
+  let latestFile = null;
+  let latestTime = 0;
+
+  for (const file of scanFiles) {
+    const filePath = path.join(scansDir, file);
+    const stat = fs.statSync(filePath);
+    if (stat.mtimeMs > latestTime) {
+      latestTime = stat.mtimeMs;
+      latestFile = file;
+    }
+  }
+
+  if (!latestFile) {
+    return res.status(200).json(
+      new ApiResponse(200, { detected: false }, 'No fresh scanned file detected yet.')
+    );
+  }
+
+  // Verify file is fresh (modified within the last 180 seconds)
+  const ageSeconds = (Date.now() - latestTime) / 1000;
+  if (ageSeconds > 180) {
+    return res.status(200).json(
+      new ApiResponse(200, { detected: false }, 'No fresh scanned file detected yet.')
+    );
+  }
+
+  // Mark as processed
+  PROCESSED_SCANS.add(latestFile);
+
+  logger.info(`✨ [SCAN DETECTED]: Found fresh scanned file ${latestFile} (${Math.round(ageSeconds)}s old)`);
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      detected: true,
+      fileName: latestFile,
+      fileSize: fs.statSync(path.join(scansDir, latestFile)).size
+    }, 'Fresh scanned file detected successfully!')
+  );
+});
+
+/**
+ * @desc    Save detected scan with official document name
+ * @route   POST /api/v1/applications/save-scan
+ */
+export const saveScan = asyncHandler(async (req, res) => {
+  const { tempFileName, targetFileName } = req.body;
+
+  if (!tempFileName || !targetFileName) {
+    throw new ApiError(400, "tempFileName and targetFileName are required");
+  }
+
+  const scansDir = path.resolve(__dirname, '../../temp/scans');
+  const tempPath = path.join(scansDir, tempFileName);
+  const targetPath = path.join(scansDir, targetFileName);
+
+  if (!fs.existsSync(tempPath)) {
+    throw new ApiError(404, `Temporary scan file ${tempFileName} not found`);
+  }
+
+  fs.copyFileSync(tempPath, targetPath);
+  logger.info(`💾 [SCAN SAVED]: Copied ${tempFileName} to official scan: ${targetFileName}`);
+
+  return res.status(200).json(
+    new ApiResponse(200, { targetFileName }, "Scan saved successfully with target filename")
+  );
+});
+
+/**
+ * @desc    Trigger physical WIA scanner, convert output and save with target name
+ * @route   POST /api/v1/applications/trigger-physical-scan
+ */
+export const triggerPhysicalScan = asyncHandler(async (req, res) => {
+  const { targetFileName } = req.body;
+
+  if (!targetFileName) {
+    throw new ApiError(400, "targetFileName is required");
+  }
+
+  const scansDir = path.resolve(__dirname, '../../temp/scans');
+  if (!fs.existsSync(scansDir)) {
+    fs.mkdirSync(scansDir, { recursive: true });
+  }
+
+  // Define paths
+  const tempBmpName = `temp_scan_${Date.now()}.bmp`;
+  const tempBmpPath = path.join(scansDir, tempBmpName);
+  const tempJpgName = `temp_scan_${Date.now()}.jpg`;
+  const tempJpgPath = path.join(scansDir, tempJpgName);
+  const targetPath = path.join(scansDir, targetFileName);
+
+  // Remove existing files if present
+  if (fs.existsSync(tempBmpPath)) {
+    fs.unlinkSync(tempBmpPath);
+  }
+  if (fs.existsSync(tempJpgPath)) {
+    fs.unlinkSync(tempJpgPath);
+  }
+  if (fs.existsSync(targetPath)) {
+    fs.unlinkSync(targetPath);
+  }
+
+  logger.info(`🔌 [PHYSICAL SCAN]: Triggering scanner WIA interface for ${targetFileName}...`);
+
+  // Write temporary PowerShell script to disk to avoid quotes/shell nesting syntax errors
+  const scriptPath = path.join(scansDir, `trigger_scan_${Date.now()}.ps1`);
+  const escapedTempBmpPath = tempBmpPath.replace(/\\/g, '\\\\');
+  const escapedTempJpgPath = tempJpgPath.replace(/\\/g, '\\\\');
+
+  const psScriptContent = `
+$deviceManager = New-Object -ComObject WIA.DeviceManager
+$deviceInfo = $deviceManager.DeviceInfos | Where-Object { $_.Type -eq 1 } | Select-Object -First 1
+if (-not $deviceInfo) {
+    Write-Error "No physical scanner detected."
+    exit 1
+}
+try {
+    $device = $deviceInfo.Connect()
+    $item = $device.Items.Item(1)
+    
+    # 1. Scan natively to BMP (WIA default format)
+    $image = $item.Transfer("{B96B3CAB-0728-11D3-9D7B-0000F81EF32E}")
+    $image.SaveFile("${escapedTempBmpPath}")
+    
+    # 2. Convert BMP to true JPEG via .NET Drawing framework
+    Add-Type -AssemblyName System.Drawing
+    $bitmap = [System.Drawing.Image]::FromFile("${escapedTempBmpPath}")
+    $bitmap.Save("${escapedTempJpgPath}", [System.Drawing.Imaging.ImageFormat]::Jpeg)
+    $bitmap.Dispose()
+    
+    # 3. Clean up raw BMP
+    Remove-Item "${escapedTempBmpPath}" -Force
+    Write-Output "SUCCESS"
+} catch {
+    Write-Error $_.Exception.Message
+    exit 1
+}
+`;
+
+  fs.writeFileSync(scriptPath, psScriptContent, 'utf8');
+
+  const { exec } = await import('child_process');
+  const util = await import('util');
+  const execPromise = util.promisify(exec);
+
+  try {
+    const { stdout, stderr } = await execPromise(`powershell -ExecutionPolicy Bypass -File "${scriptPath}"`);
+    
+    // Clean up temporary script
+    if (fs.existsSync(scriptPath)) {
+      fs.unlinkSync(scriptPath);
+    }
+    // Clean up BMP if somehow left behind
+    if (fs.existsSync(tempBmpPath)) {
+      fs.unlinkSync(tempBmpPath);
+    }
+
+    if (!fs.existsSync(tempJpgPath)) {
+      throw new ApiError(500, `Scan failed: Scanner did not save image. Stderr: ${stderr}`);
+    }
+
+    const targetExt = path.extname(targetFileName).toLowerCase();
+    
+    if (targetExt === '.pdf') {
+      logger.info(`📄 [PHYSICAL SCAN]: Converting scanned JPEG to PDF...`);
+      const { PDFDocument } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.create();
+      const imgBytes = fs.readFileSync(tempJpgPath);
+      const image = await pdfDoc.embedJpg(imgBytes);
+      const page = pdfDoc.addPage([image.width, image.height]);
+      page.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: image.width,
+        height: image.height
+      });
+      const pdfBytes = await pdfDoc.save();
+      fs.writeFileSync(targetPath, pdfBytes);
+      
+      // Clean up temp JPEG
+      fs.unlinkSync(tempJpgPath);
+    } else {
+      // Just rename/copy to target if it is not PDF
+      fs.renameSync(tempJpgPath, targetPath);
+    }
+
+    logger.info(`✨ [PHYSICAL SCAN]: Successfully scanned and saved ${targetFileName}`);
+    
+    return res.status(200).json(
+      new ApiResponse(200, { targetFileName }, "Document scanned and saved successfully!")
+    );
+  } catch (err) {
+    if (fs.existsSync(scriptPath)) {
+      fs.unlinkSync(scriptPath);
+    }
+    if (fs.existsSync(tempBmpPath)) {
+      fs.unlinkSync(tempBmpPath);
+    }
+    if (fs.existsSync(tempJpgPath)) {
+      fs.unlinkSync(tempJpgPath);
+    }
+    logger.error(`❌ [PHYSICAL SCAN ERROR]: ${err.message}`);
+    // Check if it's the busy error
+    let friendlyMessage = "Failed to trigger physical scanner. Ensure the scanner is powered on and connected.";
+    if (err.message && (err.message.includes("0x80210015") || err.message.includes("busy"))) {
+      friendlyMessage = "The scanner is busy. Please close any other scan software (like Epson Scan 2) and try again.";
+    }
+    throw new ApiError(500, friendlyMessage, [err.message]);
+  }
+});
+
+/**
+ * @desc    Upload a base64 scanned file directly (e.g. captured camera photo)
+ * @route   POST /api/v1/applications/upload-scan
+ */
+export const uploadScanFile = asyncHandler(async (req, res) => {
+  const { fileName, base64Data } = req.body;
+
+  if (!fileName || !base64Data) {
+    throw new ApiError(400, "fileName and base64Data are required");
+  }
+
+  const scansDir = path.resolve(__dirname, '../../temp/scans');
+  if (!fs.existsSync(scansDir)) {
+    fs.mkdirSync(scansDir, { recursive: true });
+  }
+
+  const filePath = path.join(scansDir, fileName);
+  const buffer = Buffer.from(base64Data, 'base64');
+  fs.writeFileSync(filePath, buffer);
+
+  logger.info(`📤 [SCAN UPLOADED]: Saved base64 scan file to: ${fileName}`);
+
+  return res.status(200).json(
+    new ApiResponse(200, { fileName }, "Scan file uploaded successfully")
   );
 });
 

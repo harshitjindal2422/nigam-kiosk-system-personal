@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdminStore } from '../../store/adminStore.js';
 import { useKioskStore } from '../../store/kioskStore.js';
+import axiosInstance from '../../api/axiosInstance.js';
 import { 
   Camera, Check, FileText, CreditCard, Printer, Search, 
   Users, AlertCircle, ArrowRight, ShieldCheck, 
@@ -27,9 +28,41 @@ export default function MarriageOperations() {
   
   // Camera state
   const [cameraActive, setCameraActive] = useState(false);
+  const [scanCameraActive, setScanCameraActive] = useState(false);
   const [selfieSrc, setSelfieSrc] = useState(null); // Used for combined photo
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const scanPollIntervalRef = useRef(null);
+
+  useEffect(() => {
+    let activeStream = null;
+    const initCam = async () => {
+      if (cameraActive) {
+        try {
+          activeStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+          if (videoRef.current) {
+            videoRef.current.srcObject = activeStream;
+          }
+        } catch (err) {
+          console.warn("No webcam connected, activating camera simulator fallback.", err);
+        }
+      }
+    };
+    initCam();
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraActive]);
+
+  useEffect(() => {
+    return () => {
+      if (scanPollIntervalRef.current) {
+        clearInterval(scanPollIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Form Details
   const [formData, setFormData] = useState({
@@ -164,21 +197,13 @@ export default function MarriageOperations() {
       });
   };
 
-  // Camera Handlers
-  const startCamera = async () => {
-    setCameraActive(true);
+  const startCamera = () => {
     setSelfieSrc(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.warn("No webcam connected, activating camera simulator fallback.", err);
-    }
+    setCameraActive(true);
   };
 
-  const captureCamera = () => {
+  const captureCamera = async () => {
+    let dataUrl = "";
     if (videoRef.current && videoRef.current.srcObject) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -187,9 +212,7 @@ export default function MarriageOperations() {
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const dataUrl = canvas.toDataURL('image/png');
-        setSelfieSrc(dataUrl);
+        dataUrl = canvas.toDataURL('image/jpeg');
         
         // Stop stream
         const stream = video.srcObject;
@@ -199,10 +222,46 @@ export default function MarriageOperations() {
         setCameraActive(false);
       }
     } else {
-      // Fallback placeholder photo (couple portrait style mock)
-      const randomPhoto = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&q=80&w=400";
-      setSelfieSrc(randomPhoto);
+      // Create a simulated photo on canvas
+      const canvas = canvasRef.current || document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+      // Create a gradient background
+      const grad = ctx.createLinearGradient(0, 0, 640, 480);
+      grad.addColorStop(0, '#4f46e5');
+      grad.addColorStop(1, '#06b6d4');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 480);
+      
+      // Draw simulated frame and text
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(20, 20, 600, 440);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MUNICIPAL KIOSK CAMERA FEED', 320, 200);
+      ctx.font = '22px sans-serif';
+      ctx.fillText('Captured Joint Photo of Groom & Bride', 320, 250);
+      ctx.fillText('Simulation Successful', 320, 290);
+      
+      dataUrl = canvas.toDataURL('image/jpeg');
       setCameraActive(false);
+    }
+    
+    if (dataUrl) {
+      setSelfieSrc(dataUrl);
+      try {
+        const base64Data = dataUrl.split(',')[1];
+        await axiosInstance.post('/applications/upload-scan', {
+          fileName: "Captured_Combined_Photo.jpg",
+          base64Data
+        });
+      } catch (err) {
+        console.error("Failed to upload captured camera photo to scans directory:", err);
+      }
     }
   };
 
@@ -238,15 +297,115 @@ export default function MarriageOperations() {
     return { items, total };
   };
 
-  const triggerScanFile = (docName) => {
+  const getOfficialDocFileName = (docName) => {
+    let englishName = docName.split('(')[0].trim();
+    let cleanName = englishName
+      .replace(/[^a-zA-Z0-9]/g, ' ')
+      .trim()
+      .replace(/\s+/g, '_');
+    return `${cleanName}.pdf`;
+  };
+
+  const triggerScanFile = async (docName) => {
+    if (scanPollIntervalRef.current) {
+      clearInterval(scanPollIntervalRef.current);
+      scanPollIntervalRef.current = null;
+    }
+    
     setScanning(docName);
-    setTimeout(() => {
+    const targetFileName = getOfficialDocFileName(docName);
+    
+    try {
+      // 1. Try to trigger the physical scanner directly
+      const res = await axiosInstance.post('/applications/trigger-physical-scan', {
+        targetFileName
+      });
+      
+      if (res.data && res.data.success) {
+        setScannedFiles(prev => ({
+          ...prev,
+          [docName]: targetFileName
+        }));
+        setScanning(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("Physical scan failed, falling back to folder polling: ", err);
+      const errMsg = err.response?.data?.message || err.message || "Scanner offline";
+      alert(`PHYSICAL SCANNER ERROR:\n${errMsg}\n\nFalling back to folder monitoring mode. Please scan document using Epson Scan 2 and save it to temp/scans, or click "Bypass & Use Demo Mock File".`);
+    }
+    
+    // 2. Fallback to folder-polling loop
+    const startTime = Date.now();
+    const pollTimeout = 60000; // Timeout after 60 seconds
+    
+    const intervalId = setInterval(async () => {
+      if (Date.now() - startTime > pollTimeout) {
+        clearInterval(intervalId);
+        scanPollIntervalRef.current = null;
+        
+        console.warn("Scan polling timed out. Falling back to mock file.");
+        const officialName = getOfficialDocFileName(docName);
+        setScannedFiles(prev => ({
+          ...prev,
+          [docName]: officialName
+        }));
+        setScanning(false);
+        return;
+      }
+      
+      try {
+        const res = await axiosInstance.get('/applications/detect-scan');
+        const data = res.data;
+        if (data && data.detected) {
+          clearInterval(intervalId);
+          scanPollIntervalRef.current = null;
+          
+          const tempFileName = data.fileName;
+          const targetFileName = getOfficialDocFileName(docName);
+          
+          await axiosInstance.post('/applications/save-scan', {
+            tempFileName,
+            targetFileName
+          });
+          
+          setScannedFiles(prev => ({
+            ...prev,
+            [docName]: targetFileName
+          }));
+          setScanning(false);
+        }
+      } catch (err) {
+        console.error("Failed to poll detect-scan endpoint: ", err);
+      }
+    }, 2000);
+    
+    scanPollIntervalRef.current = intervalId;
+  };
+
+  const handleChecklistScanClick = (doc) => {
+    if (doc === "Joint photograph of Bride & Groom (वर-वधू का संयुक्त चित्र)") {
+      setScanCameraActive(true);
+      startCamera();
+    } else {
+      triggerScanFile(doc);
+    }
+  };
+
+  const handleBypassScan = () => {
+    if (scanPollIntervalRef.current) {
+      clearInterval(scanPollIntervalRef.current);
+      scanPollIntervalRef.current = null;
+    }
+    if (scanning) {
+      const docName = scanning;
+      const officialName = getOfficialDocFileName(docName);
       setScannedFiles(prev => ({
         ...prev,
-        [docName]: `Scanned_Doc_${Date.now().toString().slice(-4)}.pdf`
+        [docName]: officialName
       }));
       setScanning(false);
-    }, 2000);
+    }
   };
 
   // Submission handler
@@ -351,6 +510,95 @@ export default function MarriageOperations() {
 
   const requiredDocuments = getRequiredDocumentsList();
   const feeInfo = calculateWizardFee();
+
+  const renderPrintVoucher = (copyTitle) => {
+    if (!enrollmentResult) return null;
+    return (
+      <div className="w-full p-10 flex flex-col justify-between" style={{ minHeight: '297mm', boxSizing: 'border-box' }}>
+        <div>
+          <div className="flex items-center justify-between border-b-4 border-black pb-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 border border-black flex items-center justify-center font-bold text-2xl">NN</div>
+              <div>
+                <h2 className="text-2xl font-bold uppercase m-0 leading-none">nagar nigam jaipur (greater)</h2>
+                <span className="text-xs uppercase font-bold tracking-wider text-slate-500 mt-1 block">marriage registry center</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-sm uppercase block font-bold">{copyTitle}</span>
+              <span className="text-xs uppercase block font-medium mt-1">enrollment voucher</span>
+              <span className="text-lg font-bold font-mono block mt-1">{enrollmentResult.enrollmentId}</span>
+            </div>
+          </div>
+
+          <h3 className="text-center font-bold uppercase text-lg border-b pb-2 mb-6">Marriage Registration Enrollment Acknowledgement</h3>
+
+          <div className="grid grid-cols-2 gap-6 text-sm mb-6 pb-6 border-b">
+            <div>
+              <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
+              <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
+              <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleString('en-IN')}</p>
+              <p className="my-1.5"><strong>Department Block:</strong> MARRIAGE</p>
+              <p className="my-1.5"><strong>Application Type:</strong> NEW REGISTRATION</p>
+            </div>
+            <div>
+              <p className="my-1.5"><strong>Groom's Name:</strong> {marriageData.groomName.toUpperCase()}</p>
+              <p className="my-1.5"><strong>Bride's Name:</strong> {marriageData.brideName.toUpperCase()}</p>
+              <p className="my-1.5"><strong>Date of Marriage:</strong> {marriageData.dom}</p>
+              <p className="my-1.5"><strong>Place of Solemnization:</strong> {marriageData.placeOfMarriage.toUpperCase()}</p>
+              <p className="my-1.5"><strong>Applicant Contact:</strong> {formData.mobileNumber || enrollmentResult.commonDetails.mobileNumber}</p>
+            </div>
+          </div>
+
+          {/* Fee Breakdown */}
+          <div className="mb-6">
+            <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Fee Breakdown (शुल्क विवरण)</h4>
+            <table className="w-full text-sm border-collapse border border-slate-300">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th className="border border-slate-300 p-2 text-left">Particular Description</th>
+                  <th className="border border-slate-300 p-2 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrollmentResult.feeItems && enrollmentResult.feeItems.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="border border-slate-300 p-2 font-bold">{item.label}</td>
+                    <td className="border border-slate-300 p-2 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 font-extrabold">
+                  <td className="border border-slate-300 p-2 text-right uppercase">Total Paid Fee:</td>
+                  <td className="border border-slate-300 p-2 text-right font-mono" style={{ color: '#059669' }}>
+                    ₹{enrollmentResult.paymentDetails.amount?.toFixed(2)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          {enrollmentResult.paymentDetails.method === 'CASH' ? (
+            <div className="mt-12 flex justify-between text-xs font-semibold pt-12 border-t border-dashed">
+              <div className="text-center">
+                <div className="w-32 border-b border-black mb-2 mx-auto" />
+                <span>Husband & Wife Signature</span>
+              </div>
+              <div className="text-center">
+                <div className="w-32 border-b border-black mb-2 mx-auto" />
+                <span>Registrar Signature & Stamp</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-8 text-center text-xs font-semibold pt-4 border-t border-dashed text-slate-500 italic">
+              * This is a digitally generated acknowledgement. No signature or stamp is required.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-5 md:p-8 flex flex-col font-rajdhani text-left min-h-[500px]">
@@ -802,9 +1050,15 @@ export default function MarriageOperations() {
                           <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-md border border-emerald-200 uppercase tracking-wide">
                             Successfully Scanned
                           </span>
-                          <span className="text-xs text-slate-400 font-mono italic max-w-[120px] truncate">
+                          <a
+                            href={`http://localhost:5000/temp/scans/${scannedFiles[doc]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-emerald-600 hover:text-emerald-700 underline font-mono font-bold max-w-[120px] truncate cursor-pointer"
+                            title="Click to view scanned document"
+                          >
                             {scannedFiles[doc]}
-                          </span>
+                          </a>
                         </>
                       ) : (
                         <span className="px-3 py-1 bg-amber-50 text-amber-700 text-xs font-extrabold rounded-md border border-amber-200 uppercase tracking-wide">
@@ -813,7 +1067,7 @@ export default function MarriageOperations() {
                       )}
 
                       <button
-                        onClick={() => triggerScanFile(doc)}
+                        onClick={() => handleChecklistScanClick(doc)}
                         disabled={scanning !== false}
                         className={`px-4.5 py-2 text-xs font-bold rounded-lg cursor-pointer active:scale-95 transition-transform flex items-center gap-1.5 ${
                           isUploaded 
@@ -835,6 +1089,26 @@ export default function MarriageOperations() {
                 );
               })}
             </div>
+
+            {scanning && (
+              <div className="border border-purple-200 rounded-xl p-4 bg-purple-50/50 flex flex-col md:flex-row items-center justify-between gap-4 mt-2">
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="w-5 h-5 text-purple-600 animate-spin" />
+                  <div className="text-left font-semibold text-sm font-rajdhani">
+                    <span className="text-navy font-bold block">Scanning: {scanning}</span>
+                    <span className="text-xs text-slate-500 leading-normal">
+                      Waiting for physical scanner... Place document on the flatbed scanner and execute scan in Epson Scan 2 (saving output to temp/scans).
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleBypassScan}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg active:scale-95 transition-transform cursor-pointer border shadow-sm shrink-0 font-rajdhani"
+                >
+                  Bypass & Use Demo Mock File
+                </button>
+              </div>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-4 justify-end mt-4 border-t pt-4">
@@ -1139,86 +1413,86 @@ export default function MarriageOperations() {
 
           {/* 🖨️ A4 MARRIAGE ENROLLMENT PRINT SLIP BODY (HIDDEN BY DEFAULT, RENDERED IN PRINT MEDIA ONLY) */}
           {enrollmentResult && createPortal(
-            <div className="hidden print:block w-full p-10 text-black font-sans leading-relaxed text-left" style={{ fontFamily: 'sans-serif' }}>
-              <div className="flex items-center justify-between border-b-4 border-black pb-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 border border-black flex items-center justify-center font-bold text-2xl">NN</div>
-                  <div>
-                    <h2 className="text-2xl font-bold uppercase m-0 leading-none">nagar nigam jaipur (greater)</h2>
-                    <span className="text-xs uppercase font-bold tracking-wider text-slate-500 mt-1 block">marriage registry center</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm uppercase block font-bold">enrollment voucher</span>
-                  <span className="text-lg font-bold font-mono block mt-1">{enrollmentResult.enrollmentId}</span>
-                </div>
-              </div>
-
-              <h3 className="text-center font-bold uppercase text-lg border-b pb-2 mb-6">Marriage Registration Enrollment Acknowledgement</h3>
-
-              <div className="grid grid-cols-2 gap-6 text-sm mb-6 pb-6 border-b">
-                <div>
-                  <p className="my-1.5"><strong>Enrollment Number:</strong> {enrollmentResult.enrollmentId}</p>
-                  <p className="my-1.5"><strong>Counter Token Number:</strong> {enrollmentResult.tokenNumber}</p>
-                  <p className="my-1.5"><strong>Issued Date:</strong> {new Date(enrollmentResult.submittedAt || Date.now()).toLocaleString('en-IN')}</p>
-                  <p className="my-1.5"><strong>Department Block:</strong> MARRIAGE</p>
-                  <p className="my-1.5"><strong>Application Type:</strong> NEW REGISTRATION</p>
-                </div>
-                <div>
-                  <p className="my-1.5"><strong>Groom's Name:</strong> {marriageData.groomName.toUpperCase()}</p>
-                  <p className="my-1.5"><strong>Bride's Name:</strong> {marriageData.brideName.toUpperCase()}</p>
-                  <p className="my-1.5"><strong>Date of Marriage:</strong> {marriageData.dom}</p>
-                  <p className="my-1.5"><strong>Place of Solemnization:</strong> {marriageData.placeOfMarriage.toUpperCase()}</p>
-                  <p className="my-1.5"><strong>Applicant Contact:</strong> {formData.mobileNumber || enrollmentResult.commonDetails.mobileNumber}</p>
-                </div>
-              </div>
-
-              {/* Fee Breakdown */}
-              <div className="mb-6">
-                <h4 className="font-bold uppercase text-sm border-b pb-1.5 mb-3 font-sans">Fee Breakdown (शुल्क विवरण)</h4>
-                <table className="w-full text-sm border-collapse border border-slate-300">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-slate-300 p-2 text-left">Particular Description</th>
-                      <th className="border border-slate-300 p-2 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enrollmentResult.feeItems && enrollmentResult.feeItems.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="border border-slate-300 p-2 font-bold">{item.label}</td>
-                        <td className="border border-slate-300 p-2 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-slate-50 font-extrabold">
-                      <td className="border border-slate-300 p-2 text-right uppercase">Total Paid Fee:</td>
-                      <td className="border border-slate-300 p-2 text-right font-mono" style={{ color: '#059669' }}>
-                        ₹{enrollmentResult.paymentDetails.amount?.toFixed(2)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {enrollmentResult.paymentDetails.method === 'CASH' ? (
-                <div className="mt-12 flex justify-between text-xs font-semibold pt-12 border-t border-dashed">
-                  <div className="text-center">
-                    <div className="w-32 border-b border-black mb-2 mx-auto" />
-                    <span>Husband & Wife Signature</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-32 border-b border-black mb-2 mx-auto" />
-                    <span>Registrar Signature & Stamp</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-8 text-center text-xs font-semibold pt-4 border-t border-dashed text-slate-500 italic">
-                  * This is a digitally generated acknowledgement. No signature or stamp is required.
-                </div>
-              )}
+            <div className="hidden print:block w-full text-black font-sans leading-relaxed text-left" style={{ fontFamily: 'sans-serif' }}>
+              {renderPrintVoucher('Applicant Copy / आवेदक प्रति')}
+              <div style={{ pageBreakAfter: 'always' }} />
+              {renderPrintVoucher('Office Copy / कार्यालय प्रति')}
             </div>,
             document.body
           )}
+        </div>
+      )}
+
+      {scanCameraActive && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 max-w-md w-full flex flex-col items-center gap-5 text-center font-rajdhani">
+            <div className="w-full border-b pb-3 flex justify-between items-center">
+              <h4 className="text-navy font-bold text-lg uppercase m-0">Recapture Couple Photo</h4>
+              <button 
+                onClick={() => {
+                  setCameraActive(false);
+                  setScanCameraActive(false);
+                }} 
+                className="text-slate-400 hover:text-navy font-extrabold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="w-80 h-60 bg-slate-950 border-2 border-slate-800 rounded-2xl relative flex items-center justify-center overflow-hidden shadow-inner">
+              {cameraActive ? (
+                <video ref={videoRef} autoPlay className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center text-slate-600 gap-2">
+                  <Camera className="w-12 h-12 animate-pulse" />
+                  <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Camera Offline</span>
+                </div>
+              )}
+              
+              {cameraActive && (
+                <div className="absolute inset-0 border-2 border-purple-400 rounded-2xl pointer-events-none flex flex-col justify-between p-3.5">
+                  <div className="flex justify-between">
+                    <span className="w-4 h-4 border-t-2 border-l-2 border-purple-400" />
+                    <span className="w-4 h-4 border-t-2 border-r-2 border-purple-400" />
+                  </div>
+                  <div className="w-full text-center text-[10px] text-purple-400 font-extrabold uppercase tracking-widest bg-slate-950/60 py-0.5 animate-pulse rounded-md">
+                    ALIGN GROOM & BRIDE
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="w-4 h-4 border-b-2 border-l-2 border-purple-400" />
+                    <span className="w-4 h-4 border-b-2 border-r-2 border-purple-400" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={async () => {
+                  await captureCamera();
+                  setScanCameraActive(false);
+                  // Mark doc as uploaded on screen
+                  setScannedFiles(prev => ({
+                    ...prev,
+                    "Joint photograph of Bride & Groom (वर-वधू का संयुक्त चित्र)": "Captured_Combined_Photo.jpg"
+                  }));
+                }}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                <Check className="w-4 h-4" />
+                <span>Capture Photo</span>
+              </button>
+              <button
+                onClick={() => {
+                  setCameraActive(false);
+                  setScanCameraActive(false);
+                }}
+                className="px-5 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl active:scale-95 transition-transform"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -66,6 +66,7 @@ app.use(
 // ==========================================
 // Serve sandbox downloaded files (static sandboxed files)
 app.use('/temp/downloads', express.static('temp/downloads'));
+app.use('/temp/scans', express.static('temp/scans'));
 
 // ==========================================
 // 🗺️ Routing System

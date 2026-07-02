@@ -1,0 +1,20 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         29/6/2026, 12:17:58 pm
+TOKEN NO:     TKN-BIR-PRI-2906-004
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-535857
+APPLICANT:    LALIT
+MOBILE:       5656856563
+CERT TYPE:    BIRTH
+COPIES:       1
+AMOUNT:       ₹50.00
+TXN ID:       TXN-OFFLINE-1782715678760-1308
+-----------------------------------------
+PAYMENT:      OFFLINE (PENDING)
+FEE STATUS:   PENDING
+=========================================
+Please take this token receipt to the Printing Counter to collect your certificate.
+Thank you for using civic services!

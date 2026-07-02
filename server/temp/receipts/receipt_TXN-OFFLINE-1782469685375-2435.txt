@@ -1,0 +1,20 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         26/6/2026, 3:58:05 pm
+TOKEN NO:     TKN-DEA-PRI-2606-001
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-207163
+APPLICANT:    LALIT
+MOBILE:       9685320147
+CERT TYPE:    DEATH
+COPIES:       2
+AMOUNT:       ₹100.00
+TXN ID:       TXN-OFFLINE-1782469685375-2435
+-----------------------------------------
+PAYMENT:      OFFLINE (PENDING)
+FEE STATUS:   PENDING
+=========================================
+Please take this token receipt to the Printing Counter to collect your certificate.
+Thank you for using civic services!

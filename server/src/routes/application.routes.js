@@ -11,7 +11,11 @@ import {
   translateText,
   uploadCertificate,
   updateApplicationDocuments,
-  updateApplicationDetails
+  updateApplicationDetails,
+  detectScan,
+  saveScan,
+  triggerPhysicalScan,
+  uploadScanFile
 } from '../controllers/application.controller.js';
 
 const router = Router();
@@ -24,6 +28,10 @@ router.get('/active-tokens', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERAT
 router.get('/search', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN'), searchApplication);
 router.post('/submit', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN'), submitApplication);
 router.post('/translate', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN'), translateText);
+router.get('/detect-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), detectScan);
+router.post('/save-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), saveScan);
+router.post('/trigger-physical-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), triggerPhysicalScan);
+router.post('/upload-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), uploadScanFile);
 
 // Checker Operator routes
 router.get('/checker-queue', authorizeRoles('CHECKER_OPERATOR', 'SUPER_ADMIN'), getCheckerQueue);

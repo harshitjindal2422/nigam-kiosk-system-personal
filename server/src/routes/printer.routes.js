@@ -3,7 +3,8 @@ import { verifyJWT, authorizeRoles } from '../middlewares/auth.middleware.js';
 import {
   getPrinterTokens,
   collectCashFee,
-  executePrinterPrint
+  executePrinterPrint,
+  getPrinterTokenPdf
 } from '../controllers/printer.controller.js';
 
 const router = Router();
@@ -15,5 +16,6 @@ router.use(verifyJWT);
 router.get('/tokens', authorizeRoles('PRINTER_OPERATOR', 'SUPER_ADMIN'), getPrinterTokens);
 router.post('/tokens/:tokenNumber/collect-cash', authorizeRoles('PRINTER_OPERATOR', 'SUPER_ADMIN'), collectCashFee);
 router.post('/tokens/:tokenNumber/print', authorizeRoles('PRINTER_OPERATOR', 'SUPER_ADMIN'), executePrinterPrint);
+router.get('/tokens/:tokenNumber/pdf', authorizeRoles('PRINTER_OPERATOR', 'SUPER_ADMIN'), getPrinterTokenPdf);
 
 export default router;

@@ -5,8 +5,8 @@ import { prisma } from '../config/db.js';
 
 export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
-    // 1. Retrieve token from secure HTTP-only cookie or Auth Header
-    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token;
+    // 1. Retrieve token from secure HTTP-only cookie, Auth Header, or query parameter
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token || req.query?.token;
 
     if (!token) {
       throw new ApiError(401, 'Unauthorized access: Token not found');
