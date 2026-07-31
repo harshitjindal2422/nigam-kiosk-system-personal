@@ -20,7 +20,13 @@ import {
 
 const router = Router();
 
-// Protect all routes
+// Scanner Hardware Integration routes (Bypass JWT for local agent hardware execution)
+router.get('/detect-scan', detectScan);
+router.post('/save-scan', saveScan);
+router.post('/trigger-physical-scan', triggerPhysicalScan);
+router.post('/upload-scan', uploadScanFile);
+
+// Protect all remaining routes
 router.use(verifyJWT);
 
 // Counter Operator routes
@@ -28,10 +34,6 @@ router.get('/active-tokens', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERAT
 router.get('/search', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN'), searchApplication);
 router.post('/submit', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN'), submitApplication);
 router.post('/translate', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN'), translateText);
-router.get('/detect-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), detectScan);
-router.post('/save-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), saveScan);
-router.post('/trigger-physical-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), triggerPhysicalScan);
-router.post('/upload-scan', authorizeRoles('COUNTER_OPERATOR', 'MARRIAGE_OPERATOR', 'SUPER_ADMIN', 'ADMIN', 'APPROVAL_OPERATOR'), uploadScanFile);
 
 // Checker Operator routes
 router.get('/checker-queue', authorizeRoles('CHECKER_OPERATOR', 'SUPER_ADMIN'), getCheckerQueue);
