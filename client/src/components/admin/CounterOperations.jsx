@@ -8,6 +8,7 @@ import {
   Users, Smartphone, AlertCircle, ArrowRight, ShieldCheck, 
   RotateCcw, Sparkles, RefreshCw, Eye
 } from 'lucide-react';
+import { getFileUrl } from '../../utils/urlHelper.js';
 
 export default function CounterOperations() {
   const { 
@@ -2134,23 +2135,23 @@ export default function CounterOperations() {
                           : 'bg-white border-slate-200 text-slate-700'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
                           scannedFiles[doc] ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'
                         }`}>
                           {scannedFiles[doc] ? <Check className="w-4 h-4" /> : idx + 1}
                         </div>
-                        <span className="font-semibold text-[0.95rem]">{doc}</span>
+                        <span className="font-semibold text-[0.95rem] truncate" title={doc}>{doc}</span>
                       </div>
                       
                       {scannedFiles[doc] ? (
                         <a
-                          href={`http://localhost:5000/temp/scans/${scannedFiles[doc]}`}
+                          href={getFileUrl(scannedFiles[doc], 'scans')}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-mono text-xs text-emerald-600 hover:text-emerald-750 underline font-bold bg-white px-2 py-1 rounded border border-emerald-200/50 cursor-pointer"
+                          className="font-mono text-xs text-emerald-600 hover:text-emerald-750 underline font-bold bg-white px-2 py-1 rounded border border-emerald-200/50 cursor-pointer flex-shrink-0 max-w-[150px] truncate"
                         >
-                          {scannedFiles[doc]}
+                          View Document
                         </a>
                       ) : (
                         <button
@@ -2199,23 +2200,23 @@ export default function CounterOperations() {
                         key={doc}
                         className="flex items-center justify-between p-3.5 bg-slate-50/50 border border-emerald-300 bg-emerald-50 text-emerald-800 rounded-xl shadow-inner text-sm mt-3"
                       >
-                        <div className="flex items-center gap-3 text-left">
+                        <div className="flex items-center gap-3 text-left min-w-0 flex-1 mr-4">
                           <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                             <Check className="w-4 h-4" />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-[0.95rem] text-emerald-900">{doc}</span>
-                            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Additional Document / अतिरिक्त दस्तावेज</span>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="font-semibold text-[0.95rem] text-emerald-900 truncate" title={doc}>{doc}</span>
+                            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider truncate">Additional Document / अतिरिक्त दस्तावेज</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <a
-                            href={`http://localhost:5000/temp/scans/${scannedFiles[doc]}`}
+                            href={getFileUrl(scannedFiles[doc], 'scans')}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-mono text-xs text-emerald-600 hover:text-emerald-700 underline font-bold bg-white px-2 py-1 rounded border border-emerald-250/50 cursor-pointer"
+                            className="font-mono text-xs text-emerald-600 hover:text-emerald-700 underline font-bold bg-white px-2 py-1 rounded border border-emerald-250/50 cursor-pointer flex-shrink-0 max-w-[150px] truncate"
                           >
-                            {scannedFiles[doc]}
+                            View Document
                           </a>
                           <button
                             onClick={() => setScannedFiles(prev => {

@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance.js';
 import { LogOut, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, KeyRound, ArrowRight, HelpCircle, RefreshCw } from 'lucide-react';
+import { getFileUrl } from '../utils/urlHelper.js';
 
 export default function ApprovalDashboard() {
   const { user, logout } = useAuthStore();
@@ -180,7 +181,7 @@ export default function ApprovalDashboard() {
         });
         
         setUploadedFileName(file.name);
-        setUploadedFileUrl(`http://localhost:5000/temp/downloads/${file.name}`);
+        setUploadedFileUrl(getFileUrl(file.name, 'downloads'));
       } catch (err) {
         setUploadError(err.response?.data?.message || err.message || 'Failed to upload certificate to server');
         setUploadedFileName('');
@@ -736,13 +737,13 @@ export default function ApprovalDashboard() {
                         key={idx}
                         className="flex items-center justify-between p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
                       >
-                        <div className="flex items-center gap-2.5 font-semibold text-navy text-sm">
-                          <FileText className="w-4 h-4 text-slate-400" />
-                          <span>{doc}</span>
+                        <div className="flex items-center gap-2.5 font-semibold text-navy text-sm min-w-0 flex-1 mr-4">
+                          <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span className="truncate" title={doc}>{doc}</span>
                         </div>
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-2 items-center flex-shrink-0">
                           <a
-                            href={`http://localhost:5000/temp/scans/${doc}`}
+                            href={getFileUrl(doc, 'scans')}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm text-center"

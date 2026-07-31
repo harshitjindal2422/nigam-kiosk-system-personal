@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance.js';
 import { LogOut, Search, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, HelpCircle, RefreshCw } from 'lucide-react';
+import { getFileUrl } from '../utils/urlHelper.js';
 
 export default function CheckerDashboard() {
   const { user, logout } = useAuthStore();
@@ -590,7 +591,7 @@ export default function CheckerDashboard() {
                               {scanningDocIdx === idx ? 'Scanning...' : 'Rescan / Upload'}
                             </button>
                             <a
-                              href={`http://localhost:5000/temp/scans/${doc}`}
+                              href={getFileUrl(doc, 'scans')}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"
@@ -611,7 +612,7 @@ export default function CheckerDashboard() {
                             <span className="truncate" title={doc}>{doc}</span>
                           </div>
                           <a
-                            href={`http://localhost:5000/temp/scans/${doc}`}
+                            href={getFileUrl(doc, 'scans')}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3.5 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-transform active:scale-95 cursor-pointer shadow-sm"

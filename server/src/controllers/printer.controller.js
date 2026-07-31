@@ -134,6 +134,9 @@ export const collectCashFee = asyncHandler(async (req, res) => {
     }
 
     return token;
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 
   // Log fee collection event
@@ -249,6 +252,9 @@ export const executePrinterPrint = asyncHandler(async (req, res) => {
     }
 
     return token;
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 
   // Log certificate print event

@@ -1,24 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useKioskStore } from '../store/kioskStore.js';
 import ServiceCard from '../components/kiosk/ServiceCard.jsx';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import axiosInstance from '../api/axiosInstance.js';
-import { QrCode, RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PrintSelection() {
   const { language, kioskState, setKioskState, speak, voiceAssist } = useKioskStore();
   const [searchParams] = useSearchParams();
   const block = searchParams.get('block') || 'birth';
-  const navigate = useNavigate();
 
-  const [step, setStep] = useState('SELECT'); // SELECT, PAYMENT
-  const [paymentSession, setPaymentSession] = useState(null);
-  const [paymentLoading, setPaymentLoading] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   useEffect(() => {
-    if (step === 'SELECT' && !showDisclaimer && kioskState !== 'PAUSE' && kioskState !== 'HOLD') {
+    if (!showDisclaimer && kioskState !== 'PAUSE' && kioskState !== 'HOLD') {
       if (voiceAssist) {
         speak(language === 'hi' 
           ? 'कृपया प्रमाण-पत्र प्रिंट या पंजीकरण खोज का विकल्प चुनें।' 
@@ -26,50 +21,7 @@ export default function PrintSelection() {
       }
       setKioskState('ACTIVE');
     }
-  }, [language, voiceAssist, speak, setKioskState, step, showDisclaimer, kioskState]);
-
-  // Polling for payment status
-  useEffect(() => {
-    let pollInterval = null;
-
-    if (step === 'PAYMENT' && paymentSession) {
-      pollInterval = setInterval(async () => {
-        try {
-          const res = await axiosInstance.get(`/payment/verify/${paymentSession.transactionId}`);
-          if (res.status === 'SUCCESS' || res.data?.status === 'SUCCESS' || res.status === 200 && res.data?.status === 'SUCCESS') {
-            clearInterval(pollInterval);
-            handlePaymentSuccess();
-          }
-        } catch (err) {
-          console.error("Payment status poll failed:", err);
-        }
-      }, 2500);
-    }
-
-    return () => {
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  }, [step, paymentSession]);
-
-  const handlePaymentSuccess = () => {
-    if (voiceAssist) {
-      speak(language === 'hi'
-        ? 'भुगतान सफल रहा। पहचान पोर्टल खोला जा रहा है।'
-        : 'Payment successful. Opening Pehchan portal.');
-    }
-    
-    // Redirect to Pehchan Portal
-    setKioskState('PAUSE', 'BLOCK_2');
-    localStorage.setItem('kiosk_active_block', block);
-    window.open(
-      'https://pehchan.rajasthan.gov.in/VerifyRegisNum.aspx?PehRed=MmRkYzZkZWY=OGRlYjRmY2NlZWQwOTcwZGJmOGZjMWE=',
-      '_blank'
-    );
-
-    // Return to SELECT step so that if the user returns, the page is clean
-    setStep('SELECT');
-    setPaymentSession(null);
-  };
+  }, [language, voiceAssist, speak, setKioskState, showDisclaimer, kioskState]);
 
   // Trigger disclaimer before print download
   const handlePrintDocumentsClick = () => {
@@ -104,72 +56,29 @@ export default function PrintSelection() {
 
   return (
     <div className="w-full max-w-[1000px] mx-auto flex flex-col items-center justify-center min-h-[400px] relative">
-      {step === 'SELECT' && (
-        <>
-          <h2 className="font-hindi text-4xl text-navy font-bold mb-10 text-center drop-shadow-sm">
-            {language === 'hi' ? 'प्रमाण-पत्र सेवा चुनें' : 'Select Certificate Service'}
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full px-10">
-            {/* Option 1 — Print Documents */}
-            <ServiceCard
-              title={language === 'hi' ? 'दस्तावेज़ प्रिंट करें' : 'Print Documents'}
-              description={language === 'hi' ? 'पहचान पोर्टल से डाउनलोड कर यहाँ प्रिंट करें' : 'Download from Pehchan Portal and Print here'}
-              color="saffron"
-              svgPath="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM12 17l-4-4 1.41-1.41L12 14.17l6.59-6.58L20 9l-8 8z"
-              onClick={handlePrintDocumentsClick}
-            />
+      <h2 className="font-hindi text-4xl text-navy font-bold mb-10 text-center drop-shadow-sm">
+        {language === 'hi' ? 'प्रमाण-पत्र सेवा चुनें' : 'Select Certificate Service'}
+      </h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full px-10">
+        {/* Option 1 — Print Documents */}
+        <ServiceCard
+          title={language === 'hi' ? 'दस्तावेज़ प्रिंट करें' : 'Print Documents'}
+          description={language === 'hi' ? 'पहचान पोर्टल से डाउनलोड कर यहाँ प्रिंट करें' : 'Download from Pehchan Portal and Print here'}
+          color="saffron"
+          svgPath="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM12 17l-4-4 1.41-1.41L12 14.17l6.59-6.58L20 9l-8 8z"
+          onClick={handlePrintDocumentsClick}
+        />
 
-            {/* Option 2 — Search in Pehchan Portal */}
-            <ServiceCard
-              title={language === 'hi' ? 'पहचान पोर्टल में खोजें और प्रिंट करें..' : 'Search in Pehchan Portal and Print..'}
-              description={language === 'hi' ? 'पहचान पोर्टल पर जाकर अपना प्रमाण-पत्र खोजें और डाउनलोड करें' : 'Go to Pehchan Portal to search and download your certificate'}
-              color="purple"
-              svgPath="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-              onClick={handleSearchPortalClick}
-            />
-          </div>
-        </>
-      )}
-
-      {step === 'PAYMENT' && paymentSession && (
-        <div className="w-full max-w-md bg-white border border-slate-200 shadow-xl rounded-3xl p-6 flex flex-col items-center gap-4 text-center font-rajdhani relative">
-          <button 
-            onClick={handleBackToSelect} 
-            className="absolute top-4 left-4 p-2 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer active:scale-95 transition-transform"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-
-          <div className="flex flex-col items-center gap-1 mt-4">
-            <QrCode className="w-14 h-14 text-[#7c3aed]" />
-            <h3 className="font-hindi text-3xl font-bold text-navy m-0">
-              {language === 'hi' ? 'खोज शुल्क का भुगतान करें' : 'Pay Search Fee'}
-            </h3>
-            <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest leading-none mt-1">
-              Pehchan Search Registration Fee
-            </p>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-3xl border-2 border-slate-200/60 flex flex-col items-center gap-3 w-full max-w-[280px]">
-            <div className="w-48 h-48 border-2 border-slate-200 rounded-2xl overflow-hidden p-2 bg-white">
-              <img src={paymentSession.qrCodeUrl} alt="UPI QR Code" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-slate-400 font-bold text-xs uppercase tracking-wider">Amount to Pay</span>
-              <span className="text-3xl font-extrabold text-[#7c3aed]">₹{paymentSession.amount}</span>
-            </div>
-          </div>
-
-          <button 
-            onClick={handleSimulatePayment} 
-            disabled={paymentLoading} 
-            className="w-full py-4 bg-green-custom text-white text-lg font-bold rounded-2xl shadow-md active:scale-95 transition-transform cursor-pointer disabled:opacity-50"
-          >
-            {language === 'hi' ? 'भुगतान सिमुलेट करें' : 'Simulate Payment Success'}
-          </button>
-        </div>
-      )}
+        {/* Option 2 — Search in Pehchan Portal */}
+        <ServiceCard
+          title={language === 'hi' ? 'पहचान पोर्टल में खोजें और प्रिंट करें..' : 'Search in Pehchan Portal and Print..'}
+          description={language === 'hi' ? 'पहचान पोर्टल पर जाकर अपना प्रमाण-पत्र खोजें और डाउनलोड करें' : 'Go to Pehchan Portal to search and download your certificate'}
+          color="purple"
+          svgPath="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+          onClick={handleSearchPortalClick}
+        />
+      </div>
 
       {/* 📜 DISCLAIMER LEGALITY OVERLAY MODAL */}
       <AnimatePresence>

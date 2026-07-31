@@ -1,0 +1,20 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         29/7/2026, 12:53:14 pm
+TOKEN NO:     TKN-BIR-PRI-2907-002
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-764760
+APPLICANT:    HIMANSHU
+MOBILE:       9929856478
+CERT TYPE:    BIRTH
+COPIES:       1
+AMOUNT:       ₹70.00
+TXN ID:       TXN-1785309793313-8892
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+FEE STATUS:   FULFILLED
+=========================================
+Please take this token receipt to the Printing Counter to collect your certificate.
+Thank you for using civic services!

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { getBackendBaseUrl } from '../../utils/urlHelper.js';
 import { Users, Volume2, SkipForward, RotateCcw } from 'lucide-react';
 
 export default function QueueManager() {
@@ -9,7 +10,7 @@ export default function QueueManager() {
 
   useEffect(() => {
     // Initialize socket connection
-    socketRef.current = io('http://localhost:5000', {
+    socketRef.current = io(getBackendBaseUrl(), {
       withCredentials: true,
     });
 

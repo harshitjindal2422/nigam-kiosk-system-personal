@@ -7,18 +7,21 @@ import { generateUniversalToken } from '../utils/tokenGenerator.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isCloudinaryConfigured } from '../config/cloudinary.js';
+import { uploadBase64ToCloudinary, uploadLocalFileToCloudinary } from '../services/cloudinary.service.js';
 
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Helper to generate a unique Enrollment ID
-const generateUniqueEnrollmentId = async () => {
+const generateUniqueEnrollmentId = async (tx) => {
   let isUnique = false;
   let enrollmentId = '';
+  const client = tx || prisma;
   while (!isUnique) {
     enrollmentId = `ENR-${Math.floor(100000 + Math.random() * 900000)}`;
-    const existing = await prisma.application.findUnique({
+    const existing = await client.application.findUnique({
       where: { enrollment_id: enrollmentId }
     });
     if (!existing) {
@@ -175,7 +178,7 @@ export const submitApplication = asyncHandler(async (req, res) => {
       });
     } else {
       // New submission flow: Generate new enrollment ID and create
-      enrollmentId = await generateUniqueEnrollmentId();
+      enrollmentId = await generateUniqueEnrollmentId(tx);
       application = await tx.application.create({
         data: {
           enrollment_id: enrollmentId,
@@ -258,6 +261,9 @@ export const submitApplication = asyncHandler(async (req, res) => {
     }
 
     return { application, enrollmentId };
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 
   // 3. Dispatch simulated SMS
@@ -503,6 +509,9 @@ export const reviewApprovalApplication = asyncHandler(async (req, res) => {
     }
 
     return updated;
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 
   // Dispatch simulated SMS status updates
@@ -712,8 +721,17 @@ export const uploadCertificate = asyncHandler(async (req, res) => {
 
   logger.info(`💾 [CERTIFICATE UPLOAD]: Successfully wrote uploaded certificate to disk: ${filePath}`);
 
+  let returnedPath = filePath;
+  if (isCloudinaryConfigured) {
+    logger.info(`☁️ [CERTIFICATE UPLOAD]: Cloudinary detected, uploading certificate...`);
+    const cloudinaryUrl = await uploadBase64ToCloudinary(base64Data, fileName, 'kiosk_downloads');
+    if (cloudinaryUrl) {
+      returnedPath = cloudinaryUrl;
+    }
+  }
+
   return res.status(200).json(
-    new ApiResponse(200, { filePath }, "Certificate file uploaded and written successfully")
+    new ApiResponse(200, { filePath: returnedPath }, "Certificate file uploaded and written successfully")
   );
 });
 
@@ -807,8 +825,17 @@ export const saveScan = asyncHandler(async (req, res) => {
   fs.copyFileSync(tempPath, targetPath);
   logger.info(`💾 [SCAN SAVED]: Copied ${tempFileName} to official scan: ${targetFileName}`);
 
+  let returnedTargetName = targetFileName;
+  if (isCloudinaryConfigured) {
+    logger.info(`☁️ [SCAN SAVED]: Cloudinary detected, uploading saved scan...`);
+    const cloudinaryUrl = await uploadLocalFileToCloudinary(targetPath, 'kiosk_scans');
+    if (cloudinaryUrl) {
+      returnedTargetName = cloudinaryUrl;
+    }
+  }
+
   return res.status(200).json(
-    new ApiResponse(200, { targetFileName }, "Scan saved successfully with target filename")
+    new ApiResponse(200, { targetFileName: returnedTargetName }, "Scan saved successfully with target filename")
   );
 });
 
@@ -932,8 +959,17 @@ try {
 
     logger.info(`✨ [PHYSICAL SCAN]: Successfully scanned and saved ${targetFileName}`);
     
+    let returnedTargetName = targetFileName;
+    if (isCloudinaryConfigured) {
+      logger.info(`☁️ [PHYSICAL SCAN]: Cloudinary detected, uploading scanned document...`);
+      const cloudinaryUrl = await uploadLocalFileToCloudinary(targetPath, 'kiosk_scans');
+      if (cloudinaryUrl) {
+        returnedTargetName = cloudinaryUrl;
+      }
+    }
+
     return res.status(200).json(
-      new ApiResponse(200, { targetFileName }, "Document scanned and saved successfully!")
+      new ApiResponse(200, { targetFileName: returnedTargetName }, "Document scanned and saved successfully!")
     );
   } catch (err) {
     if (fs.existsSync(scriptPath)) {
@@ -977,8 +1013,17 @@ export const uploadScanFile = asyncHandler(async (req, res) => {
 
   logger.info(`📤 [SCAN UPLOADED]: Saved base64 scan file to: ${fileName}`);
 
+  let returnedName = fileName;
+  if (isCloudinaryConfigured) {
+    logger.info(`☁️ [SCAN UPLOADED]: Cloudinary detected, uploading scan file...`);
+    const cloudinaryUrl = await uploadBase64ToCloudinary(base64Data, fileName, 'kiosk_scans');
+    if (cloudinaryUrl) {
+      returnedName = cloudinaryUrl;
+    }
+  }
+
   return res.status(200).json(
-    new ApiResponse(200, { fileName }, "Scan file uploaded successfully")
+    new ApiResponse(200, { fileName: returnedName }, "Scan file uploaded successfully")
   );
 });
 

@@ -9,8 +9,9 @@ import { getISTDate } from './dateHelper.js';
  * @param {string} serviceType - registration, correction, print (or reg, corr, pri)
  * @returns {Promise<string>} Fully formatted token number
  */
-export const generateUniversalToken = async (block, serviceType) => {
+export const generateUniversalToken = async (block, serviceType, tx) => {
   const blockPrefix = block.substring(0, 3).toUpperCase(); // BIR, DEA, MAR
+  const client = tx || prisma;
   
   let servicePrefix = 'REG';
   const typeUpper = serviceType.toUpperCase();
@@ -38,7 +39,7 @@ export const generateUniversalToken = async (block, serviceType) => {
 
   let count = 0;
   if (servicePrefix === 'PRI') {
-    count = await prisma.printToken.count({
+    count = await client.printToken.count({
       where: {
         created_at: {
           gte: startOfDay,
@@ -48,7 +49,7 @@ export const generateUniversalToken = async (block, serviceType) => {
       }
     });
   } else if (blockPrefix === 'MAR' && servicePrefix === 'REG') {
-    count = await prisma.application.count({
+    count = await client.application.count({
       where: {
         created_at: {
           gte: startOfDay,
@@ -60,7 +61,7 @@ export const generateUniversalToken = async (block, serviceType) => {
       }
     });
   } else {
-    count = await prisma.token.count({
+    count = await client.token.count({
       where: {
         issued_at: {
           gte: startOfDay,

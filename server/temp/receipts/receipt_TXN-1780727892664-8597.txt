@@ -1,0 +1,19 @@
+=========================================
+          NAGAR NIGAM JAIPUR
+        CITIZEN SERVICE CENTER
+=========================================
+DATE:         6/6/2026, 12:08:16 PM
+SERVICE:      CERTIFICATE PRINT
+REG NO:       REG-370856
+APPLICANT:    LAKSHYA
+MOBILE:       9632587410
+CERT TYPE:    BIRTH
+COPIES:       2
+AMOUNT:       ₹40.00
+TXN ID:       TXN-1780727892664-8597
+-----------------------------------------
+PAYMENT:      SUCCESSFUL
+SANDBOX:      FILE PURGED SECURELY
+=========================================
+Please collect your copies.
+Thank you for using civic services!

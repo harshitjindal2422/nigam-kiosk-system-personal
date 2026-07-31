@@ -8,6 +8,7 @@ import {
   Users, AlertCircle, ArrowRight, ShieldCheck, 
   RotateCcw, RefreshCw, Eye
 } from 'lucide-react';
+import { getFileUrl } from '../../utils/urlHelper.js';
 
 export default function MarriageOperations() {
   const { 
@@ -1037,27 +1038,27 @@ export default function MarriageOperations() {
                 const isUploaded = !!scannedFiles[doc];
                 return (
                   <div key={idx} className="flex items-center justify-between p-3.5 bg-slate-50/50 border rounded-xl shadow-inner text-sm">
-                    <div className="flex items-center gap-3">
-                      <span className="w-7 h-7 rounded-lg bg-navy/5 flex items-center justify-center font-extrabold text-navy">
+                    <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
+                      <span className="w-7 h-7 rounded-lg bg-navy/5 flex items-center justify-center font-extrabold text-navy shrink-0">
                         {idx + 1}
                       </span>
-                      <span className="text-slate-700 font-semibold">{doc}</span>
+                      <span className="text-slate-700 font-semibold truncate" title={doc}>{doc}</span>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-shrink-0">
                       {isUploaded ? (
                         <>
-                          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-md border border-emerald-200 uppercase tracking-wide">
+                          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-md border border-emerald-200 uppercase tracking-wide flex-shrink-0">
                             Successfully Scanned
                           </span>
                           <a
-                            href={`http://localhost:5000/temp/scans/${scannedFiles[doc]}`}
+                            href={getFileUrl(scannedFiles[doc], 'scans')}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-emerald-600 hover:text-emerald-700 underline font-mono font-bold max-w-[120px] truncate cursor-pointer"
+                            className="text-xs text-emerald-600 hover:text-emerald-750 underline font-mono font-bold cursor-pointer flex-shrink-0"
                             title="Click to view scanned document"
                           >
-                            {scannedFiles[doc]}
+                            View Document
                           </a>
                         </>
                       ) : (

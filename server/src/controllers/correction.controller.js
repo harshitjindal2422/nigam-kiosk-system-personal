@@ -50,7 +50,7 @@ export const generateToken = asyncHandler(async (req, res) => {
     });
 
     // 2. Determine Next Token Number using universal format: TKN-BIR/DEA/MAR-CORR-DDMM-NNN
-    const tokenNumber = await generateUniversalToken(certificateType, 'correction');
+    const tokenNumber = await generateUniversalToken(certificateType, 'correction', tx);
 
     // 3. Create Counter Correction Record
     const correctionRecord = await tx.counterCorrectionRecord.create({
@@ -77,6 +77,9 @@ export const generateToken = asyncHandler(async (req, res) => {
     });
 
     return { payment, correctionRecord, token };
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 
   // 5. Dispatch physical print job
@@ -153,6 +156,9 @@ export const generateKioskToken = asyncHandler(async (req, res) => {
     });
 
     return token;
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 
   return res.status(201).json(
