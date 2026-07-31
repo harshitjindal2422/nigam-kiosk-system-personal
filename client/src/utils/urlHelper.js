@@ -8,17 +8,18 @@ export const getBackendBaseUrl = () => {
 export const getFileUrl = (docPath, subFolder = 'scans') => {
   if (!docPath) return '';
   
-  // If it's already an absolute URL (like Cloudinary https://res.cloudinary.com/...)
+  let filename = docPath;
+  
+  // If it's an absolute URL (like Cloudinary), extract only the clean filename at the end
   if (docPath.startsWith('http://') || docPath.startsWith('https://')) {
-    return docPath;
+    const parts = docPath.split('/');
+    filename = parts[parts.length - 1];
+  } else if (docPath.startsWith('temp/')) {
+    // If the path has temp/ prefix, extract filename
+    const parts = docPath.split('/');
+    filename = parts[parts.length - 1];
   }
 
   const baseUrl = getBackendBaseUrl();
-  // If the path already has temp/ prefix
-  if (docPath.startsWith('temp/')) {
-    return `${baseUrl}/${docPath}`;
-  }
-  
-  // Otherwise fallback to temp/downloads or temp/scans
-  return `${baseUrl}/temp/${subFolder}/${docPath}`;
+  return `${baseUrl}/temp/${subFolder}/${filename}`;
 };

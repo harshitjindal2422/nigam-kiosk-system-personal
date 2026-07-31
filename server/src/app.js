@@ -66,9 +66,9 @@ app.use(
 // ==========================================
 // 📁 Sandbox Directories
 // ==========================================
-// Custom middleware to serve files with Cloudinary fallback
+// Custom middleware to serve files with Cloudinary fallback proxying
 const serveWithCloudinaryFallback = (subFolder, cloudinaryFolder) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const filename = req.params.filename;
     const localPath = path.resolve(`temp/${subFolder}`, filename);
 
@@ -76,11 +76,26 @@ const serveWithCloudinaryFallback = (subFolder, cloudinaryFolder) => {
       return res.sendFile(localPath);
     }
 
-    // Fallback to Cloudinary if configured
+    // Fallback to Cloudinary if configured (proxy file bytes directly)
     if (process.env.CLOUDINARY_CLOUD_NAME) {
       const cloudinaryUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${cloudinaryFolder}/${filename}`;
-      logger.info(`☁️ [FALLBACK REDIRECT]: File ${filename} not found locally in temp/${subFolder}. Redirecting to Cloudinary: ${cloudinaryUrl}`);
-      return res.redirect(cloudinaryUrl);
+      logger.info(`☁️ [FALLBACK PROXY]: File ${filename} not found locally in temp/${subFolder}. Proxying from Cloudinary: ${cloudinaryUrl}`);
+      
+      try {
+        const response = await fetch(cloudinaryUrl);
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || 'application/pdf';
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+          
+          const arrayBuffer = await response.arrayBuffer();
+          return res.send(Buffer.from(arrayBuffer));
+        } else {
+          logger.error(`⚠️ [FALLBACK PROXY ERROR]: Cloudinary returned status ${response.status} for ${cloudinaryUrl}`);
+        }
+      } catch (err) {
+        logger.error(`⚠️ [FALLBACK PROXY ERROR]: Failed to proxy from Cloudinary: ${err.message}`);
+      }
     }
 
     return res.status(404).send('File not found');
