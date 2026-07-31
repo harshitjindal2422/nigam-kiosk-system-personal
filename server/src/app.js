@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';
+import path from 'path';
 
 import { errorHandler } from './middlewares/error.middleware.js';
 import { logger } from './config/logger.js';
@@ -64,9 +66,30 @@ app.use(
 // ==========================================
 // 📁 Sandbox Directories
 // ==========================================
-// Serve sandbox downloaded files (static sandboxed files)
-app.use('/temp/downloads', express.static('temp/downloads'));
-app.use('/temp/scans', express.static('temp/scans'));
+// Custom middleware to serve files with Cloudinary fallback
+const serveWithCloudinaryFallback = (subFolder, cloudinaryFolder) => {
+  return (req, res, next) => {
+    const filename = req.params.filename;
+    const localPath = path.resolve(`temp/${subFolder}`, filename);
+
+    if (fs.existsSync(localPath)) {
+      return res.sendFile(localPath);
+    }
+
+    // Fallback to Cloudinary if configured
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      const cloudinaryUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${cloudinaryFolder}/${filename}`;
+      logger.info(`☁️ [FALLBACK REDIRECT]: File ${filename} not found locally in temp/${subFolder}. Redirecting to Cloudinary: ${cloudinaryUrl}`);
+      return res.redirect(cloudinaryUrl);
+    }
+
+    return res.status(404).send('File not found');
+  };
+};
+
+// Serve sandbox downloaded files (static sandboxed files with Cloudinary fallback redirection)
+app.get('/temp/downloads/:filename', serveWithCloudinaryFallback('downloads', 'kiosk_downloads'));
+app.get('/temp/scans/:filename', serveWithCloudinaryFallback('scans', 'kiosk_scans'));
 
 // ==========================================
 // 🗺️ Routing System
