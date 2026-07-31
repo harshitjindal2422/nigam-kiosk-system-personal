@@ -92,6 +92,23 @@ export default class PrintService {
     // 1. Generate Universal Print Token number
     const tokenNumber = await generateUniversalToken(certificateType, 'PRI');
 
+    let finalFileName = downloadedFileName;
+    const localFilePath = path.join(DOWNLOAD_DIR, downloadedFileName);
+
+    // If the file exists locally, upload it to Cloudinary so it can be retrieved from anywhere!
+    if (fs.existsSync(localFilePath) && !downloadedFileName.startsWith('mock_download_')) {
+      try {
+        const { uploadLocalFileToCloudinary } = await import('../config/cloudinary.js');
+        logger.info(`☁️ [PRINT EXECUTE]: Uploading citizen downloaded certificate to Cloudinary...`);
+        const cloudinaryUrl = await uploadLocalFileToCloudinary(localFilePath, 'kiosk_downloads');
+        if (cloudinaryUrl) {
+          finalFileName = cloudinaryUrl;
+        }
+      } catch (uploadErr) {
+        logger.error(`⚠️ [PRINT EXECUTE ERROR]: Cloudinary upload failed: ${uploadErr.message}`);
+      }
+    }
+
     // 2. Perform atomic database operations
     const result = await prisma.$transaction(async (tx) => {
       // 2a. Upsert payment record
@@ -123,7 +140,7 @@ export default class PrintService {
           certificate_type: certificateType.toUpperCase(),
           service_type: 'PRI',
           total_copies: parseInt(totalCopies) || 1,
-          downloaded_file_name: downloadedFileName,
+          downloaded_file_name: finalFileName,
           fee_status: isOffline ? 'PENDING' : 'FULFILLED',
           fee_amount: amount,
           print_status: 'PENDING',
@@ -140,7 +157,7 @@ export default class PrintService {
           registration_number: registrationNumber,
           certificate_type: certificateType.toUpperCase(),
           total_copies: parseInt(totalCopies) || 1,
-          downloaded_file_name: downloadedFileName || 'certificate.pdf',
+          downloaded_file_name: finalFileName || 'certificate.pdf',
           token_number: tokenNumber,
           downloaded_at: getISTDate(),
           print_status: 'PENDING',

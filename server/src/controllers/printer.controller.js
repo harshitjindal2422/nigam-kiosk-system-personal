@@ -164,7 +164,29 @@ export const collectCashFee = asyncHandler(async (req, res) => {
 async function getCertificatePdfBytes(tokenNumber, isMock, filePath) {
   let pdfBytes = null;
 
-  // Try to query application for uploaded_certificate_url (e.g. Cloudinary link)
+  // 1. Try to check printToken's downloaded_file_name directly
+  const printToken = await prisma.printToken.findUnique({
+    where: { token_number: tokenNumber }
+  });
+
+  if (printToken && printToken.downloaded_file_name) {
+    const fileUrl = printToken.downloaded_file_name;
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      try {
+        logger.info(`🌐 [PRINTER]: Fetching certificate directly from print token Cloudinary URL: ${fileUrl}`);
+        const response = await fetch(fileUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          pdfBytes = Buffer.from(arrayBuffer);
+          return pdfBytes;
+        }
+      } catch (err) {
+        logger.error(`⚠️ [PRINTER ERROR]: Failed to fetch Cloudinary URL from print token: ${err.message}`);
+      }
+    }
+  }
+
+  // 2. Try to query application for uploaded_certificate_url (e.g. Cloudinary link)
   const application = await prisma.application.findFirst({
     where: { token_number: tokenNumber }
   });
