@@ -29,3 +29,21 @@ export const getFileUrl = (docPath, subFolder = 'scans') => {
   const baseUrl = getBackendBaseUrl();
   return `${baseUrl}/temp/${subFolder}/${filename}`;
 };
+
+// Strips URL prefixes, directory folders, dynamic timestamp suffixes, and replaces underscores with spaces
+export const getCleanFilename = (docPath) => {
+  if (!docPath) return '';
+  let filename = docPath;
+
+  if (docPath.includes('/')) {
+    const parts = docPath.split('/');
+    filename = parts[parts.length - 1];
+  }
+
+  // Strip unique timestamp suffixes like _1785500023430.pdf to restore clean filename format
+  const timestampRegex = /_(\d{13})\.(pdf|jpg|jpeg|png)$/i;
+  filename = filename.replace(timestampRegex, '.$2');
+
+  // Replace underscores with spaces for premium readable formatting
+  return filename.replace(/_/g, ' ');
+};

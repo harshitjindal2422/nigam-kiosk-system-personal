@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance.js';
 import { LogOut, Search, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, HelpCircle, RefreshCw } from 'lucide-react';
-import { getFileUrl } from '../utils/urlHelper.js';
+import { getFileUrl, getCleanFilename } from '../utils/urlHelper.js';
 
 export default function CheckerDashboard() {
   const { user, logout } = useAuthStore();
@@ -580,7 +580,7 @@ export default function CheckerDashboard() {
                         >
                           <div className="flex items-center gap-2.5 font-semibold text-navy text-sm truncate max-w-[50%]">
                             <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                            <span className="truncate" title={doc}>{doc}</span>
+                            <span className="truncate" title={getCleanFilename(doc)}>{getCleanFilename(doc)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button
@@ -609,7 +609,7 @@ export default function CheckerDashboard() {
                         >
                           <div className="flex items-center gap-2.5 font-semibold text-navy text-sm truncate max-w-[60%]">
                             <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                            <span className="truncate" title={doc}>{doc}</span>
+                            <span className="truncate" title={getCleanFilename(doc)}>{getCleanFilename(doc)}</span>
                           </div>
                           <a
                             href={getFileUrl(doc, 'scans')}

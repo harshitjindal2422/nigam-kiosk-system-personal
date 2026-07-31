@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance.js';
 import axios from 'axios';
 import { LogOut, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, KeyRound, ArrowRight, HelpCircle, RefreshCw } from 'lucide-react';
-import { getFileUrl } from '../utils/urlHelper.js';
+import { getFileUrl, getCleanFilename } from '../utils/urlHelper.js';
 
 export default function ApprovalDashboard() {
   const { user, logout } = useAuthStore();
@@ -761,7 +761,7 @@ export default function ApprovalDashboard() {
                       >
                         <div className="flex items-center gap-2.5 font-semibold text-navy text-sm min-w-0 flex-1 mr-4">
                           <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                          <span className="truncate" title={doc}>{doc}</span>
+                          <span className="truncate" title={getCleanFilename(doc)}>{getCleanFilename(doc)}</span>
                         </div>
                         <div className="flex gap-2 items-center flex-shrink-0">
                           <a
