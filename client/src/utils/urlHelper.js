@@ -8,13 +8,19 @@ export const getBackendBaseUrl = () => {
 export const getFileUrl = (docPath, subFolder = 'scans') => {
   if (!docPath) return '';
   
-  let filename = docPath;
-  
-  // If it's an absolute URL (like Cloudinary), extract only the clean filename at the end
+  // If it's a full Cloudinary URL, extract everything after "image/upload/" to preserve versioning/folders
   if (docPath.startsWith('http://') || docPath.startsWith('https://')) {
-    const parts = docPath.split('/');
-    filename = parts[parts.length - 1];
-  } else if (docPath.startsWith('temp/')) {
+    const key = 'image/upload/';
+    const index = docPath.indexOf(key);
+    if (index !== -1) {
+      const relativePath = docPath.substring(index + key.length); // e.g. v123/folder/file.pdf
+      const baseUrl = getBackendBaseUrl();
+      return `${baseUrl}/temp/${subFolder}/${relativePath}`;
+    }
+  }
+
+  let filename = docPath;
+  if (docPath.startsWith('temp/')) {
     // If the path has temp/ prefix, extract filename
     const parts = docPath.split('/');
     filename = parts[parts.length - 1];

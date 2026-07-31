@@ -69,7 +69,11 @@ app.use(
 // Custom middleware to serve files with Cloudinary fallback proxying
 const serveWithCloudinaryFallback = (subFolder, cloudinaryFolder) => {
   return async (req, res, next) => {
-    const filename = req.params.filename;
+    // req.params[0] contains the wildcard path, e.g. "v123/kiosk_scans/file.pdf" or "file.pdf"
+    const wildcardPath = req.params[0] || '';
+    
+    // Extract raw filename for local checks and download naming
+    const filename = path.basename(wildcardPath);
     const localPath = path.resolve(`temp/${subFolder}`, filename);
 
     if (fs.existsSync(localPath)) {
@@ -78,7 +82,15 @@ const serveWithCloudinaryFallback = (subFolder, cloudinaryFolder) => {
 
     // Fallback to Cloudinary if configured (proxy file bytes directly)
     if (process.env.CLOUDINARY_CLOUD_NAME) {
-      const cloudinaryUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${cloudinaryFolder}/${filename}`;
+      let cloudinaryUrl;
+      if (wildcardPath.includes('/')) {
+        // Reconstruct exact Cloudinary URL containing version and subfolder hierarchy
+        cloudinaryUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${wildcardPath}`;
+      } else {
+        // Fallback default folder structure
+        cloudinaryUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${cloudinaryFolder}/${wildcardPath}`;
+      }
+      
       logger.info(`☁️ [FALLBACK PROXY]: File ${filename} not found locally in temp/${subFolder}. Proxying from Cloudinary: ${cloudinaryUrl}`);
       
       try {
@@ -103,8 +115,8 @@ const serveWithCloudinaryFallback = (subFolder, cloudinaryFolder) => {
 };
 
 // Serve sandbox downloaded files (static sandboxed files with Cloudinary fallback redirection)
-app.get('/temp/downloads/:filename', serveWithCloudinaryFallback('downloads', 'kiosk_downloads'));
-app.get('/temp/scans/:filename', serveWithCloudinaryFallback('scans', 'kiosk_scans'));
+app.get('/temp/downloads/*', serveWithCloudinaryFallback('downloads', 'kiosk_downloads'));
+app.get('/temp/scans/*', serveWithCloudinaryFallback('scans', 'kiosk_scans'));
 
 // ==========================================
 // 🗺️ Routing System
