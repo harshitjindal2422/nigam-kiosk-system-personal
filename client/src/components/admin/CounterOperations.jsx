@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useAdminStore } from '../../store/adminStore.js';
 import { useKioskStore } from '../../store/kioskStore.js';
 import axiosInstance from '../../api/axiosInstance.js';
+import axios from 'axios';
+
 import { 
   Camera, Check, FileText, CreditCard, Printer, Search, 
   Users, Smartphone, AlertCircle, ArrowRight, ShieldCheck, 
@@ -665,6 +667,7 @@ export default function CounterOperations() {
     return `${cleanName}.pdf`;
   };
 
+
   // Scanning trigger
   const triggerScanFile = async (docName) => {
     if (scanPollIntervalRef.current) {
@@ -675,16 +678,36 @@ export default function CounterOperations() {
     setScanning(docName);
     const targetFileName = getOfficialDocFileName(docName);
     
+    // Attempt connection to the local scanner bridge agent on localhost:5000 first,
+    // falling back to central cloud server if localhost is offline.
+    let activeAxios = axiosInstance;
+    let usingLocalAgent = false;
+    
+    try {
+      const localTest = await axios.get('http://localhost:5000/health', { timeout: 1500 });
+      if (localTest.data && localTest.data.status === 'ok') {
+        activeAxios = axios.create({
+          baseURL: 'http://localhost:5000/api/v1',
+          timeout: 45000
+        });
+        usingLocalAgent = true;
+        console.log("🔌 Connected to Local Hardware Scan Agent (localhost:5000)");
+      }
+    } catch (e) {
+      console.warn("🔌 Local Hardware Scan Agent offline, falling back to central Cloud server");
+    }
+    
     try {
       // 1. Try to trigger the physical scanner directly
-      const res = await axiosInstance.post('/applications/trigger-physical-scan', {
+      const res = await activeAxios.post('/applications/trigger-physical-scan', {
         targetFileName
       });
       
       if (res.data && res.data.success) {
+        const returnedName = res.data.data.targetFileName || targetFileName;
         setScannedFiles(prev => ({
           ...prev,
-          [docName]: targetFileName
+          [docName]: returnedName
         }));
         setScanning(false);
         return;
@@ -714,7 +737,7 @@ export default function CounterOperations() {
       }
       
       try {
-        const res = await axiosInstance.get('/applications/detect-scan');
+        const res = await activeAxios.get('/applications/detect-scan');
         const data = res.data;
         if (data && data.detected) {
           clearInterval(intervalId);
@@ -723,14 +746,16 @@ export default function CounterOperations() {
           const tempFileName = data.fileName;
           const targetFileName = getOfficialDocFileName(docName);
           
-          await axiosInstance.post('/applications/save-scan', {
+          const saveRes = await activeAxios.post('/applications/save-scan', {
             tempFileName,
             targetFileName
           });
           
+          const returnedName = saveRes.data?.data?.targetFileName || targetFileName;
+          
           setScannedFiles(prev => ({
             ...prev,
-            [docName]: targetFileName
+            [docName]: returnedName
           }));
           setScanning(false);
         }

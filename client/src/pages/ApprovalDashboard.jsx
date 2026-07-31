@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore.js';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance.js';
+import axios from 'axios';
 import { LogOut, Check, AlertTriangle, FileText, Smartphone, User, Calendar, Tag, ShieldCheck, KeyRound, ArrowRight, HelpCircle, RefreshCw } from 'lucide-react';
 import { getFileUrl } from '../utils/urlHelper.js';
 
@@ -100,14 +101,34 @@ export default function ApprovalDashboard() {
       setSuccessMsg(`Document "${oldDocName}" successfully rescanned and saved as: "${fileName}"`);
     };
 
+    // Attempt connection to the local scanner bridge agent on localhost:5000 first,
+    // falling back to central cloud server if localhost is offline.
+    let activeAxios = axiosInstance;
+    let usingLocalAgent = false;
+    
+    try {
+      const localTest = await axios.get('http://localhost:5000/health', { timeout: 1500 });
+      if (localTest.data && localTest.data.status === 'ok') {
+        activeAxios = axios.create({
+          baseURL: 'http://localhost:5000/api/v1',
+          timeout: 45000
+        });
+        usingLocalAgent = true;
+        console.log("🔌 Connected to Local Hardware Scan Agent (localhost:5000)");
+      }
+    } catch (e) {
+      console.warn("🔌 Local Hardware Scan Agent offline, falling back to central Cloud server");
+    }
+
     try {
       // 1. Try to trigger the physical scanner directly
-      const res = await axiosInstance.post('/applications/trigger-physical-scan', {
+      const res = await activeAxios.post('/applications/trigger-physical-scan', {
         targetFileName: newDocName
       });
 
       if (res.data && res.data.success) {
-        await triggerAndSave(newDocName);
+        const returnedName = res.data.data.targetFileName || newDocName;
+        await triggerAndSave(returnedName);
         setRescanningDoc(null);
         return;
       }
@@ -133,19 +154,20 @@ export default function ApprovalDashboard() {
       }
 
       try {
-        const res = await axiosInstance.get('/applications/detect-scan');
+        const res = await activeAxios.get('/applications/detect-scan');
         const data = res.data;
         if (data && data.detected) {
           clearInterval(intervalId);
           
           const tempFileName = data.fileName;
           
-          await axiosInstance.post('/applications/save-scan', {
+          const saveRes = await activeAxios.post('/applications/save-scan', {
             tempFileName,
             targetFileName: newDocName
           });
 
-          await triggerAndSave(newDocName);
+          const returnedName = saveRes.data?.data?.targetFileName || newDocName;
+          await triggerAndSave(returnedName);
           setRescanningDoc(null);
         }
       } catch (err) {
