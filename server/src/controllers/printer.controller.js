@@ -160,6 +160,41 @@ export const collectCashFee = asyncHandler(async (req, res) => {
   );
 });
 
+// Helper to retrieve certificate PDF bytes from Cloudinary URL or local file system
+async function getCertificatePdfBytes(tokenNumber, isMock, filePath) {
+  let pdfBytes = null;
+
+  // Try to query application for uploaded_certificate_url (e.g. Cloudinary link)
+  const application = await prisma.application.findFirst({
+    where: { token_number: tokenNumber }
+  });
+
+  if (application && application.downloaded_certificate_url) {
+    const certUrl = application.downloaded_certificate_url;
+    if (certUrl.startsWith('http://') || certUrl.startsWith('https://')) {
+      try {
+        logger.info(`🌐 [PRINTER]: Fetching certificate from Cloudinary URL: ${certUrl}`);
+        const response = await fetch(certUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          pdfBytes = Buffer.from(arrayBuffer);
+        } else {
+          logger.error(`⚠️ [PRINTER ERROR]: Cloudinary URL fetch failed with status ${response.status}`);
+        }
+      } catch (fetchErr) {
+        logger.error(`⚠️ [PRINTER ERROR]: Failed to fetch Cloudinary URL: ${fetchErr.message}`);
+      }
+    }
+  }
+
+  // Fallback to local disk file if not downloaded online
+  if (!pdfBytes && !isMock && fs.existsSync(filePath)) {
+    pdfBytes = fs.readFileSync(filePath);
+  }
+
+  return pdfBytes;
+}
+
 /**
  * @desc Process and execute certificate print
  * @route POST /api/v1/printer/tokens/:tokenNumber/print
@@ -186,10 +221,8 @@ export const executePrinterPrint = asyncHandler(async (req, res) => {
   let base64Pdf = null;
 
   try {
-    let pdfBytes = null;
-    if (!isMock && fs.existsSync(filePath)) {
-      pdfBytes = fs.readFileSync(filePath);
-    } else {
+    let pdfBytes = await getCertificatePdfBytes(tokenNumber, isMock, filePath);
+    if (!pdfBytes) {
       // High-fidelity fallback PDF for testing
       const mockBase64 = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
       pdfBytes = Buffer.from(mockBase64, 'base64');
@@ -297,9 +330,8 @@ export const getPrinterTokenPdf = asyncHandler(async (req, res) => {
   let pdfBytes = null;
 
   try {
-    if (!isMock && fs.existsSync(filePath)) {
-      pdfBytes = fs.readFileSync(filePath);
-    } else {
+    pdfBytes = await getCertificatePdfBytes(tokenNumber, isMock, filePath);
+    if (!pdfBytes) {
       // High-fidelity fallback PDF for testing
       const mockBase64 = 'JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1DMyAQsFcwVy/IL+gIL80LycxM1cvyM/M0y/ITM9MzklN1gNJmVnqmSmY1XIlOzlZGRkBAQC/XBO+CmVuZHN0cmVhbQplbmRvYmoKCjMgMCBvYmoKODcKZW5kb2JqCgo0IDAgb2JqCjw8L1R5cGUvUGFnZS9NZWRpYUJveFswIDAgNTk1IDg0Ml0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDEgMCBSPj4+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNSAwIFI+PgplbmRvYmoKCjEgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvUGFnZXMvQ291bnQgMS9LaWRzWzQgMCBSXT4+CmVuZG9iagoKNiAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNSAwIFI+PgplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoanNwZGYgMS41LjMgXChodHRwczovL2dpdGh1Yi5jb20vTXJSaW8vanNwZGZcKSkvQ3JlYXRpb25EYXRlKEQ6MjAyMTA5MTUwOTE3NTQrMDAnMDAnKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDE2OSAwMDAwMCBuIAowMDAwMDAwMTg5IDAwMDAwIG4gCjAwMDAwMDAzMzcgMDAwMDAgbiAKMDAwMDAwMDM5NCAwMDAwMCBuIAowMDAwMDAwNDQzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA4L1Jvb3QgNiAwIFIvSW5mbyA3IDAgUi9JRCBbIDw5NDQ3NzM0MUIyRTdBRTlCNDRGRkJCNzlEMUQyRkZBQz4gPDk0NDc3MzQxQjJFN0FFOUI0NEZGQkI3OUQxRDJGRkFDPiBdPj4Kc3RhcnR4cmVmCjU3NQolJUVPRgo=';
       pdfBytes = Buffer.from(mockBase64, 'base64');
