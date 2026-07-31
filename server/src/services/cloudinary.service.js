@@ -26,9 +26,12 @@ export const uploadBase64ToCloudinary = async (base64Data, fileName, folder = 'k
 
     const dataURI = `data:${mimeType};base64,${base64Data}`;
 
+    const baseName = path.basename(fileName, ext);
+    const uniquePublicId = `${baseName}_${Date.now()}`;
+
     const response = await cloudinary.uploader.upload(dataURI, {
       folder: folder,
-      public_id: path.basename(fileName, ext),
+      public_id: uniquePublicId,
       resource_type: 'auto',
     });
 
@@ -56,9 +59,12 @@ export const uploadLocalFileToCloudinary = async (localFilePath, folder = 'kiosk
     const ext = path.extname(localFilePath).toLowerCase();
     const fileName = path.basename(localFilePath);
 
+    const baseName = path.basename(fileName, ext);
+    const uniquePublicId = `${baseName}_${Date.now()}`;
+
     const response = await cloudinary.uploader.upload(localFilePath, {
       folder: folder,
-      public_id: path.basename(fileName, ext),
+      public_id: uniquePublicId,
       resource_type: 'auto',
     });
 
